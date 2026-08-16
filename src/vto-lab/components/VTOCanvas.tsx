@@ -1,0 +1,90 @@
+// src/vto-lab/components/VTOCanvas.tsx
+/**
+ * Three.js Canvas Container for VTO Lab.
+ * Aligns precisely with the computed letterbox/pillarbox viewport rectangle of the video.
+ * Renders in native 3D space with integrated Head Depth Occlusion.
+ */
+
+'use client';
+
+import React, { MutableRefObject } from 'react';
+import dynamic from 'next/dynamic';
+import {
+  FaceDetectionResult,
+  LetterboxViewport,
+  ModelMeasurement,
+  VTOActiveModel,
+} from '../tracking/FaceTrackingTypes';
+import { VTORendererProps } from '../rendering/VTORenderer';
+
+const VTORenderer = dynamic<VTORendererProps>(
+  () => import('../rendering/VTORenderer'),
+  { ssr: false },
+);
+
+export interface VTOCanvasProps {
+  viewport: LetterboxViewport;
+  mirrored?: boolean;
+  detectionRef?: MutableRefObject<FaceDetectionResult | null>;
+  faceMatrix?: Float32Array | null;
+  activeModel: VTOActiveModel;
+  showAxes: boolean;
+  showCube: boolean;
+  showGlasses: boolean;
+  showHeadOcclusion?: boolean;
+  debugOccluderMesh?: boolean;
+  glbPath: string;
+  frameSize: string;
+  fovDegrees?: number;
+  onModelMeasured?: (measurement: ModelMeasurement, scale: number) => void;
+  onError?: (error: Error) => void;
+}
+
+export function VTOCanvas({
+  viewport,
+  mirrored = true,
+  detectionRef,
+  faceMatrix,
+  activeModel,
+  showAxes,
+  showCube,
+  showGlasses,
+  showHeadOcclusion = true,
+  debugOccluderMesh = false,
+  glbPath,
+  frameSize,
+  fovDegrees = 63.0,
+  onModelMeasured,
+  onError,
+}: VTOCanvasProps) {
+  return (
+    <div
+      className="absolute overflow-hidden pointer-events-none z-10"
+      style={{
+        left: viewport.left,
+        top: viewport.top,
+        width: viewport.width,
+        height: viewport.height,
+      }}
+    >
+      <VTORenderer
+        detectionRef={detectionRef}
+        faceMatrix={faceMatrix}
+        mirrored={mirrored}
+        activeModel={activeModel}
+        showAxes={showAxes}
+        showCube={showCube}
+        showGlasses={showGlasses}
+        showHeadOcclusion={showHeadOcclusion}
+        debugOccluderMesh={debugOccluderMesh}
+        glbPath={glbPath}
+        frameSize={frameSize}
+        fovDegrees={fovDegrees}
+        onModelMeasured={onModelMeasured}
+        onError={onError}
+      />
+    </div>
+  );
+}
+
+export default VTOCanvas;

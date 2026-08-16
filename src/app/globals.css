@@ -1,0 +1,68 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    /* CSS custom property for header height — used by Hero and any sticky-aware component */
+    --header-height: 4rem; /* 64px — matches h-16 on the Header */
+  }
+
+  /* Safety net: prevents horizontal scroll from any unhandled overflow.
+     Component-level fixes have been applied at known root causes. */
+  body {
+    @apply font-sans text-neutral-700 bg-neutral-50 antialiased;
+    max-width: 100%; /* prevent body from exceeding viewport width */
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-neutral-900 font-semibold;
+  }
+
+  /* Prevent iOS input zoom — all inputs must render at ≥ 16px on mobile */
+  input, textarea, select {
+    font-size: max(1rem, 16px);
+  }
+
+  /* Focus visible styles for accessibility */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-brand-500 ring-offset-2 ring-offset-neutral-50;
+  }
+}
+
+@layer components {
+  .container-main {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+@layer utilities {
+  .animation-reduced {
+    @apply motion-reduce:transition-none motion-reduce:transform-none;
+  }
+
+  /* Safe-area inset for iOS home indicator — not in default Tailwind, added here */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .mb-safe {
+    margin-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Hide scrollbar while keeping scroll functionality */
+  .no-scrollbar {
+    scrollbar-width: none;       /* Firefox */
+    -ms-overflow-style: none;    /* IE/Edge */
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;               /* Chrome/Safari/Opera */
+  }
+}
