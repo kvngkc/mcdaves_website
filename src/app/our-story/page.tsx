@@ -4,9 +4,42 @@ import Link from 'next/link';
 import { ShieldCheck, Award, Layers, Users, ArrowRight } from 'lucide-react';
 import { siteConfig } from '@/data/site-config';
 
-export const metadata = {
-  title: 'Our Story — Two Generations of Optical Precision | McDaves',
-  description: 'Learn about McDaves optical heritage in Lagos, Nigeria. Over two decades of craftsmanship supplying optical materials and retail eyewear.',
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Our Story — Two Generations of Optical Precision | McDaves Nigeria',
+  description:
+    'Learn about McDaves optical heritage in Lagos, Nigeria. Over two decades of master craftsmanship supplying ophthalmic materials, prescription lenses, and Sightly handcrafted eyewear.',
+  alternates: {
+    canonical: 'https://mcdaves.com.ng/our-story',
+  },
+  openGraph: {
+    title: 'Our Story — Two Generations of Optical Precision | McDaves Nigeria',
+    description:
+      'Learn about McDaves optical heritage in Lagos, Nigeria. Over two decades of master craftsmanship supplying ophthalmic materials, prescription lenses, and Sightly handcrafted eyewear.',
+    url: 'https://mcdaves.com.ng/our-story',
+  },
+};
+
+const aboutSchemaJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'AboutPage',
+  '@id': 'https://mcdaves.com.ng/our-story#webpage',
+  url: 'https://mcdaves.com.ng/our-story',
+  name: 'Our Story — Two Generations of Optical Precision',
+  description: 'History and optical craftsmanship heritage of McDaves Optical in Lagos, Nigeria.',
+  mainEntity: {
+    '@type': 'Optician',
+    name: 'McDaves Optical',
+    foundingDate: '1997',
+    address: {
+      '@type': 'PostalAddress',
+      streetAddress: '4, Nnamdi Azikwe Street',
+      addressLocality: 'Lagos',
+      addressRegion: 'Lagos State',
+      addressCountry: 'NG',
+    },
+  },
 };
 
 export default function OurStoryPage() {
@@ -35,6 +68,10 @@ export default function OurStoryPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-white text-neutral-900 pb-16">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(aboutSchemaJsonLd) }}
+      />
       
       {/* ── 1. Hero Section ─────────────────────────────────────────────────── */}
       <section className="relative pt-20 pb-24 bg-gradient-to-b from-neutral-950 via-brand-950 to-neutral-900 text-white overflow-hidden border-b border-neutral-800">

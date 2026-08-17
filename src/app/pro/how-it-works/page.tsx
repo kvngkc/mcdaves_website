@@ -11,9 +11,21 @@ import {
 } from 'lucide-react';
 import { ORDERING_SYSTEM_URL } from '@/data/b2b-products';
 
-export const metadata = {
-  title: 'How Ordering Works · McDaves Optical Supplies',
-  description: 'How to discover products on McDaves Optical and place orders online.',
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'How Optical Ordering Works | B2B Practice Orders | McDaves Nigeria',
+  description:
+    'Step-by-step guide for optometrists, optical labs, and store owners on discovering and ordering ophthalmic lenses and blanks with fast Lagos delivery.',
+  alternates: {
+    canonical: 'https://mcdaves.com.ng/pro/how-it-works',
+  },
+  openGraph: {
+    title: 'How Optical Ordering Works | B2B Practice Orders | McDaves Nigeria',
+    description:
+      'Step-by-step guide for optometrists and optical labs on ordering ophthalmic lenses and blanks in Nigeria.',
+    url: 'https://mcdaves.com.ng/pro/how-it-works',
+  },
 };
 
 export default function HowItWorksPage() {

@@ -78,6 +78,11 @@ export function VTOModal({
   const [faceDetected, setFaceDetected] = useState(false);
   const [modelLoaded, setModelLoaded] = useState(false);
 
+  // Reset modelLoaded when changing glbPath
+  useEffect(() => {
+    setModelLoaded(false);
+  }, [glbPath]);
+
   // Mutable ref for zero-latency 60 FPS 3D tracking
   const latestDetectionRef = useRef<FaceDetectionResult | null>(null);
   const landmarkerRef = useRef<Awaited<ReturnType<typeof initFaceLandmarker>> | null>(null);
@@ -364,6 +369,14 @@ export function VTOModal({
               onModelMeasured={() => setModelLoaded(true)}
               onError={(err) => console.error('[VTO] Render error:', err)}
             />
+          )}
+
+          {/* 3D Model Loading State Indicator */}
+          {!modelLoaded && isStreaming && (
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 px-3.5 py-1.5 rounded-full bg-neutral-950/80 backdrop-blur-md border border-brand-500/40 text-xs font-semibold text-brand-300 flex items-center gap-2 shadow-xl animate-in fade-in">
+              <div className="w-3 h-3 border-2 border-brand-400 border-t-transparent rounded-full animate-spin" />
+              <span>Loading 3D Frame...</span>
+            </div>
           )}
 
           {/* Guide Alignment Cue if Face Not Detected */}

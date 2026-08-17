@@ -1,5 +1,5 @@
 // src/app/page.tsx
-import { products } from '@/data/products';
+import { getLiveStorefrontProducts } from '@/lib/commerce/storefront-catalog';
 import {
   HeroSection,
   HowItWorks,
@@ -9,10 +9,14 @@ import {
   TrustSignals,
 } from '@/components/sections';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * Home Page — McDaves
  */
-export default function HomePage() {
+export default async function HomePage() {
+  const liveProducts = await getLiveStorefrontProducts();
+
   return (
     <div className="flex flex-col">
       {/* 1. Hero Section */}
@@ -21,8 +25,8 @@ export default function HomePage() {
       {/* 2. How It Works */}
       <HowItWorks />
 
-      {/* 3. Product Grid */}
-      <ProductGrid products={products} columns={4} showTryOn={true} />
+      {/* 3. Product Grid (Dynamic Live Supabase Catalog) */}
+      <ProductGrid products={liveProducts} columns={4} showTryOn={true} />
 
       {/* 4. Services Preview */}
       <ServicePreview />

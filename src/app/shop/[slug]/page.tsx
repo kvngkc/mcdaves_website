@@ -34,11 +34,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     '/images/products/placeholder.webp';
 
   return {
-    title: `${product.name} | Sightly Eyewear by McDaves`,
-    description: product.description,
+    title: `${product.name} | Sightly Eyewear | McDaves Nigeria`,
+    description: `${product.description} Available in Lagos with virtual try-on and prescription lens fitting.`,
+    alternates: {
+      canonical: `https://mcdaves.com.ng/shop/${product.slug}`,
+    },
     openGraph: {
-      title: `${product.name} | Sightly Eyewear by McDaves`,
-      description: product.description,
+      title: `${product.name} | Sightly Eyewear | McDaves Nigeria`,
+      description: `${product.description} Available in Lagos with virtual try-on and prescription lens fitting.`,
+      url: `https://mcdaves.com.ng/shop/${product.slug}`,
       images: [{ url: primaryImage }],
     },
   };
@@ -103,7 +107,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
     },
     offers: {
       '@type': 'Offer',
-      url: `https://mcdaves.com.ng/shop/${product.slug}/`,
+      url: `https://mcdaves.com.ng/shop/${product.slug}`,
       priceCurrency: 'NGN',
       price: product.defaultPrice,
       itemCondition: 'https://schema.org/NewCondition',

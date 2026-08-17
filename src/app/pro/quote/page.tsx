@@ -3,9 +3,21 @@ import Link from 'next/link';
 import { ExternalLink, Boxes, ShieldCheck } from 'lucide-react';
 import { ORDERING_SYSTEM_URL } from '@/data/b2b-products';
 
-export const metadata = {
-  title: 'Order Online · McDaves Optical Supplies',
-  description: 'Place your order on the online ordering system.',
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Order Optical Supplies Online | McDaves Nigeria B2B',
+  description:
+    'Direct online ordering for optical practices, eye clinics, and surfacing labs in Nigeria. Select exact prescription powers and receive fast tracked delivery.',
+  alternates: {
+    canonical: 'https://mcdaves.com.ng/pro/quote',
+  },
+  openGraph: {
+    title: 'Order Optical Supplies Online | McDaves Nigeria B2B',
+    description:
+      'Direct online ordering for optical practices, eye clinics, and surfacing labs in Nigeria.',
+    url: 'https://mcdaves.com.ng/pro/quote',
+  },
 };
 
 export default function QuoteRedirectPage() {

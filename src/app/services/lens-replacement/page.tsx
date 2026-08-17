@@ -16,10 +16,59 @@ import {
 import { siteConfig } from '@/data/site-config';
 import { ORDERING_SYSTEM_URL } from '@/data/b2b-products';
 
-export const metadata = {
-  title: 'Prescription Lens Replacement & Reglazing | McDaves',
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Prescription Lens Replacement & Reglazing | Blue Cut, Photochromic | McDaves Nigeria',
   description:
-    'Put new prescription, blue cut, or photochromic lenses into your existing favorite frames. Expert optical fitting and delivery across Nigeria.',
+    'Put new prescription, blue cut, or photochromic lenses into your existing frames. Precision optical measurement, edging, and fitting in Lagos with nationwide delivery.',
+  alternates: {
+    canonical: 'https://mcdaves.com.ng/services/lens-replacement',
+  },
+  openGraph: {
+    title: 'Prescription Lens Replacement & Reglazing | Blue Cut, Photochromic | McDaves Nigeria',
+    description:
+      'Put new prescription, blue cut, or photochromic lenses into your existing frames. Precision optical measurement, edging, and fitting in Lagos with nationwide delivery.',
+    url: 'https://mcdaves.com.ng/services/lens-replacement',
+  },
+};
+
+const serviceSchemaJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Service',
+  '@id': 'https://mcdaves.com.ng/services/lens-replacement#service',
+  name: 'Prescription Lens Replacement & Reglazing',
+  serviceType: 'Optical Glazing & Lens Fitting',
+  provider: {
+    '@type': 'Optician',
+    name: 'McDaves Optical',
+    url: 'https://mcdaves.com.ng',
+    telephone: '+2348152346649',
+    address: {
+      '@type': 'PostalAddress',
+      streetAddress: '4, Nnamdi Azikwe Street',
+      addressLocality: 'Lagos',
+      addressRegion: 'Lagos State',
+      addressCountry: 'NG',
+    },
+  },
+  areaServed: {
+    '@type': 'Country',
+    name: 'Nigeria',
+  },
+  description:
+    'Custom prescription lens replacement for existing optical frames. Single vision, blue light filter, light-adaptive photochromic, and progressive lenses fitted with precision in Lagos.',
+  offers: {
+    '@type': 'Offer',
+    priceCurrency: 'NGN',
+    price: '15000',
+    priceSpecification: {
+      '@type': 'UnitPriceSpecification',
+      price: '15000',
+      priceCurrency: 'NGN',
+      name: 'Starting price for Single Vision Clear lenses',
+    },
+  },
 };
 
 export default function LensReplacementB2CPage() {
@@ -85,6 +134,10 @@ export default function LensReplacementB2CPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-white text-neutral-900 pb-16">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceSchemaJsonLd) }}
+      />
       {/* ── 1. Hero Section ─────────────────────────────────────────────────── */}
       <section className="relative pt-16 pb-20 bg-gradient-to-b from-brand-50 via-white to-brand-50/30 border-b border-neutral-200">
         <div className="container-main max-w-4xl text-center">

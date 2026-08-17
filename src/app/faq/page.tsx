@@ -5,9 +5,21 @@ import Link from 'next/link';
 import { HelpCircle, ArrowRight, ShieldCheck, PhoneCall } from 'lucide-react';
 import { siteConfig } from '@/data/site-config';
 
-export const metadata = {
-  title: 'Frequently Asked Questions (FAQ) | McDaves',
-  description: 'Find answers to common questions about Sightly frames, virtual try-on, delivery in Nigeria, prescription lenses, and returns.',
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Frequently Asked Questions (FAQ) | Eyewear & Lenses | McDaves Nigeria',
+  description:
+    'Find answers to common questions about Sightly frames, 3D virtual try-on, delivery in Nigeria, prescription lenses, payment via Paystack, and returns.',
+  alternates: {
+    canonical: 'https://mcdaves.com.ng/faq',
+  },
+  openGraph: {
+    title: 'Frequently Asked Questions (FAQ) | Eyewear & Lenses | McDaves Nigeria',
+    description:
+      'Find answers to common questions about Sightly frames, 3D virtual try-on, delivery in Nigeria, prescription lenses, and returns.',
+    url: 'https://mcdaves.com.ng/faq',
+  },
 };
 
 export default function FAQPage() {
@@ -61,8 +73,27 @@ export default function FAQPage() {
     },
   ];
 
+  const faqSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: categories.flatMap((cat) =>
+      cat.items.map((item) => ({
+        '@type': 'Question',
+        name: item.q,
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: item.a,
+        },
+      })),
+    ),
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-brand-50/40 pb-16">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+      />
 
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <section className="pt-12 pb-16 bg-white border-b border-neutral-200">

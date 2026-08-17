@@ -1,0 +1,22 @@
+{
+  "name": "McDaves Optical",
+  "short_name": "McDaves",
+  "description": "Two generations of optical precision in Lagos, Nigeria. Handcrafted Sightly eyeglasses, prescription lens replacement, and wholesale optical materials.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#166534",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}

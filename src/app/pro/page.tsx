@@ -12,9 +12,21 @@ import {
 } from 'lucide-react';
 import { ORDERING_SYSTEM_URL } from '@/data/b2b-products';
 
-export const metadata = {
-  title: 'McDaves Optical · Lenses & Optical Supplies',
-  description: 'Optical lens catalog for practices, laboratories, and workshops. Finished lenses, semi-finished blanks, and optical care items.',
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Wholesale Optical Supplies & Lens Blanks | Nigeria B2B | McDaves',
+  description:
+    'Wholesale ophthalmic lens catalog for optical practices, surfacing laboratories, and workshops in Nigeria. Finished single vision, semi-finished blanks, and optical accessories.',
+  alternates: {
+    canonical: 'https://mcdaves.com.ng/pro',
+  },
+  openGraph: {
+    title: 'Wholesale Optical Supplies & Lens Blanks | Nigeria B2B | McDaves',
+    description:
+      'Wholesale ophthalmic lens catalog for optical practices, surfacing laboratories, and workshops in Nigeria.',
+    url: 'https://mcdaves.com.ng/pro',
+  },
 };
 
 export default function ProHubPage() {

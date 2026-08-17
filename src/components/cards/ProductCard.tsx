@@ -24,14 +24,21 @@ export function ProductCard({
   className = '',
 }: ProductCardProps) {
   const imageUrl = product.images?.[0] || '/images/brand/og-image.jpg';
+  const isOutOfStock = !product.inStock || product.stockLevel === 'out';
+  const isLowStock = product.stockLevel === 'low';
 
   return (
     <div
-      className={`bg-white border border-neutral-200 hover:border-brand-300 rounded-2xl p-5 flex flex-col justify-between transition-all shadow-card hover:shadow-card-hover group ${className}`}
+      className={`bg-white border border-neutral-200 hover:border-brand-300 rounded-2xl p-5 flex flex-col justify-between transition-all shadow-card hover:shadow-card-hover group ${
+        isOutOfStock ? 'opacity-75' : ''
+      } ${className}`}
     >
       <div>
-        {/* Product Image & Badge */}
-        <Link href={`/shop/${product.slug}`} className="block relative aspect-[4/3] bg-neutral-50 rounded-xl overflow-hidden mb-4 group/img">
+        {/* Product Image & Badges */}
+        <Link
+          href={`/shop/${product.slug}`}
+          className="block relative aspect-[4/3] bg-neutral-50 rounded-xl overflow-hidden mb-4 group/img"
+        >
           <Image
             src={imageUrl}
             alt={product.name}
@@ -39,11 +46,24 @@ export function ProductCard({
             className="object-contain p-4 group-hover/img:scale-105 transition-transform duration-300"
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
           />
+
           {product.frameSize && (
             <div className="absolute top-2.5 right-2.5">
               <Badge variant="gold" size="sm">
                 {product.frameSize}
               </Badge>
+            </div>
+          )}
+
+          {isLowStock && !isOutOfStock && (
+            <div className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold shadow-sm">
+              🔥 Low Stock
+            </div>
+          )}
+
+          {isOutOfStock && (
+            <div className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full bg-neutral-800 text-white text-[10px] font-bold shadow-sm">
+              Sold Out
             </div>
           )}
         </Link>
@@ -71,7 +91,7 @@ export function ProductCard({
 
       {/* Action Buttons */}
       <div className="pt-3 border-t border-neutral-100 space-y-2">
-        {showTryOn && product.tryOnAvailable && (
+        {showTryOn && product.tryOnAvailable && !isOutOfStock && (
           <Button
             variant="secondary"
             size="sm"
@@ -86,11 +106,12 @@ export function ProductCard({
         <Button
           variant="primary"
           size="sm"
-          className="w-full justify-center"
+          disabled={isOutOfStock}
+          className={`w-full justify-center ${isOutOfStock ? 'bg-neutral-300 text-neutral-500 cursor-not-allowed' : ''}`}
           leadingIcon={<ShoppingBag className="w-4 h-4" />}
-          onClick={() => onAddToCart?.(product)}
+          onClick={() => !isOutOfStock && onAddToCart?.(product)}
         >
-          Add to Cart
+          {isOutOfStock ? 'Sold Out' : 'Add to Cart'}
         </Button>
       </div>
     </div>

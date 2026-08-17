@@ -6,30 +6,30 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
 
   const staticRoutes = [
-    '/',
-    '/shop/',
-    '/try-on/',
-    '/faq/',
-    '/contact/',
-    '/our-story/',
-    '/services/lens-replacement/',
-    '/pro/',
-    '/pro/catalog/',
-    '/pro/how-it-works/',
+    { path: '', priority: 1.0, changeFrequency: 'daily' as const },
+    { path: '/shop', priority: 0.9, changeFrequency: 'daily' as const },
+    { path: '/try-on', priority: 0.9, changeFrequency: 'weekly' as const },
+    { path: '/services/lens-replacement', priority: 0.85, changeFrequency: 'weekly' as const },
+    { path: '/our-story', priority: 0.7, changeFrequency: 'monthly' as const },
+    { path: '/faq', priority: 0.8, changeFrequency: 'weekly' as const },
+    { path: '/contact', priority: 0.75, changeFrequency: 'monthly' as const },
+    { path: '/pro', priority: 0.85, changeFrequency: 'weekly' as const },
+    { path: '/pro/catalog', priority: 0.85, changeFrequency: 'weekly' as const },
+    { path: '/pro/how-it-works', priority: 0.7, changeFrequency: 'monthly' as const },
   ];
 
   return [
     ...staticRoutes.map((route) => ({
-      url: `${baseUrl}${route}`,
+      url: `${baseUrl}${route.path}`,
       lastModified: now,
-      changeFrequency: 'weekly' as const,
-      priority: route === '/' ? 1 : 0.7,
+      changeFrequency: route.changeFrequency,
+      priority: route.priority,
     })),
     ...products.map((product) => ({
-      url: `${baseUrl}/shop/${product.slug}/`,
+      url: `${baseUrl}/shop/${product.slug}`,
       lastModified: now,
       changeFrequency: 'weekly' as const,
-      priority: 0.8,
+      priority: 0.85,
     })),
   ];
 }
