@@ -26,6 +26,8 @@ export interface GlassesModelProps {
   mirrored?: boolean;
   showAxes?: boolean;
   showFitAnchor?: boolean;
+  clipTemples?: boolean;
+  templeDepthCutoff?: number;
   onModelMeasured?: (measurement: ModelMeasurement, scale: number) => void;
   onError?: (error: Error) => void;
 }
@@ -38,6 +40,8 @@ export function GlassesModel({
   mirrored = true,
   showAxes = false,
   showFitAnchor = false,
+  clipTemples = true,
+  templeDepthCutoff = 2.5,
   onModelMeasured,
 }: GlassesModelProps) {
   const rootRef = useRef<Group>(null);
@@ -49,8 +53,8 @@ export function GlassesModel({
 
   const prepared = useMemo(() => {
     if (!scene) return null;
-    return prepareGlassesModel(scene as Group, calibration);
-  }, [scene, calibration]);
+    return prepareGlassesModel(scene as Group, calibration, clipTemples, templeDepthCutoff);
+  }, [scene, calibration, clipTemples, templeDepthCutoff]);
 
   const { scale } = useMemo(() => {
     const nativeW = prepared?.measurements.nativeWidth || calibration.measuredNativeWidth;

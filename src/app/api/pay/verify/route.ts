@@ -1,11 +1,7 @@
-// src/app/api/pay/verify/route.ts
-// ─── GET /api/pay/verify?reference= ──────────────────────────────────────────
-// SERVER-ONLY Route Handler — PAYSTACK_SECRET_KEY never reaches the client.
-// Verifies a Paystack transaction and creates the confirmed Order upon success.
-
 import { NextRequest, NextResponse } from 'next/server';
 import { createPaymentService } from '@/services/payment';
 import { commerceRepository } from '@/lib/commerce/repository';
+import { supabase } from '@/lib/supabase/service';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,6 +28,34 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       const metadata = (result.metadata || {}) as Record<string, any>;
       const orderIntentId = metadata.orderIntentId as string | undefined;
       const customerId = metadata.customerId as string | undefined;
+      const variantId = metadata.variantId as string | undefined;
+      const quantity = metadata.quantity ? Number(metadata.quantity) : 1;
+
+      // Automatically Decrement Stock in Supabase
+      try {
+        if (supabase && variantId) {
+          const { data: vData } = await supabase
+            .from('product_variants')
+            .select('id, units_in_stock, in_stock')
+            .eq('id', variantId)
+            .single();
+
+          if (vData) {
+            const currentUnits = vData.units_in_stock ?? 10;
+            const remainingUnits = Math.max(0, currentUnits - quantity);
+            await supabase
+              .from('product_variants')
+              .update({
+                units_in_stock: remainingUnits,
+                in_stock: remainingUnits > 0,
+                stock_level: remainingUnits === 0 ? 'out' : remainingUnits <= 3 ? 'low' : 'high',
+              })
+              .eq('id', variantId);
+          }
+        }
+      } catch (invErr) {
+        console.warn('[Inventory Sync] Notice updating variant inventory:', invErr);
+      }
 
       // Record successful payment
       commerceRepository.recordPayment({

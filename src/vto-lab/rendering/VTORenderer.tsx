@@ -24,6 +24,8 @@ export interface VTORendererProps {
   showGlasses: boolean;
   showHeadOcclusion?: boolean;
   debugOccluderMesh?: boolean;
+  clipTemples?: boolean;
+  templeDepthCutoff?: number;
   glbPath: string;
   frameSize: string;
   fovDegrees?: number;
@@ -41,6 +43,8 @@ export function VTORenderer({
   showGlasses,
   showHeadOcclusion = true,
   debugOccluderMesh = false,
+  clipTemples = true,
+  templeDepthCutoff = 2.5,
   glbPath,
   frameSize,
   fovDegrees = 63.0,
@@ -53,6 +57,10 @@ export function VTORenderer({
         alpha: true,
         antialias: true,
         powerPreference: 'high-performance',
+        localClippingEnabled: true,
+      }}
+      onCreated={({ gl }) => {
+        gl.localClippingEnabled = true;
       }}
       dpr={[1, 2]}
       frameloop="always"
@@ -100,6 +108,8 @@ export function VTORenderer({
             mirrored={mirrored}
             showAxes={showAxes}
             showFitAnchor={false}
+            clipTemples={clipTemples}
+            templeDepthCutoff={templeDepthCutoff}
             onModelMeasured={onModelMeasured}
             onError={onError}
           />

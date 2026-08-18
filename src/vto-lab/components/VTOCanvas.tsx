@@ -33,6 +33,8 @@ export interface VTOCanvasProps {
   showGlasses: boolean;
   showHeadOcclusion?: boolean;
   debugOccluderMesh?: boolean;
+  clipTemples?: boolean;
+  templeDepthCutoff?: number;
   glbPath: string;
   frameSize: string;
   fovDegrees?: number;
@@ -51,6 +53,8 @@ export function VTOCanvas({
   showGlasses,
   showHeadOcclusion = true,
   debugOccluderMesh = false,
+  clipTemples = true,
+  templeDepthCutoff = 2.5,
   glbPath,
   frameSize,
   fovDegrees = 63.0,
@@ -77,6 +81,8 @@ export function VTOCanvas({
         showGlasses={showGlasses}
         showHeadOcclusion={showHeadOcclusion}
         debugOccluderMesh={debugOccluderMesh}
+        clipTemples={clipTemples}
+        templeDepthCutoff={templeDepthCutoff}
         glbPath={glbPath}
         frameSize={frameSize}
         fovDegrees={fovDegrees}

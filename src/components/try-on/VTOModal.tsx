@@ -36,12 +36,17 @@ import {
 } from '@/vto-lab/tracking/FaceTrackingTypes';
 import VTOVideo, { computeLetterboxViewport } from '@/vto-lab/components/VTOVideo';
 import VTOCanvas from '@/vto-lab/components/VTOCanvas';
+import { VTOExpressCheckoutDrawer } from './VTOExpressCheckoutDrawer';
 
 export interface VTOModalProps {
   open: boolean;
   onClose: () => void;
+  productId?: string;
+  productSlug?: string;
   productName: string;
   variantName?: string;
+  variantSlug?: string;
+  variantId?: string;
   price?: number;
   glbPath: string;
   frameSize: string;
@@ -51,8 +56,12 @@ export interface VTOModalProps {
 export function VTOModal({
   open,
   onClose,
+  productId,
+  productSlug,
   productName,
   variantName,
+  variantSlug,
+  variantId,
   price,
   glbPath,
   frameSize,
@@ -60,6 +69,8 @@ export function VTOModal({
 }: VTOModalProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  const [isCheckoutDrawerOpen, setIsCheckoutDrawerOpen] = useState(false);
 
   const [containerSize, setContainerSize] = useState({ width: 640, height: 480 });
   const [viewport, setViewport] = useState<LetterboxViewport>({
@@ -429,28 +440,52 @@ export function VTOModal({
             )}
           </div>
 
-          <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="flex items-center gap-2.5 w-full sm:w-auto">
+            {/* Primary Direct Purchase CTA (Frictionless In-Fitting Buy) */}
+            <button
+              onClick={() => setIsCheckoutDrawerOpen(true)}
+              className="flex-1 sm:flex-none px-6 py-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs sm:text-sm transition-all shadow-lg shadow-brand-900/30 flex items-center justify-center gap-2 active:scale-95"
+            >
+              <ShoppingBag className="w-4 h-4" />
+              <span>Buy Now — Instant Checkout</span>
+            </button>
+
+            {/* Secondary WhatsApp Advice Link */}
             {onOrderIntent ? (
               <button
                 onClick={() => {
                   handleClose();
                   onOrderIntent();
                 }}
-                className="flex-1 sm:flex-none px-6 py-3 rounded-xl bg-green-600 hover:bg-green-500 text-white font-semibold text-xs sm:text-sm transition-all shadow-lg shadow-green-900/30 flex items-center justify-center gap-2 active:scale-95"
+                className="px-3.5 py-3 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white font-medium text-xs transition flex items-center gap-1.5 active:scale-95"
+                title="Chat on WhatsApp for advice"
               >
-                <MessageCircle className="w-4 h-4 fill-white" />
-                <span>Chat with us on WhatsApp</span>
+                <MessageCircle className="w-4 h-4 text-green-400 fill-green-400/20" />
+                <span className="hidden sm:inline">WhatsApp</span>
               </button>
             ) : (
               <button
                 onClick={handleClose}
-                className="flex-1 sm:flex-none px-6 py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white text-xs font-semibold transition-all"
+                className="px-4 py-3 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white text-xs font-semibold transition-all"
               >
-                Close Fitting Room
+                Close
               </button>
             )}
           </div>
         </div>
+
+        {/* Express In-Fitting Paystack Checkout Drawer */}
+        <VTOExpressCheckoutDrawer
+          isOpen={isCheckoutDrawerOpen}
+          onClose={() => setIsCheckoutDrawerOpen(false)}
+          productId={productId}
+          productSlug={productSlug || productName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}
+          productName={productName}
+          variantName={variantName}
+          variantSlug={variantSlug}
+          variantId={variantId}
+          basePrice={price || 35000}
+        />
 
       </div>
     </div>

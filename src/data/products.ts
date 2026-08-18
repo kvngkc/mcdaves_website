@@ -10,7 +10,14 @@ export interface Product {
   category: 'men' | 'women' | 'unisex' | 'sunglasses';
   price: number;
   originalPrice?: number;
-  colors: { name: string; hex: string; imageSuffix: string }[];
+  colors: {
+    name: string;
+    hex: string;
+    imageSuffix: string;
+    inStock?: boolean;
+    unitsInStock?: number;
+    glbPath?: string;
+  }[];
   sizes: string;
   material: string;
   description: string;
@@ -18,6 +25,7 @@ export interface Product {
   images: string[];
   inStock: boolean;
   stockLevel: 'high' | 'low' | 'out';
+  hideWhenOutOfStock?: boolean;
   prescriptionRequired: boolean;
   tryOnAvailable: boolean;
   overlayImage?: string;   // e.g. "/overlays/classic-havana.png"

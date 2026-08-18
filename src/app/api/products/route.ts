@@ -1,12 +1,12 @@
-// src/app/api/products/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { commerceRepository } from '@/lib/commerce/repository';
+import { getLiveStorefrontProducts } from '@/lib/commerce/storefront-catalog';
 import { requireAdminSession } from '@/lib/auth/admin-auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(): Promise<NextResponse> {
-  const products = commerceRepository.getAllProducts();
+  const products = await getLiveStorefrontProducts();
   return NextResponse.json({ products }, { status: 200 });
 }
 

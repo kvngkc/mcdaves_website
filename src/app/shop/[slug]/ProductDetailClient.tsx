@@ -410,8 +410,12 @@ export default function ProductDetailClient({
         <VTOModal
           open={isVTOOpen}
           onClose={() => setIsVTOOpen(false)}
+          productId={product.id}
+          productSlug={product.slug}
           productName={product.name}
           variantName={selectedVariant.colorName}
+          variantSlug={selectedVariant.slug}
+          variantId={selectedVariant.id}
           price={selectedVariant.effectivePrice}
           glbPath={selectedVariant.glbPath || '/models/glasses.glb'}
           frameSize={selectedVariant.effectiveSpecifications.frameSize}

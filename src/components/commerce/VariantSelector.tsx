@@ -58,21 +58,31 @@ export function VariantSelector({
                 isSelected
                   ? 'border-neutral-900 bg-neutral-900 text-white shadow-sm ring-2 ring-neutral-900/10 scale-102'
                   : 'border-neutral-200 bg-white text-neutral-800 hover:border-neutral-400 hover:bg-neutral-50'
-              } ${isOutOfStock ? 'opacity-40 cursor-not-allowed' : ''}`}
+              } ${isOutOfStock ? 'opacity-40 cursor-not-allowed bg-neutral-100/80 border-dashed' : ''}`}
             >
               {/* Color Swatch Circle */}
               <span
-                className={`w-4 h-4 rounded-full border border-black/20 flex-shrink-0 shadow-inner`}
+                className={`w-4 h-4 rounded-full border border-black/20 flex-shrink-0 shadow-inner relative overflow-hidden`}
                 style={{ backgroundColor: variant.colorHex }}
-              />
+              >
+                {isOutOfStock && (
+                  <span className="absolute inset-0 bg-red-500/40 transform rotate-45 border-t border-red-500" />
+                )}
+              </span>
 
               {/* Variant Name */}
-              <span className="text-xs font-semibold">
+              <span className={`text-xs font-semibold ${isOutOfStock ? 'line-through text-neutral-500' : ''}`}>
                 {variant.colorName}
               </span>
 
+              {isOutOfStock && (
+                <span className="text-[9px] font-bold text-neutral-400 uppercase">
+                  (Sold Out)
+                </span>
+              )}
+
               {/* Low stock dot */}
-              {isLowStock && !isSelected && (
+              {isLowStock && !isSelected && !isOutOfStock && (
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
               )}
             </button>

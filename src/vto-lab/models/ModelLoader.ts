@@ -4,13 +4,14 @@
  * Measures model bounds programmatically and centers the model around its bridge anchor.
  */
 
-import { Box3, Group, Object3D, Vector3 } from 'three';
+import { Box3, Group, Object3D, Vector3, Plane, Mesh } from 'three';
 import { CalibrationEntry } from '../calibration/calibrationRegistry';
 import { ModelMeasurement } from '../tracking/FaceTrackingTypes';
 
 export interface PreparedGlassesAsset {
   root: Object3D;
   measurements: ModelMeasurement;
+  clippingPlane?: Plane;
 }
 
 export function measureObjectBounds(obj: Object3D): ModelMeasurement {
@@ -32,9 +33,44 @@ export function measureObjectBounds(obj: Object3D): ModelMeasurement {
   };
 }
 
+/**
+ * Clips long temple handles extending behind the head plane.
+ * In metric space centered at the bridge (0, 0, 0), the front rims sit near Z = 0,
+ * while temple arms extend back along -Z towards the ears.
+ * A plane with normal (0, 0, 1) and constant `maxTempleDepth` keeps geometry where Z >= -maxTempleDepth.
+ */
+export function applyTempleClipping(root: Object3D, maxTempleDepth = 2.5): Plane {
+  const plane = new Plane(new Vector3(0, 0, 1), maxTempleDepth);
+
+  root.traverse((child) => {
+    if ((child as Mesh).isMesh) {
+      const mesh = child as Mesh;
+      if (Array.isArray(mesh.material)) {
+        mesh.material = mesh.material.map((mat) => {
+          const cloned = mat.clone();
+          cloned.clippingPlanes = [plane];
+          cloned.clipShadows = true;
+          cloned.needsUpdate = true;
+          return cloned;
+        });
+      } else if (mesh.material) {
+        const cloned = mesh.material.clone();
+        cloned.clippingPlanes = [plane];
+        cloned.clipShadows = true;
+        cloned.needsUpdate = true;
+        mesh.material = cloned;
+      }
+    }
+  });
+
+  return plane;
+}
+
 export function prepareGlassesModel(
   scene: Group,
   calibration: CalibrationEntry,
+  clipTemples = true,
+  templeDepthCutoff = 2.5,
 ): PreparedGlassesAsset {
   const container = new Group();
   const clone = scene.clone(true);
@@ -48,10 +84,16 @@ export function prepareGlassesModel(
   container.add(clone);
   container.updateMatrixWorld(true);
 
+  let clippingPlane: Plane | undefined;
+  if (clipTemples) {
+    clippingPlane = applyTempleClipping(clone, templeDepthCutoff);
+  }
+
   const measurements = measureObjectBounds(clone);
 
   return {
     root: container,
     measurements,
+    clippingPlane,
   };
 }

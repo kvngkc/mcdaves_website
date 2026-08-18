@@ -11,12 +11,16 @@ import { VTOModal } from '@/components/try-on/VTOModal';
 import { OrderIntentModal } from '@/components/commerce/OrderIntentModal';
 import { commerceRepository } from '@/lib/commerce/repository';
 import { ResolvedProduct, ResolvedProductVariant } from '@/lib/commerce/types';
+import { useVTOPreload } from '@/vto-lab/hooks/useVTOPreload';
 
 export default function StandaloneTryOnPage() {
   const [liveProducts, setLiveProducts] = useState<Product[]>(fallbackProducts);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isTryOnOpen, setIsTryOnOpen] = useState(false);
   const [intentModalOpen, setIntentModalOpen] = useState(false);
+
+  // Background pre-warm AI neural engine & 3D frame models during idle time
+  useVTOPreload(liveProducts.map((p) => p.glbModel).filter(Boolean) as string[]);
 
   useEffect(() => {
     async function loadLive() {
@@ -211,8 +215,11 @@ export default function StandaloneTryOnPage() {
         <VTOModal
           open={isTryOnOpen}
           onClose={() => setIsTryOnOpen(false)}
+          productId={selectedProduct.id}
+          productSlug={selectedProduct.slug}
           productName={selectedProduct.name}
           variantName={selectedProduct.colors[0]?.name || 'Standard'}
+          variantSlug={selectedProduct.colors[0]?.imageSuffix || 'default'}
           price={selectedProduct.price}
           glbPath={selectedProduct.glbModel || '/models/glasses.glb'}
           frameSize={selectedProduct.frameSize || '52□18-140'}

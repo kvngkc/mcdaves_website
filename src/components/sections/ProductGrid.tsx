@@ -9,6 +9,7 @@ import { siteConfig } from '@/data/site-config';
 import { ProductCard } from '@/components/cards/ProductCard';
 import { TryOnModal } from '@/components/sections/TryOnModal';
 import { useCart } from '@/hooks/useCart';
+import { useVTOPreload } from '@/vto-lab/hooks/useVTOPreload';
 
 export interface ProductGridProps {
   products: Product[];
@@ -27,6 +28,9 @@ export function ProductGrid({
 }: ProductGridProps) {
   const { addItem, openDrawer } = useCart();
   const [tryOnProduct, setTryOnProduct] = useState<Product | null>(null);
+
+  // Preload VTO assets in the background during user browse time
+  useVTOPreload(products.map((p) => p.glbModel).filter(Boolean) as string[]);
 
   // Grid column class mapping based on columns prop.
   // Default (4-col): single column on mobile (≥320px), 2-col from sm (640px+),

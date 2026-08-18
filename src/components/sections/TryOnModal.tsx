@@ -30,7 +30,11 @@ export function TryOnModal({
     <DynamicVTOModal
       open={open}
       onClose={onClose}
+      productId={product.id}
+      productSlug={product.slug}
       productName={product.name}
+      variantName={product.colors?.[0]?.name || 'Standard'}
+      variantSlug={product.colors?.[0]?.imageSuffix || 'default'}
       price={product.price}
       glbPath={product.glbModel || '/models/glasses.glb'}
       frameSize={product.frameSize || product.sizes || '52□18-140'}
