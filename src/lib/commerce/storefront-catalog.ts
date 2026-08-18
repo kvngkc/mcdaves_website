@@ -121,3 +121,148 @@ export async function getLiveStorefrontProducts(): Promise<StorefrontProduct[]> 
     return fallbackSeedProducts;
   }
 }
+
+export async function getLiveResolvedProductBySlug(slug: string): Promise<any | null> {
+  try {
+    if (!supabase) return null;
+
+    const { data: p, error: prodErr } = await supabase
+      .from('products')
+      .select('*')
+      .eq('slug', slug)
+      .single();
+
+    if (prodErr || !p) return null;
+
+    const { data: rawVariants } = await supabase
+      .from('product_variants')
+      .select('*')
+      .eq('product_id', p.id)
+      .order('sort_order', { ascending: true });
+
+    const { data: rawMedia } = await supabase
+      .from('product_media')
+      .select('*')
+      .eq('product_id', p.id)
+      .order('sort_order', { ascending: true });
+
+    const media = (rawMedia || []).map((m: any, idx: number) => ({
+      id: m.id,
+      productId: m.product_id,
+      variantId: m.variant_id || undefined,
+      url: m.url,
+      altText: m.alt_text || p.name,
+      mediaType: m.type === 'front' ? 'image_front' : m.type === 'side' ? 'image_side' : 'image_lifestyle',
+      isPrimary: m.is_primary || (idx === 0),
+      sortOrder: m.sort_order || idx,
+    }));
+
+    const variants = (rawVariants || []).map((v: any, idx: number) => ({
+      id: v.id,
+      productId: v.product_id,
+      slug: v.slug,
+      name: v.name,
+      sku: v.sku,
+      colorName: v.color_name,
+      colorHex: v.color_hex,
+      priceOverride: v.price_override ? Number(v.price_override) : undefined,
+      originalPriceOverride: v.original_price_override ? Number(v.original_price_override) : undefined,
+      materialOverride: v.material_override || undefined,
+      weightOverride: v.weight_override || undefined,
+      specificationsOverride: v.specifications_override || undefined,
+      descriptionOverride: v.description_override || undefined,
+      glbPath: v.glb_path || undefined,
+      inStock: v.in_stock && (v.units_in_stock === undefined || v.units_in_stock > 0),
+      stockLevel: !v.in_stock || (v.units_in_stock !== undefined && v.units_in_stock === 0) ? 'out' : (v.units_in_stock ?? 10) <= 3 ? 'low' : 'high',
+      unitsInStock: v.units_in_stock ?? 10,
+      hideWhenOutOfStock: v.hide_when_out_of_stock ?? false,
+      sortOrder: v.sort_order ?? idx,
+      status: v.status || 'ACTIVE',
+      effectivePrice: v.price_override ? Number(v.price_override) : Number(p.default_price),
+      effectiveOriginalPrice: v.original_price_override ? Number(v.original_price_override) : p.default_original_price ? Number(p.default_original_price) : undefined,
+      effectiveMaterial: v.material_override || p.default_material || 'Acetate',
+      effectiveWeight: v.weight_override || p.default_weight || '22g',
+      effectiveSpecifications: {
+        frameWidthMm: Number(p.frame_width_mm) || 140,
+        lensWidthMm: Number(p.lens_width_mm) || 52,
+        bridgeWidthMm: Number(p.bridge_width_mm) || 18,
+        templeLengthMm: Number(p.temple_length_mm) || 140,
+        frameSize: p.frame_size || '52□18-140',
+        ...(v.specifications_override || {}),
+      },
+      effectiveDescription: v.description_override || p.description || '',
+      media: [],
+      hasPriceOverride: v.price_override !== undefined,
+      hasSpecOverride: v.specifications_override !== undefined,
+      createdAt: v.created_at || new Date().toISOString(),
+      updatedAt: v.updated_at || new Date().toISOString(),
+    }));
+
+    const defaultVariant = variants[0] || {
+      id: `default-${p.id}`,
+      productId: p.id,
+      slug: 'default',
+      name: 'Default',
+      sku: `${p.id}-DEF`,
+      colorName: 'Standard',
+      colorHex: '#000000',
+      inStock: true,
+      stockLevel: 'high',
+      unitsInStock: 20,
+      hideWhenOutOfStock: false,
+      sortOrder: 0,
+      status: 'ACTIVE',
+      effectivePrice: Number(p.default_price) || 35000,
+      effectiveOriginalPrice: p.default_original_price ? Number(p.default_original_price) : undefined,
+      effectiveMaterial: p.default_material || 'Acetate',
+      effectiveWeight: p.default_weight || '22g',
+      effectiveSpecifications: {
+        frameWidthMm: Number(p.frame_width_mm) || 140,
+        lensWidthMm: Number(p.lens_width_mm) || 52,
+        bridgeWidthMm: Number(p.bridge_width_mm) || 18,
+        templeLengthMm: Number(p.temple_length_mm) || 140,
+        frameSize: p.frame_size || '52□18-140',
+      },
+      effectiveDescription: p.description || '',
+      media,
+      hasPriceOverride: false,
+      hasSpecOverride: false,
+      createdAt: p.created_at || new Date().toISOString(),
+      updatedAt: p.updated_at || new Date().toISOString(),
+    };
+
+    return {
+      id: p.id,
+      slug: p.slug,
+      name: p.name,
+      collection: (p.collection || 'sightly') as any,
+      category: p.category || 'unisex',
+      description: p.description || '',
+      features: Array.isArray(p.features) ? p.features : [],
+      faceShape: Array.isArray(p.face_shape) ? p.face_shape : ['round', 'oval'],
+      defaultPrice: Number(p.default_price) || 35000,
+      defaultOriginalPrice: p.default_original_price ? Number(p.default_original_price) : undefined,
+      defaultMaterial: p.default_material || 'Acetate',
+      defaultWeight: p.default_weight || '22g',
+      defaultSpecifications: {
+        frameWidthMm: Number(p.frame_width_mm) || 140,
+        lensWidthMm: Number(p.lens_width_mm) || 52,
+        bridgeWidthMm: Number(p.bridge_width_mm) || 18,
+        templeLengthMm: Number(p.temple_length_mm) || 140,
+        frameSize: p.frame_size || '52□18-140',
+      },
+      prescriptionRequired: p.prescription_required ?? true,
+      tryOnAvailable: p.try_on_available ?? true,
+      hideWhenOutOfStock: p.hide_when_out_of_stock ?? false,
+      status: p.status || 'ACTIVE',
+      createdAt: p.created_at || new Date().toISOString(),
+      updatedAt: p.updated_at || new Date().toISOString(),
+      variants,
+      defaultVariant,
+      media,
+    };
+  } catch (err) {
+    console.error('[Storefront] Error getting product by slug from Supabase:', err);
+    return null;
+  }
+}

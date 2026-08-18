@@ -3,8 +3,11 @@ import React from 'react';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { commerceRepository } from '@/lib/commerce/repository';
+import { getLiveResolvedProductBySlug } from '@/lib/commerce/storefront-catalog';
 import { products as legacyProducts } from '@/data/products';
 import ProductDetailClient from './ProductDetailClient';
+
+export const dynamic = 'force-dynamic';
 
 interface PageProps {
   params: Promise<{
@@ -21,7 +24,7 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const product = commerceRepository.getProductBySlug(slug);
+  const product = (await getLiveResolvedProductBySlug(slug)) || commerceRepository.getProductBySlug(slug);
   if (!product) {
     return {
       title: 'Product Not Found | McDaves',
@@ -50,7 +53,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function ProductDetailPage({ params }: PageProps) {
   const { slug } = await params;
-  const product = commerceRepository.getProductBySlug(slug);
+  const product = (await getLiveResolvedProductBySlug(slug)) || commerceRepository.getProductBySlug(slug);
 
   if (!product) {
     notFound();
