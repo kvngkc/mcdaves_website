@@ -43,7 +43,7 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-lg font-bold text-neutral-900 mb-2">4. Contact Us</h2>
             <p>
-              For inquiries regarding data privacy, contact us at {businessIdentity.contact.email} or visit our practice at {businessIdentity.contact.address.displayAddress}.
+              For inquiries regarding data privacy, contact us at {businessIdentity.contact.email} or visit our practice at {businessIdentity.contact.address.fullAddress}.
             </p>
           </section>
         </div>

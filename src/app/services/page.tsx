@@ -20,7 +20,7 @@ export default function ServicesPage() {
       title: 'Precision Lens Replacement',
       slug: '/services/lens-replacement',
       description: 'Keep your favorite frame and upgrade the optics. Single vision, progressive, blue-light blocking, and photochromic lenses.',
-      turnaround: serviceConfig.lensReplacement.turnaroundStandard,
+      turnaround: serviceConfig.lensReplacement.turnaround.standard,
       icon: <Glasses className="w-8 h-8 text-brand-600" />,
       features: ['Turnaround 2–5 business days', 'Anti-reflective coating included', 'Free frame realignment & ultrasonic cleaning'],
     },

@@ -63,7 +63,7 @@ export default function ShippingReturnsPage() {
               <span>Physical Pickup Location</span>
             </div>
             <p className="text-neutral-600">
-              {businessIdentity.contact.address.displayAddress}
+              {businessIdentity.contact.address.fullAddress}
             </p>
           </section>
         </div>
