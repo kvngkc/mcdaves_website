@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { HelpCircle, ArrowRight, ShieldCheck, PhoneCall } from 'lucide-react';
 import { siteConfig } from '@/data/site-config';
+import { urlConfig } from '@/config';
 
 import type { Metadata } from 'next';
 
@@ -12,13 +13,13 @@ export const metadata: Metadata = {
   description:
     'Find answers to common questions about Sightly frames, 3D virtual try-on, delivery in Nigeria, prescription lenses, payment via Paystack, and returns.',
   alternates: {
-    canonical: 'https://mcdaves.com.ng/faq',
+    canonical: `${urlConfig.productionBaseUrl}/faq`,
   },
   openGraph: {
     title: 'Frequently Asked Questions (FAQ) | Eyewear & Lenses | McDaves Nigeria',
     description:
       'Find answers to common questions about Sightly frames, 3D virtual try-on, delivery in Nigeria, prescription lenses, and returns.',
-    url: 'https://mcdaves.com.ng/faq',
+    url: `${urlConfig.productionBaseUrl}/faq`,
   },
 };
 
@@ -50,7 +51,7 @@ export default function FAQPage() {
         },
         {
           q: 'How long does delivery take within Nigeria?',
-          a: 'Orders within Lagos are delivered within 24 to 48 hours. Orders to Abuja, Port Harcourt, Ibadan, and other state capitals take 2 to 4 business days.',
+          a: 'Orders within Lagos are delivered within 2 to 5 business days. Orders nationwide take 5 to 10 business days.',
         },
         {
           q: 'Can I exchange a frame if it does not fit my face shape?',

@@ -1626,8 +1626,11 @@ export const b2bProducts: B2BProduct[] = [
   }
 ];
 
-export const ORDERING_SYSTEM_URL = 'https://optisource-two.vercel.app/';
+import { urlConfig } from '@/config/urls';
+
+export const ORDERING_SYSTEM_URL = urlConfig.b2bOrderingSystemUrl;
 
 export const TINT_COLORS = [
   'Blue', 'Brown', 'Green', 'Grey', 'Purple', 'Tawny', 'Yellow'
 ];
+

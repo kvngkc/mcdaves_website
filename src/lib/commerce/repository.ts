@@ -25,6 +25,7 @@ import {
   generateOrderId,
   generateLensRequestId,
 } from './id-generator';
+import { siteConfig } from '@/data/site-config';
 
 // ─── Initial Seed Catalog ─────────────────────────────────────────────────────
 
@@ -42,7 +43,7 @@ const SEED_PRODUCTS: Product[] = [
       'Hypoallergenic material',
       'Prescription-ready frame',
       'Ultra-lightweight comfort',
-      'German engineered spring hinges',
+      'Precision spring hinges',
     ],
     faceShape: ['round', 'oval', 'square'],
     defaultPrice: 35000,
@@ -811,7 +812,7 @@ class CommerceRepository {
     this.orderIntents.set(intent.id, intent);
 
     // Format WhatsApp message with non-sensitive reference context
-    const waNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '2348152346649';
+    const waNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || siteConfig.whatsappNumber;
     const waText = [
       `Hi McDaves Optical!`,
       ``,

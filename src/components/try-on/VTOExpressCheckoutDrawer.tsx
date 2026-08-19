@@ -20,6 +20,8 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui';
+import { siteConfig } from '@/data/site-config';
+import { deliveryConfig } from '@/config/services';
 
 export type LensOption = 'frame_only' | 'blue_light' | 'prescription';
 
@@ -159,7 +161,7 @@ export function VTOExpressCheckoutDrawer({
     }
   };
 
-  const whatsappInquiryUrl = `https://wa.me/2348000000000?text=${encodeURIComponent(
+  const whatsappInquiryUrl = `https://wa.me/${siteConfig.whatsappNumber}?text=${encodeURIComponent(
     `Hello McDaves! I am trying on "${productName}${variantName ? ` (${variantName})` : ''}" in your 3D VTO and would like to ask a question before ordering.`,
   )}`;
 

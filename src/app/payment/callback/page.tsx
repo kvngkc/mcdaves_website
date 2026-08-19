@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useCart } from '@/hooks/useCart';
 import { Button, Price } from '@/components/ui';
+import { siteConfig } from '@/data/site-config';
 
 interface ExtendedVerifyResult {
   status: 'success' | 'failed' | 'pending';
@@ -53,7 +54,7 @@ interface SuccessViewProps {
 }
 
 function SuccessView({ result }: SuccessViewProps) {
-  const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '2348152346649';
+  const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || siteConfig.whatsappNumber;
   const whatsappMsg = encodeURIComponent(
     `Hi McDaves! I just completed my payment.\nOrder Ref: ${result.orderId || result.reference}\nPayment Ref: ${result.reference}\nPlease confirm my optical order dispatch. Thank you!`,
   );
@@ -182,7 +183,7 @@ function SuccessView({ result }: SuccessViewProps) {
 
 // ─── Failure View ──────────────────────────────────────────────────────────────
 function FailureView({ reference }: { reference?: string }) {
-  const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '2348152346649';
+  const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || siteConfig.whatsappNumber;
   const whatsappMsg = encodeURIComponent(
     'Hi McDaves! I had trouble completing my online payment. Can you assist me with bank transfer or another method?',
   );

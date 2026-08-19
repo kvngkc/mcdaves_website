@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useCart } from '@/hooks/useCart';
 import { Button, Input, Price } from '@/components/ui';
+import { businessIdentity, deliveryConfig } from '@/config';
 
 // ─── Nigerian States ───────────────────────────────────────────────────────────
 const NIGERIAN_STATES = [
@@ -37,14 +38,14 @@ const DELIVERY_OPTIONS: { id: DeliveryMethod; label: string; description: string
   {
     id: 'door',
     label: 'Door Delivery',
-    description: '2–5 business days (Lagos), 5–10 days (nationwide)',
-    fee: 2500,
+    description: deliveryConfig.timelines.displaySummary,
+    fee: deliveryConfig.standardFee,
   },
   {
     id: 'pickup',
     label: 'Pickup in Lagos',
-    description: '4, Nnamdi Azikwe Street, Lagos — Ready in 1–2 business days',
-    fee: 0,
+    description: `${businessIdentity.contact.address.shortAddress} — Ready in ${deliveryConfig.timelines.lagosPickup}`,
+    fee: deliveryConfig.lagosPickupFee,
   },
 ];
 

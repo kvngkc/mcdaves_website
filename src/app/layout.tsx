@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { SiteShell } from '@/components/layout/SiteShell';
 import { CartProvider } from '@/context/CartContext';
+import { businessIdentity, urlConfig } from '@/config';
 
 export const metadata: Metadata = {
   title: {
@@ -24,9 +25,9 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: 'McDaves Optical' }],
   creator: 'McDaves Optical',
-  metadataBase: new URL('https://mcdaves.com.ng'),
+  metadataBase: new URL(urlConfig.productionBaseUrl),
   alternates: {
-    canonical: 'https://mcdaves.com.ng',
+    canonical: urlConfig.productionBaseUrl,
   },
   icons: {
     icon: [
@@ -39,8 +40,8 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_NG',
-    url: 'https://mcdaves.com.ng',
-    siteName: 'McDaves Optical',
+    url: urlConfig.productionBaseUrl,
+    siteName: businessIdentity.tradeName,
     title: 'McDaves | Eyeglasses, Prescription Lenses & Optical Supplies | Nigeria',
     description:
       'Two generations of optical precision in Lagos, Nigeria. Handcrafted Sightly eyeglasses, prescription lens replacement, and wholesale optical materials.',
@@ -78,56 +79,56 @@ const globalSchemaJsonLd = {
   '@graph': [
     {
       '@type': 'Optician',
-      '@id': 'https://mcdaves.com.ng/#organization',
-      name: 'McDaves Optical',
-      alternateName: 'McDaves Eyewear & Optical Supplies',
-      url: 'https://mcdaves.com.ng',
-      logo: 'https://mcdaves.com.ng/images/brand/og-image.jpg',
-      image: 'https://mcdaves.com.ng/images/brand/og-image.jpg',
+      '@id': `${urlConfig.productionBaseUrl}/#organization`,
+      name: businessIdentity.tradeName,
+      alternateName: `${businessIdentity.brandName} Eyewear & Optical Supplies`,
+      url: urlConfig.productionBaseUrl,
+      logo: `${urlConfig.productionBaseUrl}/images/brand/og-image.jpg`,
+      image: `${urlConfig.productionBaseUrl}/images/brand/og-image.jpg`,
       description:
         'Two generations of optical precision in Lagos, Nigeria. Nigerian optical materials supplier, Sightly handcrafted eyewear, and prescription lens replacement.',
-      telephone: '+2348152346649',
-      email: 'mcdavesopticals@gmail.com',
+      telephone: `+${businessIdentity.contact.rawPhone}`,
+      email: businessIdentity.contact.email,
       priceRange: '₦₦',
       currenciesAccepted: 'NGN',
       paymentAccepted: 'Cash, Debit Card, Bank Transfer, Paystack',
       address: {
         '@type': 'PostalAddress',
-        streetAddress: '4, Nnamdi Azikwe Street',
-        addressLocality: 'Lagos',
-        addressRegion: 'Lagos State',
-        addressCountry: 'NG',
+        streetAddress: businessIdentity.contact.address.streetAddress,
+        addressLocality: businessIdentity.contact.address.addressLocality,
+        addressRegion: businessIdentity.contact.address.addressRegion,
+        addressCountry: businessIdentity.contact.address.addressCountry,
       },
       geo: {
         '@type': 'GeoCoordinates',
-        latitude: 6.4531,
-        longitude: 3.3894,
+        latitude: businessIdentity.contact.geo.latitude,
+        longitude: businessIdentity.contact.geo.longitude,
       },
       openingHoursSpecification: [
         {
           '@type': 'OpeningHoursSpecification',
-          dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
-          opens: '09:00',
-          closes: '17:00',
+          dayOfWeek: businessIdentity.hours.regular.daysOfWeek,
+          opens: businessIdentity.hours.regular.opens,
+          closes: businessIdentity.hours.regular.closes,
         },
       ],
       sameAs: [
-        'https://instagram.com/mcdavesoptical',
-        'https://facebook.com/mcdavesoptical',
-        'https://wa.me/2348152346649',
+        businessIdentity.social.instagram,
+        businessIdentity.social.facebook,
+        businessIdentity.social.whatsapp,
       ],
     },
     {
       '@type': 'WebSite',
-      '@id': 'https://mcdaves.com.ng/#website',
-      url: 'https://mcdaves.com.ng',
-      name: 'McDaves',
+      '@id': `${urlConfig.productionBaseUrl}/#website`,
+      url: urlConfig.productionBaseUrl,
+      name: businessIdentity.brandName,
       publisher: {
-        '@id': 'https://mcdaves.com.ng/#organization',
+        '@id': `${urlConfig.productionBaseUrl}/#organization`,
       },
       potentialAction: {
         '@type': 'SearchAction',
-        target: 'https://mcdaves.com.ng/shop?search={search_term_string}',
+        target: `${urlConfig.productionBaseUrl}/shop?search={search_term_string}`,
         'query-input': 'required name=search_term_string',
       },
     },
@@ -140,14 +141,21 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className="h-full">
       <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=JetBrains+Mono:wght@400;500;600&display=swap"
+          rel="stylesheet"
+        />
+        {/* Global JSON-LD Schema */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(globalSchemaJsonLd) }}
         />
       </head>
-      <body className="min-h-screen flex flex-col" suppressHydrationWarning>
+      <body className="min-h-full flex flex-col antialiased bg-white text-neutral-900 selection:bg-brand-100 selection:text-brand-900">
         <CartProvider>
           <SiteShell>{children}</SiteShell>
         </CartProvider>

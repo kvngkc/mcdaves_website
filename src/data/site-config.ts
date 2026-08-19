@@ -1,27 +1,36 @@
 // src/data/site-config.ts
-// Global site configuration — edit this file to update business details across the entire site
+/**
+ * Global site configuration bridge.
+ * Sourced directly from the canonical Single Source of Truth (SSOT) in @/config.
+ */
+
+import { businessIdentity } from '@/config/business';
+import { deliveryConfig, serviceConfig } from '@/config/services';
+import { urlConfig } from '@/config/urls';
 
 export const siteConfig = {
   // Brand
-  name: 'McDaves',
-  tagline: 'Two Generations of Optical Precision',
-  url: 'https://mcdaves.com.ng',
+  name: businessIdentity.brandName,
+  tagline: businessIdentity.tagline,
+  url: urlConfig.productionBaseUrl,
 
   // Contact
-  whatsappNumber: '2348152346649', // International format, no +
-  phoneNumber: '2348152346649',
-  email: 'mcdavesopticals@gmail.com',
-  address: '4, Nnamdi Azikwe Street, Lagos, Nigeria',
-  hours: 'Monday – Friday, 9:00 AM – 5:00 PM',
+  whatsappNumber: businessIdentity.contact.rawWhatsApp,
+  phoneNumber: businessIdentity.contact.rawPhone,
+  displayPhone: businessIdentity.contact.displayPhone,
+  email: businessIdentity.contact.email,
+  address: businessIdentity.contact.address.shortAddress,
+  fullAddress: businessIdentity.contact.address.fullAddress,
+  hours: businessIdentity.hours.regular.display,
 
   // Story
-  founded: 'Over two decades',
-  foundedYear: '1997',
+  founded: businessIdentity.foundedDisplay,
+  foundedYear: String(businessIdentity.foundedYear),
 
   // Social
   social: {
-    instagram: 'https://instagram.com/mcdavesoptical',
-    facebook: 'https://facebook.com/mcdavesoptical',
+    instagram: businessIdentity.social.instagram,
+    facebook: businessIdentity.social.facebook,
   },
 
   // Payments
@@ -36,23 +45,25 @@ export const siteConfig = {
 
   // Policies
   returnPolicy: {
-    frames: 'Unworn frames in original condition may be returned within 7 days of delivery for exchange or store credit. Return shipping is the customer\'s responsibility.',
-    lenses: 'If lenses are incorrectly fitted or do not match your verified prescription, we will remake them free of charge within 14 days. Frame damage during lens fitting is covered by our workmanship guarantee.',
+    frames: serviceConfig.policies.frameReturnText,
+    lenses: serviceConfig.policies.lensRemakeText,
   },
 
   // Delivery
   delivery: {
     nationwide: true,
     lagosPickup: true,
-    standardFee: 2500,
-    freeThreshold: 50000, // Free delivery above this amount
-    timeline: '2–5 business days (Lagos), 5–10 business days (nationwide)',
+    standardFee: deliveryConfig.standardFee,
+    freeThreshold: deliveryConfig.freeThreshold,
+    timeline: deliveryConfig.timelines.displaySummary,
   },
 
   // Sightly Collection
   sightly: {
-    tagline: 'See well. Look better. Pay right.',
-    priceRange: '₦30,000 – ₦80,000',
-    description: 'Mid-premium fashion frames for the modern Nigerian. Expertly fitted. Generationally trusted.',
+    tagline: serviceConfig.sightlyCollection.tagline,
+    priceRange: serviceConfig.sightlyCollection.priceRange,
+    description: serviceConfig.sightlyCollection.description,
   },
 } as const;
+
+export default siteConfig;

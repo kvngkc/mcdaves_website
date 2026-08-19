@@ -80,9 +80,9 @@ export default function ContactPage() {
                 </div>
                 <h3 className="text-body-md font-bold text-neutral-900 mb-1">Phone & Support</h3>
                 <p className="text-body-sm text-neutral-600 mb-1">
-                  +{siteConfig.phoneNumber}
+                  {siteConfig.displayPhone}
                 </p>
-                <p className="text-caption text-neutral-400 mb-4">Monday – Saturday: 8:00 AM – 6:00 PM</p>
+                <p className="text-caption text-neutral-400 mb-4">{siteConfig.hours}</p>
 
                 <a
                   href={getWhatsAppUrl()}

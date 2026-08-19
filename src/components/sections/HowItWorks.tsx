@@ -22,7 +22,7 @@ const steps = [
     number: '3',
     icon: Sparkles,
     title: 'We Craft & Return',
-    description: 'Expert fitting. 5–7 day turnaround. Nationwide delivery.',
+    description: 'Expert fitting. 2–5 day turnaround. Nationwide delivery.',
   },
 ];
 

@@ -314,7 +314,7 @@ export default function ProductDetailClient({
               </div>
               <div className="flex items-center gap-2.5">
                 <ShieldCheck className="w-4 h-4 text-brand-600 flex-shrink-0" />
-                <span>100% Genuine Handcrafted Acetate & Premium Alloys</span>
+                <span>100% Genuine {selectedVariant.effectiveMaterial || product.defaultMaterial || 'Handcrafted Eyewear Materials'}</span>
               </div>
               <div className="flex items-center gap-2.5">
                 <RotateCcw className="w-4 h-4 text-brand-600 flex-shrink-0" />
@@ -388,7 +388,7 @@ export default function ProductDetailClient({
                 <strong className="text-neutral-900">Custom Prescription Surfacing:</strong> Custom-tailored optical lenses are surfaced to your exact optometrist-verified parameters. Our workmanship guarantee covers remake if lenses do not match your approved prescription.
               </p>
               <p>
-                <strong className="text-neutral-900">Delivery Timelines:</strong> 1–2 business days in Lagos; 3–5 business days nationwide.
+                <strong className="text-neutral-900">Delivery Timelines:</strong> 2–5 business days in Lagos; 5–10 business days nationwide.
               </p>
             </div>
           </details>

@@ -8,6 +8,7 @@ import { products as legacyProducts } from '@/data/products';
 import ProductDetailClient from './ProductDetailClient';
 
 export const dynamic = 'force-dynamic';
+export const dynamicParams = true;
 
 interface PageProps {
   params: Promise<{

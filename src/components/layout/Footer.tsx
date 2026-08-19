@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 
 import { siteConfig } from '@/data/site-config';
+import { ORDERING_SYSTEM_URL } from '@/data/b2b-products';
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -34,7 +35,7 @@ const LINK_COLUMNS = [
     links: [
       { label: 'Lenses & Materials', href: '/pro' },
       { label: 'Optical Catalog',    href: '/pro/catalog' },
-      { label: 'Order Online ↗',     href: 'https://optisource-two.vercel.app/' },
+      { label: 'Order Online ↗',     href: ORDERING_SYSTEM_URL },
     ],
   },
 ] as const;
@@ -77,7 +78,7 @@ const CONTACT_INFO: ContactItem[] = [
   },
   {
     icon: <Phone className="w-4 h-4 flex-shrink-0 text-brand-400" aria-hidden="true" />,
-    text: `+${siteConfig.phoneNumber}`,
+    text: siteConfig.displayPhone,
     href: `tel:+${siteConfig.phoneNumber}`,
   },
   {

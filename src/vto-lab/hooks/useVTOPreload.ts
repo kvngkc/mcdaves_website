@@ -57,7 +57,11 @@ export async function preloadVTOAssets(extraGlbUrls: string[] = []): Promise<voi
     const glbList = Array.from(new Set([...DEFAULT_PRELOAD_MODELS, ...extraGlbUrls]));
     glbList.forEach((url) => {
       if (url && url.endsWith('.glb')) {
-        useGLTF.preload(url);
+        try {
+          useGLTF.preload(url);
+        } catch {
+          // Gracefully continue
+        }
       }
     });
 

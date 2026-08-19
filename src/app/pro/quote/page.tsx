@@ -2,6 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { ExternalLink, Boxes, ShieldCheck } from 'lucide-react';
 import { ORDERING_SYSTEM_URL } from '@/data/b2b-products';
+import { urlConfig } from '@/config';
 
 import type { Metadata } from 'next';
 
@@ -10,13 +11,13 @@ export const metadata: Metadata = {
   description:
     'Direct online ordering for optical practices, eye clinics, and surfacing labs in Nigeria. Select exact prescription powers and receive fast tracked delivery.',
   alternates: {
-    canonical: 'https://mcdaves.com.ng/pro/quote',
+    canonical: `${urlConfig.productionBaseUrl}/pro/quote`,
   },
   openGraph: {
     title: 'Order Optical Supplies Online | McDaves Nigeria B2B',
     description:
       'Direct online ordering for optical practices, eye clinics, and surfacing labs in Nigeria.',
-    url: 'https://mcdaves.com.ng/pro/quote',
+    url: `${urlConfig.productionBaseUrl}/pro/quote`,
   },
 };
 

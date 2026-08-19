@@ -18,6 +18,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui';
+import { siteConfig } from '@/data/site-config';
 
 // ─── Order Timeline ────────────────────────────────────────────────────────────
 const TIMELINE = [
@@ -64,7 +65,7 @@ function OrderSuccessContent() {
     setReference(ref);
   }, [searchParams]);
 
-  const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '2348152346649';
+  const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || siteConfig.whatsappNumber;
   const whatsappMsg = encodeURIComponent(
     `Hi McDaves! I just placed an order.${reference ? `\nReference: ${reference}` : ''}\nCould you let me know the estimated delivery time? Thank you!`,
   );

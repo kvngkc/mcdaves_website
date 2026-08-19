@@ -3,6 +3,7 @@ import React from 'react';
 import Link from 'next/link';
 import { ShieldCheck, Award, Layers, Users, ArrowRight } from 'lucide-react';
 import { siteConfig } from '@/data/site-config';
+import { businessIdentity, urlConfig } from '@/config';
 
 import type { Metadata } from 'next';
 
@@ -11,33 +12,33 @@ export const metadata: Metadata = {
   description:
     'Learn about McDaves optical heritage in Lagos, Nigeria. Over two decades of master craftsmanship supplying ophthalmic materials, prescription lenses, and Sightly handcrafted eyewear.',
   alternates: {
-    canonical: 'https://mcdaves.com.ng/our-story',
+    canonical: `${urlConfig.productionBaseUrl}/our-story`,
   },
   openGraph: {
     title: 'Our Story — Two Generations of Optical Precision | McDaves Nigeria',
     description:
       'Learn about McDaves optical heritage in Lagos, Nigeria. Over two decades of master craftsmanship supplying ophthalmic materials, prescription lenses, and Sightly handcrafted eyewear.',
-    url: 'https://mcdaves.com.ng/our-story',
+    url: `${urlConfig.productionBaseUrl}/our-story`,
   },
 };
 
 const aboutSchemaJsonLd = {
   '@context': 'https://schema.org',
   '@type': 'AboutPage',
-  '@id': 'https://mcdaves.com.ng/our-story#webpage',
-  url: 'https://mcdaves.com.ng/our-story',
+  '@id': `${urlConfig.productionBaseUrl}/our-story#webpage`,
+  url: `${urlConfig.productionBaseUrl}/our-story`,
   name: 'Our Story — Two Generations of Optical Precision',
   description: 'History and optical craftsmanship heritage of McDaves Optical in Lagos, Nigeria.',
   mainEntity: {
     '@type': 'Optician',
-    name: 'McDaves Optical',
-    foundingDate: '1997',
+    name: businessIdentity.tradeName,
+    foundingDate: String(businessIdentity.foundedYear),
     address: {
       '@type': 'PostalAddress',
-      streetAddress: '4, Nnamdi Azikwe Street',
-      addressLocality: 'Lagos',
-      addressRegion: 'Lagos State',
-      addressCountry: 'NG',
+      streetAddress: businessIdentity.contact.address.streetAddress,
+      addressLocality: businessIdentity.contact.address.addressLocality,
+      addressRegion: businessIdentity.contact.address.addressRegion,
+      addressCountry: businessIdentity.contact.address.addressCountry,
     },
   },
 };

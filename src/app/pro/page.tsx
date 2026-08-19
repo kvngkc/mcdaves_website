@@ -11,6 +11,7 @@ import {
   Droplets,
 } from 'lucide-react';
 import { ORDERING_SYSTEM_URL } from '@/data/b2b-products';
+import { urlConfig } from '@/config';
 
 import type { Metadata } from 'next';
 
@@ -19,13 +20,13 @@ export const metadata: Metadata = {
   description:
     'Wholesale ophthalmic lens catalog for optical practices, surfacing laboratories, and workshops in Nigeria. Finished single vision, semi-finished blanks, and optical accessories.',
   alternates: {
-    canonical: 'https://mcdaves.com.ng/pro',
+    canonical: `${urlConfig.productionBaseUrl}/pro`,
   },
   openGraph: {
     title: 'Wholesale Optical Supplies & Lens Blanks | Nigeria B2B | McDaves',
     description:
       'Wholesale ophthalmic lens catalog for optical practices, surfacing laboratories, and workshops in Nigeria.',
-    url: 'https://mcdaves.com.ng/pro',
+    url: `${urlConfig.productionBaseUrl}/pro`,
   },
 };
 
