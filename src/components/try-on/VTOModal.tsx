@@ -63,8 +63,6 @@ export function VTOModal({
   variantSlug,
   variantId,
   price,
-  clipTemples = false,
-  templeDepthCutoff = 2.5,
   glbPath,
   frameSize,
   onOrderIntent,
