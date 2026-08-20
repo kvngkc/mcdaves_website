@@ -7,7 +7,7 @@
 
 'use client';
 
-import React, { useMemo, useRef, useEffect, MutableRefObject } from 'react';
+import React, { useMemo, useRef, useEffect, MutableRefObject, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import { Group } from 'three';
@@ -51,33 +51,34 @@ export function GlassesModel({
 
   const calibration = useMemo(() => getCalibrationForGlb(glbPath), [glbPath]);
 
-  const prepared = useMemo(() => {
-    if (!scene) return null;
-    return prepareGlassesModel(scene as Group, calibration, clipTemples, templeDepthCutoff);
-  }, [scene, calibration, clipTemples, templeDepthCutoff]);
+  const [prepared, setPrepared] = useState<any>(null);
 
-  // Clean up WebGL resources when prepared asset changes or unmounts
   useEffect(() => {
+    if (!scene) {
+      setPrepared(null);
+      return;
+    }
+
+    const newPrepared = prepareGlassesModel(scene as Group, calibration, clipTemples, templeDepthCutoff);
+    setPrepared(newPrepared);
+
+    // Clean up only the cloned materials when this specific instance unmounts.
+    // Do NOT dispose geometry, as it is shared via the useGLTF cache.
     return () => {
-      if (prepared && prepared.root) {
-        prepared.root.traverse((child) => {
+      if (newPrepared && newPrepared.root) {
+        newPrepared.root.traverse((child) => {
           const mesh = child as any;
-          if (mesh.isMesh) {
-            if (mesh.geometry) {
-              mesh.geometry.dispose();
-            }
-            if (mesh.material) {
-              if (Array.isArray(mesh.material)) {
-                mesh.material.forEach((mat) => mat.dispose());
-              } else {
-                mesh.material.dispose();
-              }
+          if (mesh.isMesh && mesh.material) {
+            if (Array.isArray(mesh.material)) {
+              mesh.material.forEach((mat) => mat.dispose());
+            } else {
+              mesh.material.dispose();
             }
           }
         });
       }
     };
-  }, [prepared]);
+  }, [scene, calibration, clipTemples, templeDepthCutoff]);
 
   const { scale } = useMemo(() => {
     const nativeW = prepared?.measurements.nativeWidth || calibration.measuredNativeWidth;

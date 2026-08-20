@@ -75,13 +75,13 @@ export function ProductGrid({
         )}
 
         {/* Bottom Link */}
-        <div className="text-center mt-12 lg:mt-16">
+        <div className="mt-10 sm:mt-12 text-center">
           <Link
-            href="/shop/collections/sightly/"
-            className="inline-flex items-center gap-2 text-body-sm font-semibold text-brand-700 hover:text-brand-800 group transition-colors"
+            href="/shop"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-neutral-900 hover:bg-neutral-800 text-white font-bold rounded-xl transition shadow-lg shadow-neutral-900/20 active:scale-95 text-sm"
           >
             <span>Shop Full Collection</span>
-            <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+            <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
       </div>

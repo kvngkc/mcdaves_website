@@ -91,7 +91,7 @@ export function CartDrawer() {
                 Explore our handcrafted Sightly optical frames and discover your next pair.
               </p>
               <Link
-                href="/shop/collections/sightly/"
+                href="/shop"
                 onClick={closeDrawer}
                 className="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-brand-600 text-white font-medium hover:bg-brand-700 transition-colors shadow-sm gap-2 text-body-sm min-h-[44px] w-full sm:w-auto"
               >
