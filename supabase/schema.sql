@@ -121,6 +121,60 @@ CREATE TABLE IF NOT EXISTS public.orders (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
+-- 7. PAYMENTS TABLE
+CREATE TABLE IF NOT EXISTS public.payments (
+    id TEXT PRIMARY KEY,
+    reference TEXT UNIQUE NOT NULL,
+    order_intent_id TEXT REFERENCES public.order_intents(id) ON DELETE SET NULL,
+    customer_id TEXT NOT NULL REFERENCES public.customers(id),
+    amount NUMERIC NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'NGN',
+    status TEXT NOT NULL DEFAULT 'PAID' CHECK (status IN ('PENDING', 'PAID', 'FAILED', 'REFUNDED')),
+    channel TEXT,
+    paid_at TIMESTAMPTZ,
+    gateway_response JSONB,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+-- 8. LENS REQUESTS (PRESCRIPTIONS) TABLE
+CREATE TABLE IF NOT EXISTS public.lens_requests (
+    id TEXT PRIMARY KEY,
+    customer_id TEXT NOT NULL REFERENCES public.customers(id),
+    option TEXT NOT NULL CHECK (option IN ('plano', 'upload', 'whatsapp', 'values')),
+    prescription_values JSONB,
+    file_url TEXT,
+    verification_state TEXT NOT NULL DEFAULT 'CUSTOMER_SUBMITTED' CHECK (verification_state IN ('CUSTOMER_SUBMITTED', 'OPTICIAN_VERIFIED', 'REQUIRES_REVISION', 'REJECTED')),
+    optician_notes TEXT,
+    customer_notes TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+-- 9. VTO ASSET CALIBRATIONS TABLE
+CREATE TABLE IF NOT EXISTS public.vto_asset_calibrations (
+    id TEXT PRIMARY KEY,
+    asset_id TEXT UNIQUE NOT NULL,
+    name TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'APPROVED' CHECK (status IN ('UPLOADED', 'INSPECTED', 'CALIBRATED', 'APPROVED', 'PUBLISHED', 'REJECTED')),
+    frame_width_mm NUMERIC NOT NULL DEFAULT 124,
+    lens_width_mm NUMERIC DEFAULT 52,
+    bridge_width_mm NUMERIC DEFAULT 18,
+    temple_length_mm NUMERIC DEFAULT 140,
+    bridge_x NUMERIC NOT NULL DEFAULT 0,
+    bridge_y NUMERIC NOT NULL DEFAULT 0,
+    bridge_z NUMERIC NOT NULL DEFAULT 0,
+    measured_native_width NUMERIC NOT NULL DEFAULT 1.0,
+    width_multiplier NUMERIC NOT NULL DEFAULT 1.0,
+    rotation_offset_euler JSONB DEFAULT '{"x":0,"y":0,"z":0}'::jsonb,
+    source_glb_url TEXT NOT NULL,
+    vto_glb_url TEXT NOT NULL,
+    preview_images JSONB DEFAULT '[]'::jsonb,
+    metadata_source TEXT DEFAULT 'McDaves VTO Automated Asset Ingestion Engine',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
 -- INDEXES FOR HIGH-PERFORMANCE SEARCH & FILTERING
 CREATE INDEX IF NOT EXISTS idx_products_slug ON public.products(slug);
 CREATE INDEX IF NOT EXISTS idx_products_status ON public.products(status);
@@ -129,3 +183,10 @@ CREATE INDEX IF NOT EXISTS idx_variants_sku ON public.product_variants(sku);
 CREATE INDEX IF NOT EXISTS idx_order_intents_customer ON public.order_intents(customer_id);
 CREATE INDEX IF NOT EXISTS idx_order_intents_status ON public.order_intents(status);
 CREATE INDEX IF NOT EXISTS idx_orders_payment_ref ON public.orders(payment_reference);
+CREATE INDEX IF NOT EXISTS idx_payments_reference ON public.payments(reference);
+CREATE INDEX IF NOT EXISTS idx_payments_customer ON public.payments(customer_id);
+CREATE INDEX IF NOT EXISTS idx_payments_status ON public.payments(status);
+CREATE INDEX IF NOT EXISTS idx_lens_requests_customer ON public.lens_requests(customer_id);
+CREATE INDEX IF NOT EXISTS idx_vto_calibrations_asset ON public.vto_asset_calibrations(asset_id);
+CREATE INDEX IF NOT EXISTS idx_vto_calibrations_status ON public.vto_asset_calibrations(status);
+

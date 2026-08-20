@@ -269,3 +269,34 @@ export interface Order {
   createdAt: string;
   updatedAt: string;
 }
+
+// ─── VTO Asset Calibration ──────────────────────────────────────────────────
+export interface VTOAssetCalibration {
+  id: string;
+  assetId: string;
+  name: string;
+  status: 'UPLOADED' | 'INSPECTED' | 'CALIBRATED' | 'APPROVED' | 'PUBLISHED' | 'REJECTED';
+  frameWidthMm: number;
+  lensWidthMm?: number;
+  bridgeWidthMm?: number;
+  templeLengthMm?: number;
+  bridge: {
+    x: number;
+    y: number;
+    z: number;
+  };
+  measuredNativeWidth: number;
+  widthMultiplier: number;
+  rotationOffsetEuler?: {
+    x: number;
+    y: number;
+    z: number;
+  };
+  sourceGlbUrl: string;
+  vtoGlbUrl: string;
+  previewImages: string[];
+  metadataSource: string;
+  createdAt: string;
+  updatedAt: string;
+}
+

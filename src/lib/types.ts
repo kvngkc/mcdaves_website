@@ -4,6 +4,8 @@ export type { Product } from '@/data/products';
 
 export interface CartItem {
   productId: string;
+  variantId?: string;
+  variantSku?: string;
   slug: string;
   name: string;
   price: number;

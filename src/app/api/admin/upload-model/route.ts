@@ -48,16 +48,35 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const sanitizedFilename = `${baseClean}_${Date.now().toString().slice(-4)}.glb`;
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    // 1. Write to public/models directory for instant fast local serving
-    const modelsDir = path.join(process.cwd(), 'public', 'models');
-    if (!fs.existsSync(modelsDir)) {
-      fs.mkdirSync(modelsDir, { recursive: true });
+    // Validate GLB binary magic header: "glTF" (0x46546C67)
+    if (buffer.length < 12) {
+      return NextResponse.json(
+        { error: 'Invalid file: File is too small to be a valid 3D GLB model.' },
+        { status: 400 },
+      );
     }
 
-    const filePath = path.join(modelsDir, sanitizedFilename);
-    fs.writeFileSync(filePath, buffer);
+    const magic = buffer.readUInt32LE(0);
+    const GLB_MAGIC = 0x46546c67; // 'glTF' in ASCII
+    if (magic !== GLB_MAGIC) {
+      return NextResponse.json(
+        { error: 'Invalid 3D asset: The uploaded file does not contain a valid binary glTF (GLB) header.' },
+        { status: 400 },
+      );
+    }
 
+    // 1. Write to public/models directory if filesystem is writable
     const relativeGlbPath = `/models/${sanitizedFilename}`;
+    try {
+      const modelsDir = path.join(process.cwd(), 'public', 'models');
+      if (!fs.existsSync(modelsDir)) {
+        fs.mkdirSync(modelsDir, { recursive: true });
+      }
+      const filePath = path.join(modelsDir, sanitizedFilename);
+      fs.writeFileSync(filePath, buffer);
+    } catch (fsErr) {
+      console.warn('[Upload Model] Filesystem write notice (read-only environment):', fsErr);
+    }
 
     // 2. If Supabase Storage is configured, also upload to 'vto-models' bucket
     if (supabase) {

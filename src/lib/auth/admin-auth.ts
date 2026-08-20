@@ -12,14 +12,17 @@ import crypto from 'crypto';
 export const ADMIN_COOKIE_NAME = 'mcdaves_admin_session';
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24; // 24 hours
 
-// Fallback key derived from machine/process if not explicitly set in server environment
-const SERVER_AUTH_SECRET =
-  process.env.ADMIN_SESSION_SECRET ||
-  process.env.PAYSTACK_SECRET_KEY ||
-  'mcdaves-optical-secure-server-signing-key-2026';
+// SECURITY: No hardcoded fallbacks. These MUST be set in environment variables.
+const SERVER_AUTH_SECRET = process.env.ADMIN_SESSION_SECRET;
+if (!SERVER_AUTH_SECRET) {
+  console.error('[SECURITY] ADMIN_SESSION_SECRET environment variable is not set. Admin auth will fail.');
+}
 
 // Server-configured admin passkey (never exposed via NEXT_PUBLIC_*)
-const ADMIN_PASSKEY = process.env.ADMIN_PASSKEY || process.env.ADMIN_SECRET || 'mcdaves-admin-secure-pass';
+const ADMIN_PASSKEY = process.env.ADMIN_PASSKEY;
+if (!ADMIN_PASSKEY) {
+  console.error('[SECURITY] ADMIN_PASSKEY environment variable is not set. Admin login will fail.');
+}
 
 // In-memory rate limiting map for login attempts: IP/Identifier -> timestamps
 const loginAttempts = new Map<string, number[]>();
@@ -47,7 +50,7 @@ export function checkLoginRateLimit(identifier: string): boolean {
  * Constant-time comparison of passkey to prevent timing attacks.
  */
 export function verifyAdminPasskey(inputPasskey: string): boolean {
-  if (!inputPasskey || typeof inputPasskey !== 'string') return false;
+  if (!inputPasskey || typeof inputPasskey !== 'string' || !ADMIN_PASSKEY) return false;
 
   const target = ADMIN_PASSKEY.trim();
   const input = inputPasskey.trim();
@@ -69,6 +72,10 @@ export function verifyAdminPasskey(inputPasskey: string): boolean {
  * Generate a cryptographically signed HMAC token for the admin session.
  */
 export function createAdminSessionToken(): string {
+  if (!SERVER_AUTH_SECRET) {
+    throw new Error('[SECURITY] ADMIN_SESSION_SECRET is not configured on the server.');
+  }
+
   const payload = {
     role: 'admin',
     iat: Math.floor(Date.now() / 1000),
@@ -89,7 +96,7 @@ export function createAdminSessionToken(): string {
  * Verify HMAC signature and expiration on a session token.
  */
 export function verifyAdminSessionToken(token: string | undefined): boolean {
-  if (!token || typeof token !== 'string') return false;
+  if (!token || typeof token !== 'string' || !SERVER_AUTH_SECRET) return false;
 
   const parts = token.split('.');
   if (parts.length !== 2) return false;

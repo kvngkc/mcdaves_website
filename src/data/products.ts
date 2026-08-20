@@ -37,7 +37,7 @@ export interface Product {
 
 export const products: Product[] = [
   {
-    id: 'sightly-001',
+    id: 'prod-sightly-001',
     slug: 'classic-havana',
     name: 'Classic Havana',
     collection: 'sightly',
@@ -68,7 +68,7 @@ export const products: Product[] = [
     faceShape: ['round', 'oval', 'square'],
   },
   {
-    id: 'sightly-002',
+    id: 'prod-sightly-002',
     slug: 'lagos-aviator',
     name: 'Lagos Aviator',
     collection: 'sightly',
@@ -99,7 +99,7 @@ export const products: Product[] = [
     faceShape: ['oval', 'heart', 'diamond'],
   },
   {
-    id: 'sightly-003',
+    id: 'prod-sightly-003',
     slug: 'ikoyi-cat-eye',
     name: 'Ikoyi Cat-Eye',
     collection: 'sightly',

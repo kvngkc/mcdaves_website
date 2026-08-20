@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { commerceRepository } from '@/lib/commerce/repository';
 import { requireAdminSession } from '@/lib/auth/admin-auth';
+import { checkRateLimit, getClientIp } from '@/lib/security/rate-limiter';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,6 +46,20 @@ const CreateIntentSchema = z.object({
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
+    // 1. Check Rate Limit (max 10 submissions per minute per IP)
+    const clientIp = getClientIp(request);
+    const rateLimit = checkRateLimit(`order-intent:${clientIp}`, {
+      maxRequests: 10,
+      windowMs: 60 * 1000,
+    });
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please wait a minute before submitting again.' },
+        { status: 429 },
+      );
+    }
+
     const json = await request.json();
     const parsed = CreateIntentSchema.safeParse(json);
 

@@ -31,30 +31,28 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       const variantId = metadata.variantId as string | undefined;
       const quantity = metadata.quantity ? Number(metadata.quantity) : 1;
 
-      // Automatically Decrement Stock in Supabase
-      try {
-        if (supabase && variantId) {
-          const { data: vData } = await supabase
-            .from('product_variants')
-            .select('id, units_in_stock, in_stock')
-            .eq('id', variantId)
-            .single();
-
-          if (vData) {
-            const currentUnits = vData.units_in_stock ?? 10;
-            const remainingUnits = Math.max(0, currentUnits - quantity);
-            await supabase
-              .from('product_variants')
-              .update({
-                units_in_stock: remainingUnits,
-                in_stock: remainingUnits > 0,
-                stock_level: remainingUnits === 0 ? 'out' : remainingUnits <= 3 ? 'low' : 'high',
-              })
-              .eq('id', variantId);
+      // 1. Atomic Inventory Decrement via PostgreSQL RPC / Repository
+      const itemsToDecrement: { variantId?: string; quantity: number }[] = [];
+      if (metadata.orderItems && Array.isArray(metadata.orderItems)) {
+        metadata.orderItems.forEach((item: any) => {
+          if (item.variantId) {
+            itemsToDecrement.push({
+              variantId: item.variantId,
+              quantity: item.quantity ? Number(item.quantity) : 1,
+            });
           }
+        });
+      } else if (metadata.variantId) {
+        itemsToDecrement.push({
+          variantId: metadata.variantId,
+          quantity: metadata.quantity ? Number(metadata.quantity) : 1,
+        });
+      }
+
+      for (const item of itemsToDecrement) {
+        if (item.variantId) {
+          await commerceRepository.decrementVariantStock(item.variantId, item.quantity);
         }
-      } catch (invErr) {
-        console.warn('[Inventory Sync] Notice updating variant inventory:', invErr);
       }
 
       // Record successful payment

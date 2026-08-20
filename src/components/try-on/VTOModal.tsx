@@ -88,6 +88,7 @@ export function VTOModal({
   const [detectorError, setDetectorError] = useState<string | null>(null);
   const [faceDetected, setFaceDetected] = useState(false);
   const [modelLoaded, setModelLoaded] = useState(false);
+  const [webglError, setWebglError] = useState(false);
 
   // Reset modelLoaded when changing glbPath
   useEffect(() => {
@@ -364,7 +365,7 @@ export function VTOModal({
           />
 
           {/* Three.js AR Eyewear Canvas with Depth Occlusion */}
-          {glbPath && (
+          {glbPath && !webglError && (
             <VTOCanvas
               viewport={viewport}
               mirrored={true}
@@ -378,7 +379,10 @@ export function VTOModal({
               frameSize={frameSize}
               fovDegrees={63.0}
               onModelMeasured={() => setModelLoaded(true)}
-              onError={(err) => console.error('[VTO] Render error:', err)}
+              onError={(err) => {
+                console.error('[VTO] Render error:', err);
+                setWebglError(true);
+              }}
             />
           )}
 
@@ -401,8 +405,32 @@ export function VTOModal({
             </div>
           )}
 
+          {/* WebGL Error / Fallback */}
+          {webglError && (
+            <div className="absolute inset-0 z-40 bg-neutral-950 flex flex-col items-center justify-center p-6 text-center space-y-4">
+              <div className="w-16 h-16 rounded-full bg-orange-500/20 text-orange-400 flex items-center justify-center text-3xl mb-2">
+                ⚠️
+              </div>
+              <div className="max-w-md space-y-2">
+                <h3 className="text-xl font-bold text-white">
+                  3D Try-On Not Supported
+                </h3>
+                <p className="text-sm text-neutral-400 leading-relaxed">
+                  Your device or browser does not support WebGL, which is required for the 3D Virtual Try-On experience.
+                  Please view the static lifestyle photos of this frame instead.
+                </p>
+              </div>
+              <button
+                onClick={handleClose}
+                className="mt-4 px-6 py-3 bg-neutral-800 hover:bg-neutral-700 text-white rounded-xl text-sm font-semibold transition-all"
+              >
+                Back to Product
+              </button>
+            </div>
+          )}
+
           {/* Camera Error / Permission Gate */}
-          {cameraError && (
+          {!webglError && cameraError && (
             <div className="absolute inset-0 z-30 bg-neutral-950/95 flex flex-col items-center justify-center p-6 text-center space-y-4">
               <div className="w-14 h-14 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center text-2xl font-bold">
                 <Camera className="w-7 h-7" />

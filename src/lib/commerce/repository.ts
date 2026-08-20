@@ -1,8 +1,10 @@
 // src/lib/commerce/repository.ts
 /**
  * Commerce Domain Data Access & Persistence Layer for McDaves
- * Thread-safe, in-memory singleton repository with seed catalog data.
+ * Thread-safe repository layer with database synchronization.
  */
+
+import 'server-only';
 
 import {
   Product,
@@ -26,6 +28,25 @@ import {
   generateLensRequestId,
 } from './id-generator';
 import { siteConfig } from '@/data/site-config';
+import {
+  supabase,
+  mapRowToProduct,
+  mapProductToRow,
+  mapRowToVariant,
+  mapVariantToRow,
+  mapRowToMedia,
+  mapMediaToRow,
+  mapRowToCustomer,
+  mapCustomerToRow,
+  mapRowToOrderIntent,
+  mapOrderIntentToRow,
+  mapRowToOrder,
+  mapOrderToRow,
+  mapRowToPayment,
+  mapPaymentToRow,
+  mapRowToLensRequest,
+  mapLensRequestToRow,
+} from '../supabase/service';
 
 // ─── Initial Seed Catalog ─────────────────────────────────────────────────────
 
@@ -360,14 +381,6 @@ const SEED_MEDIA: ProductMedia[] = [
   },
 ];
 
-import {
-  supabase,
-  mapRowToProduct,
-  mapRowToVariant,
-  mapProductToRow,
-  mapVariantToRow,
-} from '../supabase/service';
-
 // ─── Commerce Repository Class ────────────────────────────────────────────────
 
 class CommerceRepository {
@@ -394,54 +407,102 @@ class CommerceRepository {
     SEED_MEDIA.forEach((m) => this.media.set(m.id, m));
   }
 
-  private async syncFromSupabase() {
+  public async syncFromSupabase(): Promise<void> {
     if (!supabase) return;
     try {
-      const { data: prods } = await supabase.from('products').select('*');
-      if (prods && prods.length > 0) {
+      // 1. Sync Products
+      const { data: prods, error: prodErr } = await supabase.from('products').select('*');
+      if (prodErr) {
+        console.warn('[Supabase Sync] Products query notice:', prodErr.message);
+      } else if (prods && prods.length > 0) {
         prods.forEach((row) => {
           const p = mapRowToProduct(row);
           this.products.set(p.id, p);
         });
       }
-      const { data: vars } = await supabase.from('product_variants').select('*');
-      if (vars && vars.length > 0) {
+
+      // 2. Sync Variants
+      const { data: vars, error: varErr } = await supabase.from('product_variants').select('*');
+      if (varErr) {
+        console.warn('[Supabase Sync] Variants query notice:', varErr.message);
+      } else if (vars && vars.length > 0) {
         vars.forEach((row) => {
           const v = mapRowToVariant(row);
           this.variants.set(v.id, v);
         });
       }
-      const { data: intents } = await supabase.from('order_intents').select('*');
-      if (intents && intents.length > 0) {
+
+      // 3. Sync Media
+      const { data: mediaRows, error: mediaErr } = await supabase.from('product_media').select('*');
+      if (mediaErr) {
+        console.warn('[Supabase Sync] Media query notice:', mediaErr.message);
+      } else if (mediaRows && mediaRows.length > 0) {
+        mediaRows.forEach((row) => {
+          const m = mapRowToMedia(row);
+          this.media.set(m.id, m);
+        });
+      }
+
+      // 4. Sync Customers
+      const { data: custs, error: custErr } = await supabase.from('customers').select('*');
+      if (custErr) {
+        console.warn('[Supabase Sync] Customers query notice:', custErr.message);
+      } else if (custs && custs.length > 0) {
+        custs.forEach((row) => {
+          const c = mapRowToCustomer(row);
+          this.customers.set(c.id, c);
+          if (c.phone) {
+            const clean = c.phone.replace(/[^0-9+]/g, '');
+            this.customerPhoneIndex.set(clean, c.id);
+          }
+        });
+      }
+
+      // 5. Sync Order Intents
+      const { data: intents, error: intentErr } = await supabase.from('order_intents').select('*');
+      if (intentErr) {
+        console.warn('[Supabase Sync] Order intents query notice:', intentErr.message);
+      } else if (intents && intents.length > 0) {
         intents.forEach((row) => {
-          this.orderIntents.set(row.id, {
-            id: row.id,
-            customerId: row.customer_id,
-            customerName: row.customer_name,
-            customerPhone: row.customer_phone,
-            customerEmail: row.customer_email || undefined,
-            productId: row.product_id,
-            productName: row.product_name,
-            variantId: row.variant_id,
-            variantName: row.variant_name,
-            variantSku: row.variant_sku,
-            quantity: row.quantity,
-            priceAtIntent: Number(row.price_at_intent),
-            currency: row.currency,
-            lensRequestId: row.lens_request_id || undefined,
-            vtoSessionRef: row.vto_session_ref || undefined,
-            status: row.status,
-            source: row.source,
-            notes: row.notes || undefined,
-            paymentLinkUrl: row.payment_link_url || undefined,
-            whatsappReference: row.whatsapp_reference || undefined,
-            createdAt: row.created_at,
-            updatedAt: row.updated_at,
-          });
+          const intent = mapRowToOrderIntent(row);
+          this.orderIntents.set(intent.id, intent);
+        });
+      }
+
+      // 6. Sync Confirmed Orders
+      const { data: orderRows, error: orderErr } = await supabase.from('orders').select('*');
+      if (orderErr) {
+        console.warn('[Supabase Sync] Orders query notice:', orderErr.message);
+      } else if (orderRows && orderRows.length > 0) {
+        orderRows.forEach((row) => {
+          const ord = mapRowToOrder(row);
+          this.orders.set(ord.id, ord);
+        });
+      }
+
+      // 7. Sync Payments
+      const { data: payRows, error: payErr } = await supabase.from('payments').select('*');
+      if (payErr) {
+        console.warn('[Supabase Sync] Payments query notice:', payErr.message);
+      } else if (payRows && payRows.length > 0) {
+        payRows.forEach((row) => {
+          const pay = mapRowToPayment(row);
+          this.payments.set(pay.reference, pay);
+        });
+      }
+
+      // 8. Sync Lens Requests
+      const { data: lensRows, error: lensErr } = await supabase.from('lens_requests').select('*');
+      if (lensErr) {
+        console.warn('[Supabase Sync] Lens requests query notice:', lensErr.message);
+      } else if (lensRows && lensRows.length > 0) {
+        lensRows.forEach((row) => {
+          const lr = mapRowToLensRequest(row);
+          this.lensRequests.set(lr.id, lr);
         });
       }
     } catch (err) {
-      console.warn('[Supabase] Initial sync notice:', err);
+      console.error('[Supabase Sync] Error during database synchronization:', err);
     }
   }
 
@@ -581,13 +642,105 @@ class CommerceRepository {
     return res;
   }
 
+  public async decrementVariantStock(
+    variantId: string,
+    quantity: number,
+  ): Promise<{ success: boolean; remaining: number; message?: string }> {
+    // 1. Try PostgreSQL atomic stored procedure if Supabase is connected
+    if (supabase) {
+      try {
+        const { data, error } = await supabase.rpc('decrement_variant_stock', {
+          p_variant_id: variantId,
+          p_quantity: quantity,
+        });
+
+        if (!error && data && Array.isArray(data) && data.length > 0) {
+          const res = data[0];
+          // Sync local in-memory map
+          const localVariant = this.variants.get(variantId);
+          if (localVariant) {
+            localVariant.unitsInStock = res.remaining_stock;
+            localVariant.inStock = res.remaining_stock > 0;
+            localVariant.stockLevel =
+              res.remaining_stock === 0 ? 'out' : res.remaining_stock <= 3 ? 'low' : 'high';
+            localVariant.updatedAt = new Date().toISOString();
+          }
+          return {
+            success: res.success,
+            remaining: res.remaining_stock,
+            message: res.message,
+          };
+        }
+      } catch (rpcErr) {
+        console.warn('[Repository] RPC decrement_variant_stock notice, using local fallback:', rpcErr);
+      }
+    }
+
+    // 2. In-memory fallback with database sync
+    const variant = this.variants.get(variantId);
+    if (!variant) {
+      return { success: false, remaining: 0, message: 'Variant not found' };
+    }
+
+    if (variant.unitsInStock < quantity) {
+      return {
+        success: false,
+        remaining: variant.unitsInStock,
+        message: 'Insufficient stock',
+      };
+    }
+
+    variant.unitsInStock = Math.max(0, variant.unitsInStock - quantity);
+    variant.inStock = variant.unitsInStock > 0;
+    variant.stockLevel =
+      variant.unitsInStock === 0 ? 'out' : variant.unitsInStock <= 3 ? 'low' : 'high';
+    variant.updatedAt = new Date().toISOString();
+
+    if (supabase) {
+      supabase
+        .from('product_variants')
+        .update({
+          units_in_stock: variant.unitsInStock,
+          in_stock: variant.inStock,
+          stock_level: variant.stockLevel,
+          updated_at: variant.updatedAt,
+        })
+        .eq('id', variantId)
+        .then();
+    }
+
+    return {
+      success: true,
+      remaining: variant.unitsInStock,
+      message: 'Stock decremented successfully',
+    };
+  }
+
   public addProductMedia(media: ProductMedia): ProductMedia {
     this.media.set(media.id, media);
+    if (supabase) {
+      supabase
+        .from('product_media')
+        .upsert(mapMediaToRow(media))
+        .then(({ error }) => {
+          if (error) console.error('[Supabase] Failed to persist product media:', error.message);
+        });
+    }
     return media;
   }
 
   public deleteProductMedia(id: string): boolean {
-    return this.media.delete(id);
+    const res = this.media.delete(id);
+    if (supabase) {
+      supabase
+        .from('product_media')
+        .delete()
+        .eq('id', id)
+        .then(({ error }) => {
+          if (error) console.error('[Supabase] Failed to delete product media:', error.message);
+        });
+    }
+    return res;
   }
 
   private resolveVariant(
@@ -720,6 +873,14 @@ class CommerceRepository {
         updatedAt: now,
       };
       this.customers.set(existingId, updated);
+      if (supabase) {
+        supabase
+          .from('customers')
+          .upsert(mapCustomerToRow(updated))
+          .then(({ error }) => {
+            if (error) console.error('[Supabase] Failed to update customer:', error.message);
+          });
+      }
       return updated;
     }
 
@@ -734,6 +895,14 @@ class CommerceRepository {
 
     this.customers.set(newCustomer.id, newCustomer);
     this.customerPhoneIndex.set(cleanPhone, newCustomer.id);
+    if (supabase) {
+      supabase
+        .from('customers')
+        .upsert(mapCustomerToRow(newCustomer))
+        .then(({ error }) => {
+          if (error) console.error('[Supabase] Failed to persist new customer:', error.message);
+        });
+    }
     return newCustomer;
   }
 
@@ -810,6 +979,14 @@ class CommerceRepository {
     };
 
     this.orderIntents.set(intent.id, intent);
+    if (supabase) {
+      supabase
+        .from('order_intents')
+        .upsert(mapOrderIntentToRow(intent))
+        .then(({ error }) => {
+          if (error) console.error('[Supabase] Failed to persist order intent:', error.message);
+        });
+    }
 
     // Format WhatsApp message with non-sensitive reference context
     const waNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || siteConfig.whatsappNumber;
@@ -860,6 +1037,14 @@ class CommerceRepository {
     };
 
     this.orderIntents.set(id, updated);
+    if (supabase) {
+      supabase
+        .from('order_intents')
+        .upsert(mapOrderIntentToRow(updated))
+        .then(({ error }) => {
+          if (error) console.error('[Supabase] Failed to update order intent status:', error.message);
+        });
+    }
     return updated;
   }
 
@@ -880,6 +1065,14 @@ class CommerceRepository {
     };
 
     this.orderIntents.set(id, updated);
+    if (supabase) {
+      supabase
+        .from('order_intents')
+        .upsert(mapOrderIntentToRow(updated))
+        .then(({ error }) => {
+          if (error) console.error('[Supabase] Failed to update order intent payment link:', error.message);
+        });
+    }
     return updated;
   }
 
@@ -900,6 +1093,14 @@ class CommerceRepository {
     };
 
     this.lensRequests.set(id, req);
+    if (supabase) {
+      supabase
+        .from('lens_requests')
+        .upsert(mapLensRequestToRow(req))
+        .then(({ error }) => {
+          if (error) console.error('[Supabase] Failed to persist lens request:', error.message);
+        });
+    }
     return req;
   }
 
@@ -939,6 +1140,14 @@ class CommerceRepository {
     };
 
     this.payments.set(params.reference, payment);
+    if (supabase) {
+      supabase
+        .from('payments')
+        .upsert(mapPaymentToRow(payment))
+        .then(({ error }) => {
+          if (error) console.error('[Supabase] Failed to persist payment:', error.message);
+        });
+    }
     return payment;
   }
 
@@ -1036,6 +1245,26 @@ class CommerceRepository {
     };
 
     this.orders.set(orderId, order);
+    if (supabase) {
+      supabase
+        .from('orders')
+        .upsert(mapOrderToRow(order))
+        .then(({ error }) => {
+          if (error) console.error('[Supabase] Failed to persist confirmed order:', error.message);
+        });
+
+      if (intentId) {
+        const updatedIntent = this.orderIntents.get(intentId);
+        if (updatedIntent) {
+          supabase
+            .from('order_intents')
+            .upsert(mapOrderIntentToRow(updatedIntent))
+            .then(({ error }) => {
+              if (error) console.error('[Supabase] Failed to update converted intent in Supabase:', error.message);
+            });
+        }
+      }
+    }
     return { order, payment };
   }
 

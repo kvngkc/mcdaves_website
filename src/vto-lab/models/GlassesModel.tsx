@@ -56,6 +56,29 @@ export function GlassesModel({
     return prepareGlassesModel(scene as Group, calibration, clipTemples, templeDepthCutoff);
   }, [scene, calibration, clipTemples, templeDepthCutoff]);
 
+  // Clean up WebGL resources when prepared asset changes or unmounts
+  useEffect(() => {
+    return () => {
+      if (prepared && prepared.root) {
+        prepared.root.traverse((child) => {
+          const mesh = child as any;
+          if (mesh.isMesh) {
+            if (mesh.geometry) {
+              mesh.geometry.dispose();
+            }
+            if (mesh.material) {
+              if (Array.isArray(mesh.material)) {
+                mesh.material.forEach((mat) => mat.dispose());
+              } else {
+                mesh.material.dispose();
+              }
+            }
+          }
+        });
+      }
+    };
+  }, [prepared]);
+
   const { scale } = useMemo(() => {
     const nativeW = prepared?.measurements.nativeWidth || calibration.measuredNativeWidth;
     return calculateModelScale(

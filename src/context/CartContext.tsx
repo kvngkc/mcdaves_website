@@ -3,13 +3,21 @@
 
 import React, { createContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { CartItem, Product } from '@/lib/types';
+import { deliveryConfig } from '@/config/services';
 
 export interface CartContextType {
   items: CartItem[];
   isOpen: boolean;
-  addItem: (product: Product, quantity?: number, color?: string) => void;
-  removeItem: (productId: string, color?: string) => void;
-  updateQuantity: (productId: string, quantity: number, color?: string) => void;
+  addItem: (
+    product: Product,
+    quantity?: number,
+    color?: string,
+    variantId?: string,
+    variantSku?: string,
+    priceOverride?: number,
+  ) => void;
+  removeItem: (productId: string, color?: string, variantId?: string) => void;
+  updateQuantity: (productId: string, quantity: number, color?: string, variantId?: string) => void;
   clearCart: () => void;
   toggleDrawer: () => void;
   openDrawer: () => void;
@@ -68,42 +76,71 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setIsOpen(false);
   }, []);
 
-  const addItem = useCallback((product: Product, quantity: number = 1, color?: string) => {
-    const selectedColor = color || (product.colors && product.colors.length > 0 ? product.colors[0].name : undefined);
-    const displayImage = product.images?.[0] || '/images/products/placeholder.webp';
+  const addItem = useCallback(
+    (
+      product: Product,
+      quantity = 1,
+      color?: string,
+      variantId?: string,
+      variantSku?: string,
+      priceOverride?: number,
+    ) => {
+      setItems((prevItems) => {
+        const itemVariantId = variantId;
+        const itemColor = color;
+        const effectivePrice = priceOverride ?? product.price;
 
-    setItems((prevItems) => {
-      const existingIndex = prevItems.findIndex(
-        (item) => item.productId === product.id && item.color === selectedColor
-      );
+        const existingIndex = prevItems.findIndex((item) => {
+          if (itemVariantId && item.variantId) {
+            return item.variantId === itemVariantId;
+          }
+          if (itemColor !== undefined) {
+            return item.productId === product.id && item.color === itemColor;
+          }
+          return item.productId === product.id;
+        });
 
-      if (existingIndex > -1) {
-        const updated = [...prevItems];
-        updated[existingIndex] = {
-          ...updated[existingIndex],
-          quantity: updated[existingIndex].quantity + quantity,
+        if (existingIndex > -1) {
+          const updated = [...prevItems];
+          const existing = updated[existingIndex];
+          updated[existingIndex] = {
+            ...existing,
+            quantity: existing.quantity + quantity,
+            price: effectivePrice,
+          };
+          return updated;
+        }
+
+        const image =
+          product.images?.[0] ||
+          '/images/products/sightly/classic-havana/front.webp';
+
+        const newItem: CartItem = {
+          productId: product.id,
+          variantId: itemVariantId,
+          variantSku: variantSku,
+          slug: product.slug,
+          name: product.name,
+          price: effectivePrice,
+          color: itemColor,
+          image,
+          quantity,
+          prescriptionRequired: product.prescriptionRequired ?? false,
         };
-        return updated;
-      }
 
-      const newItem: CartItem = {
-        productId: product.id,
-        slug: product.slug,
-        name: product.name,
-        price: product.price,
-        quantity,
-        color: selectedColor,
-        prescriptionRequired: product.prescriptionRequired ?? false,
-        image: displayImage,
-      };
+        return [...prevItems, newItem];
+      });
+      setIsOpen(true);
+    },
+    [],
+  );
 
-      return [...prevItems, newItem];
-    });
-  }, []);
-
-  const removeItem = useCallback((productId: string, color?: string) => {
+  const removeItem = useCallback((productId: string, color?: string, variantId?: string) => {
     setItems((prevItems) =>
       prevItems.filter((item) => {
+        if (variantId && item.variantId) {
+          return item.variantId !== variantId;
+        }
         if (color !== undefined) {
           return !(item.productId === productId && item.color === color);
         }
@@ -112,25 +149,31 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     );
   }, []);
 
-  const updateQuantity = useCallback((productId: string, quantity: number, color?: string) => {
-    if (quantity <= 0) {
-      removeItem(productId, color);
-      return;
-    }
+  const updateQuantity = useCallback(
+    (productId: string, quantity: number, color?: string, variantId?: string) => {
+      if (quantity <= 0) {
+        removeItem(productId, color, variantId);
+        return;
+      }
 
-    setItems((prevItems) =>
-      prevItems.map((item) => {
-        const match = color !== undefined
-          ? item.productId === productId && item.color === color
-          : item.productId === productId;
+      setItems((prevItems) =>
+        prevItems.map((item) => {
+          const match =
+            variantId && item.variantId
+              ? item.variantId === variantId
+              : color !== undefined
+              ? item.productId === productId && item.color === color
+              : item.productId === productId;
 
-        if (match) {
-          return { ...item, quantity };
-        }
-        return item;
-      })
-    );
-  }, [removeItem]);
+          if (match) {
+            return { ...item, quantity };
+          }
+          return item;
+        })
+      );
+    },
+    [removeItem],
+  );
 
   const clearCart = useCallback(() => {
     setItems([]);
@@ -141,10 +184,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     return items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   }, [items]);
 
-  // Delivery rules: ₦2,500 flat fee, free if subtotal >= ₦50,000 or if cart is empty
+  // Canonical SSOT Delivery rules: free if subtotal >= freeThreshold or if cart is empty
   const delivery = useMemo(() => {
-    if (items.length === 0 || subtotal >= 50000) return 0;
-    return 2500;
+    if (items.length === 0 || subtotal >= deliveryConfig.freeThreshold) return 0;
+    return deliveryConfig.standardFee;
   }, [items.length, subtotal]);
 
   const total = useMemo(() => {
