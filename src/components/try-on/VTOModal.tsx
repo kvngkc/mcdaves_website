@@ -63,6 +63,8 @@ export function VTOModal({
   variantSlug,
   variantId,
   price,
+  clipTemples = false,
+  templeDepthCutoff = 2.5,
   glbPath,
   frameSize,
   onOrderIntent,
@@ -375,6 +377,7 @@ export function VTOModal({
               showCube={false}
               showGlasses={true}
               showHeadOcclusion={true}
+              clipTemples={false}
               glbPath={glbPath}
               frameSize={frameSize}
               fovDegrees={63.0}

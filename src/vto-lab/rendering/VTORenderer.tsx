@@ -43,7 +43,7 @@ export function VTORenderer({
   showGlasses,
   showHeadOcclusion = true,
   debugOccluderMesh = false,
-  clipTemples = true,
+  clipTemples = false,
   templeDepthCutoff = 2.5,
   glbPath,
   frameSize,
