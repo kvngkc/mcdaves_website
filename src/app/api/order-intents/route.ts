@@ -116,7 +116,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const status = searchParams.get('status');
     const search = searchParams.get('search')?.toLowerCase();
 
-    let intents = commerceRepository.getAllOrderIntents();
+    let intents = await commerceRepository.getAllOrderIntents();
 
     if (status && status !== 'ALL') {
       intents = intents.filter((i) => i.status === status);

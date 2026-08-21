@@ -102,7 +102,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           { status: 400 },
         );
       }
-      const variant = commerceRepository.createVariant(parsed.data as any);
+      const variant = await commerceRepository.createVariant(parsed.data as any);
       return NextResponse.json({ success: true, variant }, { status: 201 });
     }
 
@@ -114,7 +114,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           { status: 400 },
         );
       }
-      const media = commerceRepository.addProductMedia(parsed.data as any);
+      const media = await commerceRepository.addProductMedia(parsed.data as any);
       return NextResponse.json({ success: true, media }, { status: 201 });
     }
 
@@ -126,7 +126,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    const product = commerceRepository.createProduct(parsed.data as any);
+    const product = await commerceRepository.createProduct(parsed.data as any);
     return NextResponse.json({ success: true, product }, { status: 201 });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Error creating catalog item';
@@ -148,7 +148,7 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
       if (!body.variant?.id) {
         return NextResponse.json({ error: 'Variant ID is required for updates' }, { status: 400 });
       }
-      const updated = commerceRepository.updateVariant(body.variant);
+      const updated = await commerceRepository.updateVariant(body.variant);
       return NextResponse.json({ success: true, variant: updated }, { status: 200 });
     }
 
@@ -156,7 +156,7 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: 'Product ID is required for updates' }, { status: 400 });
     }
 
-    const updated = commerceRepository.updateProduct(body.product);
+    const updated = await commerceRepository.updateProduct(body.product);
     return NextResponse.json({ success: true, product: updated }, { status: 200 });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Error updating catalog item';
@@ -180,16 +180,16 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
     }
 
     if (type === 'variant') {
-      commerceRepository.deleteVariant(id);
+      await commerceRepository.deleteVariant(id);
       return NextResponse.json({ success: true, message: `Variant ${id} deleted` });
     }
 
     if (type === 'media') {
-      commerceRepository.deleteProductMedia(id);
+      await commerceRepository.deleteProductMedia(id);
       return NextResponse.json({ success: true, message: `Media ${id} deleted` });
     }
 
-    commerceRepository.deleteProduct(id);
+    await commerceRepository.deleteProduct(id);
     return NextResponse.json({ success: true, message: `Product ${id} deleted` });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Error deleting item';

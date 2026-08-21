@@ -382,157 +382,71 @@ const SEED_MEDIA: ProductMedia[] = [
 ];
 
 // ─── Commerce Repository Class ────────────────────────────────────────────────
+// ─── Commerce Repository Class ────────────────────────────────────────────────
 
 class CommerceRepository {
-  private products: Map<string, Product> = new Map();
-  private variants: Map<string, ProductVariant> = new Map();
-  private media: Map<string, ProductMedia> = new Map();
-  private customers: Map<string, Customer> = new Map(); // key: customerId
-  private customerPhoneIndex: Map<string, string> = new Map(); // phone -> customerId
-  private orderIntents: Map<string, OrderIntent> = new Map(); // key: intentId
-  private lensRequests: Map<string, LensRequest> = new Map();
-  private payments: Map<string, Payment> = new Map(); // key: reference
-  private orders: Map<string, Order> = new Map(); // key: orderId
-
   constructor() {
-    this.seed();
-    if (supabase) {
-      this.syncFromSupabase();
-    }
-  }
-
-  private seed() {
-    SEED_PRODUCTS.forEach((p) => this.products.set(p.id, p));
-    SEED_VARIANTS.forEach((v) => this.variants.set(v.id, v));
-    SEED_MEDIA.forEach((m) => this.media.set(m.id, m));
-  }
-
-  public async syncFromSupabase(): Promise<void> {
-    if (!supabase) return;
-    try {
-      // 1. Sync Products
-      const { data: prods, error: prodErr } = await supabase.from('products').select('*');
-      if (prodErr) {
-        console.warn('[Supabase Sync] Products query notice:', prodErr.message);
-      } else if (prods && prods.length > 0) {
-        prods.forEach((row) => {
-          const p = mapRowToProduct(row);
-          this.products.set(p.id, p);
-        });
-      }
-
-      // 2. Sync Variants
-      const { data: vars, error: varErr } = await supabase.from('product_variants').select('*');
-      if (varErr) {
-        console.warn('[Supabase Sync] Variants query notice:', varErr.message);
-      } else if (vars && vars.length > 0) {
-        vars.forEach((row) => {
-          const v = mapRowToVariant(row);
-          this.variants.set(v.id, v);
-        });
-      }
-
-      // 3. Sync Media
-      const { data: mediaRows, error: mediaErr } = await supabase.from('product_media').select('*');
-      if (mediaErr) {
-        console.warn('[Supabase Sync] Media query notice:', mediaErr.message);
-      } else if (mediaRows && mediaRows.length > 0) {
-        mediaRows.forEach((row) => {
-          const m = mapRowToMedia(row);
-          this.media.set(m.id, m);
-        });
-      }
-
-      // 4. Sync Customers
-      const { data: custs, error: custErr } = await supabase.from('customers').select('*');
-      if (custErr) {
-        console.warn('[Supabase Sync] Customers query notice:', custErr.message);
-      } else if (custs && custs.length > 0) {
-        custs.forEach((row) => {
-          const c = mapRowToCustomer(row);
-          this.customers.set(c.id, c);
-          if (c.phone) {
-            const clean = c.phone.replace(/[^0-9+]/g, '');
-            this.customerPhoneIndex.set(clean, c.id);
-          }
-        });
-      }
-
-      // 5. Sync Order Intents
-      const { data: intents, error: intentErr } = await supabase.from('order_intents').select('*');
-      if (intentErr) {
-        console.warn('[Supabase Sync] Order intents query notice:', intentErr.message);
-      } else if (intents && intents.length > 0) {
-        intents.forEach((row) => {
-          const intent = mapRowToOrderIntent(row);
-          this.orderIntents.set(intent.id, intent);
-        });
-      }
-
-      // 6. Sync Confirmed Orders
-      const { data: orderRows, error: orderErr } = await supabase.from('orders').select('*');
-      if (orderErr) {
-        console.warn('[Supabase Sync] Orders query notice:', orderErr.message);
-      } else if (orderRows && orderRows.length > 0) {
-        orderRows.forEach((row) => {
-          const ord = mapRowToOrder(row);
-          this.orders.set(ord.id, ord);
-        });
-      }
-
-      // 7. Sync Payments
-      const { data: payRows, error: payErr } = await supabase.from('payments').select('*');
-      if (payErr) {
-        console.warn('[Supabase Sync] Payments query notice:', payErr.message);
-      } else if (payRows && payRows.length > 0) {
-        payRows.forEach((row) => {
-          const pay = mapRowToPayment(row);
-          this.payments.set(pay.reference, pay);
-        });
-      }
-
-      // 8. Sync Lens Requests
-      const { data: lensRows, error: lensErr } = await supabase.from('lens_requests').select('*');
-      if (lensErr) {
-        console.warn('[Supabase Sync] Lens requests query notice:', lensErr.message);
-      } else if (lensRows && lensRows.length > 0) {
-        lensRows.forEach((row) => {
-          const lr = mapRowToLensRequest(row);
-          this.lensRequests.set(lr.id, lr);
-        });
-      }
-    } catch (err) {
-      console.error('[Supabase Sync] Error during database synchronization:', err);
-    }
+    // No longer seeding or syncing to memory. Supabase is the primary source of truth.
   }
 
   // ─── Products & Variants ───────────────────────────────────────────────────
 
-  public getAllProducts(includeAllStatuses = false): ResolvedProduct[] {
-    return Array.from(this.products.values())
-      .filter((p) => includeAllStatuses || p.status === 'ACTIVE')
-      .map((p) => this.resolveProduct(p));
+  public async getAllProducts(includeAllStatuses = false): Promise<ResolvedProduct[]> {
+    if (!supabase) throw new Error("Supabase client missing");
+    
+    let query = supabase.from('products').select('*');
+    if (!includeAllStatuses) {
+      query = query.eq('status', 'ACTIVE');
+    }
+    
+    const { data: prods, error } = await query;
+    if (error) {
+      console.error('[Repository] Error fetching products:', error.message);
+      return [];
+    }
+    if (!prods || prods.length === 0) return [];
+
+    const products = prods.map(mapRowToProduct);
+    return Promise.all(products.map((p) => this.resolveProduct(p)));
   }
 
-  public getProductBySlug(slug: string): ResolvedProduct | null {
-    const product = Array.from(this.products.values()).find(
-      (p) => p.slug === slug && p.status === 'ACTIVE',
-    );
-    if (!product) return null;
-    return this.resolveProduct(product);
+  public async getProductBySlug(slug: string): Promise<ResolvedProduct | null> {
+    if (!supabase) throw new Error("Supabase client missing");
+    
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .eq('slug', slug)
+      .eq('status', 'ACTIVE')
+      .maybeSingle();
+
+    if (error) {
+      console.error('[Repository] Error fetching product by slug:', error.message);
+      return null;
+    }
+    if (!data) return null;
+
+    return this.resolveProduct(mapRowToProduct(data));
   }
 
-  public getProductById(id: string): ResolvedProduct | null {
-    const product = this.products.get(id);
-    if (!product) return null;
-    return this.resolveProduct(product);
+  public async getProductById(id: string): Promise<ResolvedProduct | null> {
+    if (!supabase) throw new Error("Supabase client missing");
+    
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error || !data) return null;
+    return this.resolveProduct(mapRowToProduct(data));
   }
 
-  public getProductVariantBySlug(
+  public async getProductVariantBySlug(
     productSlug: string,
     variantSlug: string,
-  ): { product: ResolvedProduct; variant: ResolvedProductVariant } | null {
-    const product = this.getProductBySlug(productSlug);
+  ): Promise<{ product: ResolvedProduct; variant: ResolvedProductVariant } | null> {
+    const product = await this.getProductBySlug(productSlug);
     if (!product) return null;
 
     const variant = product.variants.find((v) => v.slug === variantSlug);
@@ -541,212 +455,178 @@ class CommerceRepository {
     return { product, variant };
   }
 
-  public getVariantById(variantId: string): ResolvedProductVariant | null {
-    const variant = this.variants.get(variantId);
-    if (!variant) return null;
+  public async getVariantById(variantId: string): Promise<ResolvedProductVariant | null> {
+    if (!supabase) throw new Error("Supabase client missing");
 
-    const parent = this.products.get(variant.productId);
-    if (!parent) return null;
+    const { data: variantData, error: variantError } = await supabase
+      .from('product_variants')
+      .select('*')
+      .eq('id', variantId)
+      .maybeSingle();
 
-    return this.resolveVariant(parent, variant);
+    if (variantError || !variantData) return null;
+    const variant = mapRowToVariant(variantData);
+
+    const { data: productData, error: productError } = await supabase
+      .from('products')
+      .select('*')
+      .eq('id', variant.productId)
+      .maybeSingle();
+
+    if (productError || !productData) return null;
+    const product = mapRowToProduct(productData);
+
+    return this.resolveVariant(product, variant);
   }
 
-  public createProduct(product: Omit<Product, 'createdAt' | 'updatedAt'>): Product {
+  public async createProduct(product: Omit<Product, 'createdAt' | 'updatedAt'>): Promise<Product> {
+    if (!supabase) throw new Error("Supabase client missing");
     const now = new Date().toISOString();
     const newProduct: Product = {
       ...product,
       createdAt: now,
       updatedAt: now,
     };
-    this.products.set(newProduct.id, newProduct);
-    if (supabase) {
-      supabase.from('products').upsert(mapProductToRow(newProduct)).then();
-    }
+    
+    const { error } = await supabase.from('products').upsert(mapProductToRow(newProduct));
+    if (error) throw new Error(error.message);
     return newProduct;
   }
 
-  public updateProduct(product: Partial<Product> & { id: string }): Product {
-    const existing = this.products.get(product.id);
+  public async updateProduct(product: Partial<Product> & { id: string }): Promise<Product> {
+    if (!supabase) throw new Error("Supabase client missing");
+    
+    const existing = await this.getProductById(product.id);
     if (!existing) throw new Error(`Product ${product.id} not found`);
-    const updated = {
+
+    const updated: Product = {
       ...existing,
       ...product,
       updatedAt: new Date().toISOString(),
     };
-    this.products.set(product.id, updated);
-    if (supabase) {
-      supabase.from('products').upsert(mapProductToRow(updated)).then();
-    }
+    
+    // Convert ResolvedProduct fields back to raw Product
+    delete (updated as any).variants;
+    delete (updated as any).defaultVariant;
+    delete (updated as any).media;
+
+    const { error } = await supabase.from('products').upsert(mapProductToRow(updated));
+    if (error) throw new Error(error.message);
     return updated;
   }
 
-  public deleteProduct(id: string): boolean {
-    for (const [varId, variant] of this.variants.entries()) {
-      if (variant.productId === id) {
-        this.variants.delete(varId);
-      }
+  public async deleteProduct(id: string): Promise<boolean> {
+    if (!supabase) throw new Error("Supabase client missing");
+    const { error } = await supabase.from('products').delete().eq('id', id);
+    if (error) {
+      console.error('[Repository] Error deleting product:', error.message);
+      return false;
     }
-    for (const [mediaId, media] of this.media.entries()) {
-      if (media.productId === id) {
-        this.media.delete(mediaId);
-      }
-    }
-    const res = this.products.delete(id);
-    if (supabase) {
-      supabase.from('products').delete().eq('id', id).then();
-    }
-    return res;
+    return true;
   }
 
-  public createVariant(variant: Omit<ProductVariant, 'createdAt' | 'updatedAt'>): ProductVariant {
+  public async createVariant(variant: Omit<ProductVariant, 'createdAt' | 'updatedAt'>): Promise<ProductVariant> {
+    if (!supabase) throw new Error("Supabase client missing");
     const now = new Date().toISOString();
     const newVariant: ProductVariant = {
       ...variant,
       createdAt: now,
       updatedAt: now,
     };
-    this.variants.set(newVariant.id, newVariant);
-    if (supabase) {
-      supabase.from('product_variants').upsert(mapVariantToRow(newVariant)).then();
-    }
+    const { error } = await supabase.from('product_variants').upsert(mapVariantToRow(newVariant));
+    if (error) throw new Error(error.message);
     return newVariant;
   }
 
-  public updateVariant(
-    variant: Partial<ProductVariant> & { id: string },
-  ): ProductVariant {
-    const existing = this.variants.get(variant.id);
+  public async updateVariant(variant: Partial<ProductVariant> & { id: string }): Promise<ProductVariant> {
+    if (!supabase) throw new Error("Supabase client missing");
+    
+    const existing = await this.getVariantById(variant.id);
     if (!existing) throw new Error(`Variant ${variant.id} not found`);
-    const updated = {
+
+    const updated: ProductVariant = {
       ...existing,
       ...variant,
       updatedAt: new Date().toISOString(),
     };
-    this.variants.set(variant.id, updated);
-    if (supabase) {
-      supabase.from('product_variants').upsert(mapVariantToRow(updated)).then();
-    }
+    
+    // Clean up Resolved properties before saving
+    delete (updated as any).inStock;
+    delete (updated as any).stockLevel;
+    delete (updated as any).effectivePrice;
+    delete (updated as any).effectiveOriginalPrice;
+    delete (updated as any).effectiveMaterial;
+    delete (updated as any).effectiveWeight;
+    delete (updated as any).effectiveSpecifications;
+    delete (updated as any).effectiveDescription;
+    delete (updated as any).media;
+    delete (updated as any).hasPriceOverride;
+    delete (updated as any).hasSpecOverride;
+
+    const { error } = await supabase.from('product_variants').upsert(mapVariantToRow(updated));
+    if (error) throw new Error(error.message);
     return updated;
   }
 
-  public deleteVariant(id: string): boolean {
-    for (const [mediaId, media] of this.media.entries()) {
-      if (media.variantId === id) {
-        this.media.delete(mediaId);
-      }
+  public async deleteVariant(id: string): Promise<boolean> {
+    if (!supabase) throw new Error("Supabase client missing");
+    const { error } = await supabase.from('product_variants').delete().eq('id', id);
+    if (error) {
+      console.error('[Repository] Error deleting variant:', error.message);
+      return false;
     }
-    const res = this.variants.delete(id);
-    if (supabase) {
-      supabase.from('product_variants').delete().eq('id', id).then();
-    }
-    return res;
+    return true;
   }
 
   public async decrementVariantStock(
     variantId: string,
     quantity: number,
   ): Promise<{ success: boolean; remaining: number; message?: string }> {
-    // 1. Try PostgreSQL atomic stored procedure if Supabase is connected
-    if (supabase) {
-      try {
-        const { data, error } = await supabase.rpc('decrement_variant_stock', {
-          p_variant_id: variantId,
-          p_quantity: quantity,
-        });
+    if (!supabase) throw new Error("Supabase client missing");
+    
+    const { data, error } = await supabase.rpc('decrement_variant_stock', {
+      p_variant_id: variantId,
+      p_quantity: quantity,
+    });
 
-        if (!error && data && Array.isArray(data) && data.length > 0) {
-          const res = data[0];
-          // Sync local in-memory map
-          const localVariant = this.variants.get(variantId);
-          if (localVariant) {
-            localVariant.unitsInStock = res.remaining_stock;
-            localVariant.inStock = res.remaining_stock > 0;
-            localVariant.stockLevel =
-              res.remaining_stock === 0 ? 'out' : res.remaining_stock <= 3 ? 'low' : 'high';
-            localVariant.updatedAt = new Date().toISOString();
-          }
-          return {
-            success: res.success,
-            remaining: res.remaining_stock,
-            message: res.message,
-          };
-        }
-      } catch (rpcErr) {
-        console.warn('[Repository] RPC decrement_variant_stock notice, using local fallback:', rpcErr);
-      }
+    if (error) {
+      console.error('[Repository] RPC decrement_variant_stock failed:', error.message);
+      return { success: false, remaining: 0, message: error.message };
     }
 
-    // 2. In-memory fallback with database sync
-    const variant = this.variants.get(variantId);
-    if (!variant) {
-      return { success: false, remaining: 0, message: 'Variant not found' };
-    }
-
-    if (variant.unitsInStock < quantity) {
+    if (data && Array.isArray(data) && data.length > 0) {
+      const res = data[0];
       return {
-        success: false,
-        remaining: variant.unitsInStock,
-        message: 'Insufficient stock',
+        success: res.success,
+        remaining: res.remaining_stock,
+        message: res.message,
       };
     }
 
-    variant.unitsInStock = Math.max(0, variant.unitsInStock - quantity);
-    variant.inStock = variant.unitsInStock > 0;
-    variant.stockLevel =
-      variant.unitsInStock === 0 ? 'out' : variant.unitsInStock <= 3 ? 'low' : 'high';
-    variant.updatedAt = new Date().toISOString();
-
-    if (supabase) {
-      supabase
-        .from('product_variants')
-        .update({
-          units_in_stock: variant.unitsInStock,
-          in_stock: variant.inStock,
-          stock_level: variant.stockLevel,
-          updated_at: variant.updatedAt,
-        })
-        .eq('id', variantId)
-        .then();
-    }
-
-    return {
-      success: true,
-      remaining: variant.unitsInStock,
-      message: 'Stock decremented successfully',
-    };
+    return { success: false, remaining: 0, message: 'Unknown RPC response' };
   }
 
-  public addProductMedia(media: ProductMedia): ProductMedia {
-    this.media.set(media.id, media);
-    if (supabase) {
-      supabase
-        .from('product_media')
-        .upsert(mapMediaToRow(media))
-        .then(({ error }) => {
-          if (error) console.error('[Supabase] Failed to persist product media:', error.message);
-        });
-    }
+  public async addProductMedia(media: ProductMedia): Promise<ProductMedia> {
+    if (!supabase) throw new Error("Supabase client missing");
+    const { error } = await supabase.from('product_media').upsert(mapMediaToRow(media));
+    if (error) throw new Error(error.message);
     return media;
   }
 
-  public deleteProductMedia(id: string): boolean {
-    const res = this.media.delete(id);
-    if (supabase) {
-      supabase
-        .from('product_media')
-        .delete()
-        .eq('id', id)
-        .then(({ error }) => {
-          if (error) console.error('[Supabase] Failed to delete product media:', error.message);
-        });
+  public async deleteProductMedia(id: string): Promise<boolean> {
+    if (!supabase) throw new Error("Supabase client missing");
+    const { error } = await supabase.from('product_media').delete().eq('id', id);
+    if (error) {
+      console.error('[Repository] Error deleting product media:', error.message);
+      return false;
     }
-    return res;
+    return true;
   }
 
-  private resolveVariant(
+  private async resolveVariant(
     parent: Product,
     variant: ProductVariant,
-  ): ResolvedProductVariant {
+  ): Promise<ResolvedProductVariant> {
     const hasPriceOverride = variant.priceOverride !== undefined;
     const hasSpecOverride = variant.specificationsOverride !== undefined;
 
@@ -754,30 +634,26 @@ class CommerceRepository {
       ...parent.defaultSpecifications,
       ...(variant.specificationsOverride || {}),
     };
-
-    // Calculate optical frame size string if dimensions changed
     effectiveSpecifications.frameSize = `${effectiveSpecifications.lensWidthMm}□${effectiveSpecifications.bridgeWidthMm}-${effectiveSpecifications.templeLengthMm}`;
 
-    const variantMedia = Array.from(this.media.values())
-      .filter((m) => m.variantId === variant.id || (m.productId === parent.id && !m.variantId))
-      .sort((a, b) => a.sortOrder - b.sortOrder);
+    if (!supabase) throw new Error("Supabase client missing");
 
-    // Fallback if variant has no direct media: use parent media
-    const media =
-      variantMedia.length > 0
-        ? variantMedia
-        : Array.from(this.media.values())
-            .filter((m) => m.productId === parent.id)
-            .sort((a, b) => a.sortOrder - b.sortOrder);
+    const { data: mediaRows } = await supabase
+      .from('product_media')
+      .select('*')
+      .eq('product_id', parent.id)
+      .order('sort_order', { ascending: true });
+      
+    const allParentMedia = (mediaRows || []).map(mapRowToMedia);
+    
+    const variantMedia = allParentMedia.filter(
+      (m) => m.variantId === variant.id || !m.variantId
+    );
 
-    // Auto compute inStock if unitsInStock is defined
-    const inStock =
-      variant.unitsInStock !== undefined
-        ? variant.unitsInStock > 0
-        : variant.inStock;
+    const media = variantMedia.length > 0 ? variantMedia : allParentMedia;
 
-    const stockLevel =
-      variant.unitsInStock !== undefined
+    const inStock = variant.unitsInStock !== undefined ? variant.unitsInStock > 0 : variant.inStock;
+    const stockLevel = variant.unitsInStock !== undefined
         ? variant.unitsInStock === 0
           ? 'out'
           : variant.unitsInStock <= 3
@@ -790,8 +666,7 @@ class CommerceRepository {
       inStock,
       stockLevel,
       effectivePrice: variant.priceOverride ?? parent.defaultPrice,
-      effectiveOriginalPrice:
-        variant.originalPriceOverride ?? parent.defaultOriginalPrice,
+      effectiveOriginalPrice: variant.originalPriceOverride ?? parent.defaultOriginalPrice,
       effectiveMaterial: variant.materialOverride ?? parent.defaultMaterial,
       effectiveWeight: variant.weightOverride ?? parent.defaultWeight,
       effectiveSpecifications,
@@ -802,43 +677,50 @@ class CommerceRepository {
     };
   }
 
-  private resolveProduct(product: Product): ResolvedProduct {
-    const productVariants = Array.from(this.variants.values())
-      .filter((v) => {
-        if (v.productId !== product.id) return false;
-        if (v.status !== 'ACTIVE') return false;
-        if (v.hideWhenOutOfStock && ((v.unitsInStock !== undefined && v.unitsInStock === 0) || !v.inStock)) {
-          return false;
-        }
-        return true;
-      })
-      .sort((a, b) => a.sortOrder - b.sortOrder);
+  private async resolveProduct(product: Product): Promise<ResolvedProduct> {
+    if (!supabase) throw new Error("Supabase client missing");
 
-    const resolvedVariants = productVariants.map((v) =>
-      this.resolveVariant(product, v),
+    const { data: variantRows } = await supabase
+      .from('product_variants')
+      .select('*')
+      .eq('product_id', product.id)
+      .order('sort_order', { ascending: true });
+
+    let productVariants = (variantRows || []).map(mapRowToVariant).filter((v) => {
+      if (v.status !== 'ACTIVE') return false;
+      if (v.hideWhenOutOfStock && ((v.unitsInStock !== undefined && v.unitsInStock === 0) || !v.inStock)) {
+        return false;
+      }
+      return true;
+    });
+
+    const resolvedVariants = await Promise.all(
+      productVariants.map((v) => this.resolveVariant(product, v))
     );
 
-    const defaultVariant =
-      resolvedVariants[0] ||
-      this.resolveVariant(product, {
-        id: `default-${product.id}`,
-        productId: product.id,
-        slug: 'default',
-        name: 'Default',
-        sku: `${product.id}-DEF`,
-        colorName: 'Standard',
-        colorHex: '#000000',
-        inStock: true,
-        stockLevel: 'high',
-        sortOrder: 0,
-        status: 'ACTIVE',
-        createdAt: product.createdAt,
-        updatedAt: product.updatedAt,
-      });
+    const defaultVariant = resolvedVariants[0] || (await this.resolveVariant(product, {
+      id: `default-${product.id}`,
+      productId: product.id,
+      slug: 'default',
+      name: 'Default',
+      sku: `${product.id}-DEF`,
+      colorName: 'Standard',
+      colorHex: '#000000',
+      inStock: true,
+      stockLevel: 'high',
+      sortOrder: 0,
+      status: 'ACTIVE',
+      createdAt: product.createdAt,
+      updatedAt: product.updatedAt,
+    }));
 
-    const productMedia = Array.from(this.media.values())
-      .filter((m) => m.productId === product.id)
-      .sort((a, b) => a.sortOrder - b.sortOrder);
+    const { data: mediaRows } = await supabase
+      .from('product_media')
+      .select('*')
+      .eq('product_id', product.id)
+      .order('sort_order', { ascending: true });
+      
+    const productMedia = (mediaRows || []).map(mapRowToMedia);
 
     return {
       ...product,
@@ -850,37 +732,31 @@ class CommerceRepository {
 
   // ─── Customer Identity & Deduplication ─────────────────────────────────────
 
-  /**
-   * Deduplicates customers by phone number. If existing, updates contact info.
-   * If new, generates a human-readable Customer ID (e.g. "MC-7K4P2").
-   */
-  public findOrCreateCustomer(params: {
+  public async findOrCreateCustomer(params: {
     phone: string;
     name: string;
     email?: string;
-  }): Customer {
+  }): Promise<Customer> {
+    if (!supabase) throw new Error("Supabase client missing");
     const cleanPhone = params.phone.replace(/[^0-9+]/g, '');
-    const existingId = this.customerPhoneIndex.get(cleanPhone);
-
     const now = new Date().toISOString();
 
-    if (existingId && this.customers.has(existingId)) {
-      const existing = this.customers.get(existingId)!;
+    const { data: existingData } = await supabase
+      .from('customers')
+      .select('*')
+      .eq('phone', cleanPhone)
+      .maybeSingle();
+
+    if (existingData) {
+      const existing = mapRowToCustomer(existingData);
       const updated: Customer = {
         ...existing,
         name: params.name || existing.name,
         email: params.email || existing.email,
         updatedAt: now,
       };
-      this.customers.set(existingId, updated);
-      if (supabase) {
-        supabase
-          .from('customers')
-          .upsert(mapCustomerToRow(updated))
-          .then(({ error }) => {
-            if (error) console.error('[Supabase] Failed to update customer:', error.message);
-          });
-      }
+      
+      await supabase.from('customers').upsert(mapCustomerToRow(updated));
       return updated;
     }
 
@@ -893,34 +769,30 @@ class CommerceRepository {
       updatedAt: now,
     };
 
-    this.customers.set(newCustomer.id, newCustomer);
-    this.customerPhoneIndex.set(cleanPhone, newCustomer.id);
-    if (supabase) {
-      supabase
-        .from('customers')
-        .upsert(mapCustomerToRow(newCustomer))
-        .then(({ error }) => {
-          if (error) console.error('[Supabase] Failed to persist new customer:', error.message);
-        });
-    }
+    await supabase.from('customers').upsert(mapCustomerToRow(newCustomer));
     return newCustomer;
   }
 
-  public getCustomerById(id: string): Customer | null {
-    return this.customers.get(id) || null;
+  public async getCustomerById(id: string): Promise<Customer | null> {
+    if (!supabase) throw new Error("Supabase client missing");
+    const { data, error } = await supabase.from('customers').select('*').eq('id', id).maybeSingle();
+    if (error || !data) return null;
+    return mapRowToCustomer(data);
   }
 
-  public getCustomerByPhone(phone: string): Customer | null {
+  public async getCustomerByPhone(phone: string): Promise<Customer | null> {
+    if (!supabase) throw new Error("Supabase client missing");
     const cleanPhone = phone.replace(/[^0-9+]/g, '');
-    const id = this.customerPhoneIndex.get(cleanPhone);
-    if (!id) return null;
-    return this.customers.get(id) || null;
+    const { data, error } = await supabase.from('customers').select('*').eq('phone', cleanPhone).maybeSingle();
+    if (error || !data) return null;
+    return mapRowToCustomer(data);
   }
 
-  public getAllCustomers(): Customer[] {
-    return Array.from(this.customers.values()).sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    );
+  public async getAllCustomers(): Promise<Customer[]> {
+    if (!supabase) throw new Error("Supabase client missing");
+    const { data, error } = await supabase.from('customers').select('*').order('created_at', { ascending: false });
+    if (error || !data) return [];
+    return data.map(mapRowToCustomer);
   }
 
   // ─── Order Intents ──────────────────────────────────────────────────────────
@@ -934,18 +806,19 @@ class CommerceRepository {
     lensRequest?: Omit<LensRequest, 'id' | 'customerId' | 'createdAt' | 'updatedAt'>;
     vtoSessionRef?: string;
   }): Promise<{ intent: OrderIntent; customer: Customer; whatsappUrl: string }> {
-    const customer = this.findOrCreateCustomer(params.customer);
-    const variant = this.getVariantById(params.variantId);
+    const customer = await this.findOrCreateCustomer(params.customer);
+    const variant = await this.getVariantById(params.variantId);
+    
     if (!variant) {
       throw new Error(`Variant ${params.variantId} not found`);
     }
 
-    const product = this.products.get(variant.productId);
+    const product = await this.getProductById(variant.productId);
     const productName = product?.name || 'Eyewear Frame';
 
     let lensRequestId: string | undefined;
     if (params.lensRequest) {
-      const lensReq = this.createLensRequest({
+      const lensReq = await this.createLensRequest({
         ...params.lensRequest,
         customerId: customer.id,
       });
@@ -967,7 +840,7 @@ class CommerceRepository {
       variantName: variant.name,
       variantSku: variant.sku,
       quantity: Math.max(1, params.quantity || 1),
-      priceAtIntent: variant.effectivePrice, // Historical snapshot
+      priceAtIntent: variant.effectivePrice,
       currency: 'NGN',
       lensRequestId,
       vtoSessionRef: params.vtoSessionRef,
@@ -978,15 +851,11 @@ class CommerceRepository {
       updatedAt: now,
     };
 
-    this.orderIntents.set(intent.id, intent);
     if (supabase) {
-      const { error } = await supabase
-        .from('order_intents')
-        .upsert(mapOrderIntentToRow(intent));
+      const { error } = await supabase.from('order_intents').upsert(mapOrderIntentToRow(intent));
       if (error) console.error('[Supabase] Failed to persist order intent:', error.message);
     }
 
-    // Format WhatsApp message with non-sensitive reference context
     const waNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || siteConfig.whatsappNumber;
     const waText = [
       `Hi McDaves Optical!`,
@@ -1009,22 +878,27 @@ class CommerceRepository {
     return { intent, customer, whatsappUrl };
   }
 
-  public getOrderIntentById(id: string): OrderIntent | null {
-    return this.orderIntents.get(id) || null;
+  public async getOrderIntentById(id: string): Promise<OrderIntent | null> {
+    if (!supabase) throw new Error("Supabase client missing");
+    const { data, error } = await supabase.from('order_intents').select('*').eq('id', id).maybeSingle();
+    if (error || !data) return null;
+    return mapRowToOrderIntent(data);
   }
 
-  public getAllOrderIntents(): OrderIntent[] {
-    return Array.from(this.orderIntents.values()).sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    );
+  public async getAllOrderIntents(): Promise<OrderIntent[]> {
+    if (!supabase) throw new Error("Supabase client missing");
+    const { data, error } = await supabase.from('order_intents').select('*').order('created_at', { ascending: false });
+    if (error || !data) return [];
+    return data.map(mapRowToOrderIntent);
   }
 
-  public updateOrderIntentStatus(
+  public async updateOrderIntentStatus(
     id: string,
     status: OrderIntentStatus,
     notes?: string,
-  ): OrderIntent {
-    const existing = this.orderIntents.get(id);
+  ): Promise<OrderIntent> {
+    if (!supabase) throw new Error("Supabase client missing");
+    const existing = await this.getOrderIntentById(id);
     if (!existing) throw new Error(`Order intent ${id} not found`);
 
     const updated: OrderIntent = {
@@ -1034,24 +908,19 @@ class CommerceRepository {
       updatedAt: new Date().toISOString(),
     };
 
-    this.orderIntents.set(id, updated);
-    if (supabase) {
-      supabase
-        .from('order_intents')
-        .upsert(mapOrderIntentToRow(updated))
-        .then(({ error }) => {
-          if (error) console.error('[Supabase] Failed to update order intent status:', error.message);
-        });
-    }
+    const { error } = await supabase.from('order_intents').upsert(mapOrderIntentToRow(updated));
+    if (error) console.error('[Supabase] Failed to update order intent status:', error.message);
+    
     return updated;
   }
 
-  public setOrderIntentPaymentLink(
+  public async setOrderIntentPaymentLink(
     id: string,
     paymentLinkUrl: string,
     paystackReference: string,
-  ): OrderIntent {
-    const existing = this.orderIntents.get(id);
+  ): Promise<OrderIntent> {
+    if (!supabase) throw new Error("Supabase client missing");
+    const existing = await this.getOrderIntentById(id);
     if (!existing) throw new Error(`Order intent ${id} not found`);
 
     const updated: OrderIntent = {
@@ -1062,23 +931,18 @@ class CommerceRepository {
       updatedAt: new Date().toISOString(),
     };
 
-    this.orderIntents.set(id, updated);
-    if (supabase) {
-      supabase
-        .from('order_intents')
-        .upsert(mapOrderIntentToRow(updated))
-        .then(({ error }) => {
-          if (error) console.error('[Supabase] Failed to update order intent payment link:', error.message);
-        });
-    }
+    const { error } = await supabase.from('order_intents').upsert(mapOrderIntentToRow(updated));
+    if (error) console.error('[Supabase] Failed to update order intent payment link:', error.message);
+    
     return updated;
   }
 
   // ─── Lens Requests ──────────────────────────────────────────────────────────
 
-  public createLensRequest(
+  public async createLensRequest(
     params: Omit<LensRequest, 'id' | 'createdAt' | 'updatedAt'>,
-  ): LensRequest {
+  ): Promise<LensRequest> {
+    if (!supabase) throw new Error("Supabase client missing");
     const id = generateLensRequestId();
     const now = new Date().toISOString();
 
@@ -1090,25 +954,22 @@ class CommerceRepository {
       updatedAt: now,
     };
 
-    this.lensRequests.set(id, req);
-    if (supabase) {
-      supabase
-        .from('lens_requests')
-        .upsert(mapLensRequestToRow(req))
-        .then(({ error }) => {
-          if (error) console.error('[Supabase] Failed to persist lens request:', error.message);
-        });
-    }
+    const { error } = await supabase.from('lens_requests').upsert(mapLensRequestToRow(req));
+    if (error) console.error('[Supabase] Failed to persist lens request:', error.message);
+    
     return req;
   }
 
-  public getLensRequestById(id: string): LensRequest | null {
-    return this.lensRequests.get(id) || null;
+  public async getLensRequestById(id: string): Promise<LensRequest | null> {
+    if (!supabase) throw new Error("Supabase client missing");
+    const { data, error } = await supabase.from('lens_requests').select('*').eq('id', id).maybeSingle();
+    if (error || !data) return null;
+    return mapRowToLensRequest(data);
   }
 
   // ─── Payments & Confirmed Orders ───────────────────────────────────────────
 
-  public recordPayment(params: {
+  public async recordPayment(params: {
     reference: string;
     orderIntentId?: string;
     customerId: string;
@@ -1119,7 +980,8 @@ class CommerceRepository {
     paidAt?: string;
     paystackAccessCode?: string;
     gatewayResponse?: Record<string, unknown>;
-  }): Payment {
+  }): Promise<Payment> {
+    if (!supabase) throw new Error("Supabase client missing");
     const now = new Date().toISOString();
     const payment: Payment = {
       id: `pay-${params.reference}`,
@@ -1137,26 +999,19 @@ class CommerceRepository {
       updatedAt: now,
     };
 
-    this.payments.set(params.reference, payment);
-    if (supabase) {
-      supabase
-        .from('payments')
-        .upsert(mapPaymentToRow(payment))
-        .then(({ error }) => {
-          if (error) console.error('[Supabase] Failed to persist payment:', error.message);
-        });
-    }
+    const { error } = await supabase.from('payments').upsert(mapPaymentToRow(payment));
+    if (error) console.error('[Supabase] Failed to persist payment:', error.message);
+    
     return payment;
   }
 
-  public getPaymentByReference(reference: string): Payment | null {
-    return this.payments.get(reference) || null;
+  public async getPaymentByReference(reference: string): Promise<Payment | null> {
+    if (!supabase) throw new Error("Supabase client missing");
+    const { data, error } = await supabase.from('payments').select('*').eq('reference', reference).maybeSingle();
+    if (error || !data) return null;
+    return mapRowToPayment(data);
   }
 
-  /**
-   * Creates an official Order ONLY after confirmed Paystack payment.
-   * Converts the associated OrderIntent to CONVERTED.
-   */
   public async createOrderFromConfirmedPayment(params: {
     paymentReference: string;
     orderIntentId?: string;
@@ -1164,7 +1019,9 @@ class CommerceRepository {
     shippingAddress?: Order['shippingAddress'];
     customerNotes?: string;
   }): Promise<{ order: Order; payment: Payment }> {
-    let payment = this.getPaymentByReference(params.paymentReference);
+    if (!supabase) throw new Error("Supabase client missing");
+    
+    let payment = await this.getPaymentByReference(params.paymentReference);
     if (!payment) {
       throw new Error(`Payment reference ${params.paymentReference} not found`);
     }
@@ -1181,10 +1038,9 @@ class CommerceRepository {
     let subtotal = payment.amount;
     const shippingFee = 0;
 
-    // If linked to an order intent, extract frozen item data
     const intentId = params.orderIntentId || payment.orderIntentId;
     if (intentId) {
-      const intent = this.orderIntents.get(intentId);
+      const intent = await this.getOrderIntentById(intentId);
       if (intent) {
         customerId = intent.customerId;
         subtotal = intent.priceAtIntent * intent.quantity;
@@ -1205,11 +1061,11 @@ class CommerceRepository {
         // Mark Intent as CONVERTED
         intent.status = 'CONVERTED';
         intent.updatedAt = now;
-        this.orderIntents.set(intent.id, intent);
+        const { error: intentError } = await supabase.from('order_intents').upsert(mapOrderIntentToRow(intent));
+        if (intentError) console.error('[Supabase] Failed to update converted intent in Supabase:', intentError.message);
       }
     }
 
-    // If no order intent was linked, try to create items from payment metadata
     if (orderItems.length === 0) {
       const metadata = payment.gatewayResponse || {};
       const metadataItems = metadata.orderItems;
@@ -1261,42 +1117,31 @@ class CommerceRepository {
       updatedAt: now,
     };
 
-    this.orders.set(orderId, order);
-    if (supabase) {
-      const { error: orderError } = await supabase
-        .from('orders')
-        .upsert(mapOrderToRow(order));
-      if (orderError) console.error('[Supabase] Failed to persist confirmed order:', orderError.message);
+    const { error: orderError } = await supabase.from('orders').upsert(mapOrderToRow(order));
+    if (orderError) console.error('[Supabase] Failed to persist confirmed order:', orderError.message);
 
-      if (intentId) {
-        const updatedIntent = this.orderIntents.get(intentId);
-        if (updatedIntent) {
-          const { error: intentError } = await supabase
-            .from('order_intents')
-            .upsert(mapOrderIntentToRow(updatedIntent));
-          if (intentError) console.error('[Supabase] Failed to update converted intent in Supabase:', intentError.message);
-        }
-      }
-    }
     return { order, payment };
   }
 
-  public getAllOrders(): Order[] {
-    return Array.from(this.orders.values()).sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    );
+  public async getAllOrders(): Promise<Order[]> {
+    if (!supabase) throw new Error("Supabase client missing");
+    const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+    if (error || !data) return [];
+    return data.map(mapRowToOrder);
   }
 
-  public getOrderById(id: string): Order | null {
-    return this.orders.get(id) || null;
+  public async getOrderById(id: string): Promise<Order | null> {
+    if (!supabase) throw new Error("Supabase client missing");
+    const { data, error } = await supabase.from('orders').select('*').eq('id', id).maybeSingle();
+    if (error || !data) return null;
+    return mapRowToOrder(data);
   }
 
-  public getOrderByPaymentReference(ref: string): Order | null {
-    return (
-      Array.from(this.orders.values()).find(
-        (o) => o.paymentReference === ref,
-      ) || null
-    );
+  public async getOrderByPaymentReference(ref: string): Promise<Order | null> {
+    if (!supabase) throw new Error("Supabase client missing");
+    const { data, error } = await supabase.from('orders').select('*').eq('payment_reference', ref).maybeSingle();
+    if (error || !data) return null;
+    return mapRowToOrder(data);
   }
 }
 

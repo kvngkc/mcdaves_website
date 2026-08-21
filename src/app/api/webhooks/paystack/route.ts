@@ -56,7 +56,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       const quantity = metadata.quantity ? Number(metadata.quantity) : 1;
 
       // 1. Idempotency Check: if order already exists for this payment reference, acknowledge without duplicate processing
-      const existingOrder = commerceRepository.getOrderByPaymentReference(reference);
+      const existingOrder = await commerceRepository.getOrderByPaymentReference(reference);
       if (existingOrder) {
         console.log(`[Paystack Webhook] Order already confirmed for reference ${reference}. Skipping.`);
         return NextResponse.json({ status: 'success', message: 'Order already processed' }, { status: 200 });
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }
 
       // 3. Record Payment
-      commerceRepository.recordPayment({
+      await commerceRepository.recordPayment({
         reference,
         orderIntentId,
         customerId,
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       });
 
       // 4. Create Confirmed Order
-      commerceRepository.createOrderFromConfirmedPayment({
+      await commerceRepository.createOrderFromConfirmedPayment({
         paymentReference: reference,
         orderIntentId,
         customerId,

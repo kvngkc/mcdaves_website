@@ -20,7 +20,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const status = searchParams.get('status');
     const search = searchParams.get('search')?.toLowerCase();
 
-    let orders = commerceRepository.getAllOrders();
+    let orders = await commerceRepository.getAllOrders();
 
     if (status && status !== 'ALL') {
       orders = orders.filter((o) => o.status === status);

@@ -56,7 +56,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       }
 
       // Record successful payment
-      commerceRepository.recordPayment({
+      await commerceRepository.recordPayment({
         reference: cleanRef,
         orderIntentId,
         customerId: customerId || 'MC-ONLINE',
@@ -69,7 +69,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
       // Create official confirmed order (converts OrderIntent to CONVERTED)
       let createdOrder;
-      const existingOrder = commerceRepository.getOrderByPaymentReference(cleanRef);
+      const existingOrder = await commerceRepository.getOrderByPaymentReference(cleanRef);
       if (existingOrder) {
         createdOrder = existingOrder;
       } else {
@@ -93,7 +93,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
 
     // Payment failed or abandoned
-    commerceRepository.recordPayment({
+    await commerceRepository.recordPayment({
       reference: cleanRef,
       customerId: 'MC-ONLINE',
       amount: result.amount,

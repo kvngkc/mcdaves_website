@@ -100,7 +100,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
       // Look up variant if variantId provided
       if (item.variantId) {
-        const variant = commerceRepository.getVariantById(item.variantId);
+        const variant = await commerceRepository.getVariantById(item.variantId);
         if (variant) {
           unitPrice = variant.effectivePrice ?? variant.priceOverride ?? 35000;
           variantName = variant.name;
@@ -120,8 +120,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       } else {
         // Fall back to product lookup
         const product =
-          commerceRepository.getProductById(item.productId) ||
-          commerceRepository.getProductBySlug(item.productId);
+          (await commerceRepository.getProductById(item.productId)) ||
+          (await commerceRepository.getProductBySlug(item.productId));
         if (product) {
           unitPrice = product.defaultPrice;
           variantName = product.name;

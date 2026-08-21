@@ -20,7 +20,7 @@ interface PageProps {
 }
 
 export async function generateStaticParams() {
-  const products = commerceRepository.getAllProducts();
+  const products = await commerceRepository.getAllProducts();
   const params: { productSlug: string; variantSlug: string }[] = [];
 
   products.forEach((product) => {
@@ -37,7 +37,7 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { productSlug, variantSlug } = await params;
-  const match = commerceRepository.getProductVariantBySlug(productSlug, variantSlug);
+  const match = await commerceRepository.getProductVariantBySlug(productSlug, variantSlug);
 
   if (!match) {
     return {
@@ -67,7 +67,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function ExactVariantPage({ params }: PageProps) {
   const { productSlug, variantSlug } = await params;
-  const match = commerceRepository.getProductVariantBySlug(productSlug, variantSlug);
+  const match = await commerceRepository.getProductVariantBySlug(productSlug, variantSlug);
 
   if (!match) {
     notFound();
@@ -75,7 +75,7 @@ export default async function ExactVariantPage({ params }: PageProps) {
 
   const { product, variant } = match;
 
-  const allProducts = commerceRepository.getAllProducts();
+  const allProducts = await commerceRepository.getAllProducts();
   const relatedResolved = allProducts
     .filter((p) => p.id !== product.id && p.collection === product.collection)
     .slice(0, 3);

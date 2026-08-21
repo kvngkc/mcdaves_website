@@ -38,16 +38,16 @@ export async function GET(
   }
 
   const { id } = await params;
-  const intent = commerceRepository.getOrderIntentById(id);
+  const intent = await commerceRepository.getOrderIntentById(id);
 
   if (!intent) {
     return NextResponse.json({ error: 'Order intent not found' }, { status: 404 });
   }
 
-  const customer = commerceRepository.getCustomerById(intent.customerId);
-  const variant = commerceRepository.getVariantById(intent.variantId);
+  const customer = await commerceRepository.getCustomerById(intent.customerId);
+  const variant = await commerceRepository.getVariantById(intent.variantId);
   const lensRequest = intent.lensRequestId
-    ? commerceRepository.getLensRequestById(intent.lensRequestId)
+    ? await commerceRepository.getLensRequestById(intent.lensRequestId)
     : null;
 
   return NextResponse.json({ intent, customer, variant, lensRequest }, { status: 200 });
@@ -64,7 +64,7 @@ export async function PATCH(
     }
 
     const { id } = await params;
-    const intent = commerceRepository.getOrderIntentById(id);
+    const intent = await commerceRepository.getOrderIntentById(id);
 
     if (!intent) {
       return NextResponse.json({ error: 'Order intent not found' }, { status: 404 });
@@ -84,7 +84,7 @@ export async function PATCH(
 
     // 1. Update status / notes if provided
     if (parsed.data.status) {
-      updatedIntent = commerceRepository.updateOrderIntentStatus(
+      updatedIntent = await commerceRepository.updateOrderIntentStatus(
         id,
         parsed.data.status,
         parsed.data.notes,
@@ -121,7 +121,7 @@ export async function PATCH(
       });
 
       // Record pending payment in repository
-      commerceRepository.recordPayment({
+      await commerceRepository.recordPayment({
         reference: paymentRef,
         orderIntentId: intent.id,
         customerId: intent.customerId,
@@ -130,7 +130,7 @@ export async function PATCH(
         paystackAccessCode: initResult.accessCode,
       });
 
-      updatedIntent = commerceRepository.setOrderIntentPaymentLink(
+      updatedIntent = await commerceRepository.setOrderIntentPaymentLink(
         id,
         initResult.authorizationUrl,
         paymentRef,

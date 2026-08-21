@@ -17,7 +17,7 @@ interface PageProps {
 }
 
 export async function generateStaticParams() {
-  const products = commerceRepository.getAllProducts();
+  const products = await commerceRepository.getAllProducts();
   return products.map((product) => ({
     slug: product.slug,
   }));
@@ -25,7 +25,7 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const product = (await getLiveResolvedProductBySlug(slug)) || commerceRepository.getProductBySlug(slug);
+  const product = (await getLiveResolvedProductBySlug(slug)) || (await commerceRepository.getProductBySlug(slug));
   if (!product) {
     return {
       title: 'Product Not Found | McDaves',
@@ -54,13 +54,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function ProductDetailPage({ params }: PageProps) {
   const { slug } = await params;
-  const product = (await getLiveResolvedProductBySlug(slug)) || commerceRepository.getProductBySlug(slug);
+  const product = (await getLiveResolvedProductBySlug(slug)) || (await commerceRepository.getProductBySlug(slug));
 
   if (!product) {
     notFound();
   }
 
-  const allProducts = await getLiveStorefrontProducts();
+  const allProducts = await commerceRepository.getAllProducts();
   const relatedResolved = allProducts
     .filter((p) => p.id !== product.id && p.collection === product.collection)
     .slice(0, 3);
