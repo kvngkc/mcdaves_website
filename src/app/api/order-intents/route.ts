@@ -76,7 +76,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const { customer, variantId, quantity, source, notes, lensRequest, vtoSessionRef } =
       parsed.data;
 
-    const result = commerceRepository.createOrderIntent({
+    const result = await commerceRepository.createOrderIntent({
       customer: {
         name: customer.name,
         phone: customer.phone,

@@ -54,18 +54,19 @@ export function ProductGrid({
 
         {/* Products Grid */}
         {products && products.length > 0 ? (
-          <div className={`grid ${gridColClass} gap-4 sm:gap-6`}>
+          <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 sm:gap-6 pb-6 no-scrollbar">
             {products.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                showTryOn={showTryOn}
-                onAddToCart={(prod) => {
-                  addItem(prod, 1);
-                  openDrawer();
-                }}
-                onTryOn={(prod) => setTryOnProduct(prod)}
-              />
+              <div key={product.id} className="snap-center shrink-0 w-[85vw] sm:w-[350px]">
+                <ProductCard
+                  product={product}
+                  showTryOn={showTryOn}
+                  onAddToCart={(prod) => {
+                    addItem(prod, 1);
+                    openDrawer();
+                  }}
+                  onTryOn={(prod) => setTryOnProduct(prod)}
+                />
+              </div>
             ))}
           </div>
         ) : (

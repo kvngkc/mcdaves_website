@@ -73,7 +73,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       if (existingOrder) {
         createdOrder = existingOrder;
       } else {
-        const orderResult = commerceRepository.createOrderFromConfirmedPayment({
+        const orderResult = await commerceRepository.createOrderFromConfirmedPayment({
           paymentReference: cleanRef,
           orderIntentId,
           customerId,

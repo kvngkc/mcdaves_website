@@ -925,7 +925,7 @@ class CommerceRepository {
 
   // ─── Order Intents ──────────────────────────────────────────────────────────
 
-  public createOrderIntent(params: {
+  public async createOrderIntent(params: {
     customer: { name: string; phone: string; email?: string };
     variantId: string;
     quantity: number;
@@ -933,7 +933,7 @@ class CommerceRepository {
     notes?: string;
     lensRequest?: Omit<LensRequest, 'id' | 'customerId' | 'createdAt' | 'updatedAt'>;
     vtoSessionRef?: string;
-  }): { intent: OrderIntent; customer: Customer; whatsappUrl: string } {
+  }): Promise<{ intent: OrderIntent; customer: Customer; whatsappUrl: string }> {
     const customer = this.findOrCreateCustomer(params.customer);
     const variant = this.getVariantById(params.variantId);
     if (!variant) {
@@ -980,12 +980,10 @@ class CommerceRepository {
 
     this.orderIntents.set(intent.id, intent);
     if (supabase) {
-      supabase
+      const { error } = await supabase
         .from('order_intents')
-        .upsert(mapOrderIntentToRow(intent))
-        .then(({ error }) => {
-          if (error) console.error('[Supabase] Failed to persist order intent:', error.message);
-        });
+        .upsert(mapOrderIntentToRow(intent));
+      if (error) console.error('[Supabase] Failed to persist order intent:', error.message);
     }
 
     // Format WhatsApp message with non-sensitive reference context
@@ -1159,13 +1157,13 @@ class CommerceRepository {
    * Creates an official Order ONLY after confirmed Paystack payment.
    * Converts the associated OrderIntent to CONVERTED.
    */
-  public createOrderFromConfirmedPayment(params: {
+  public async createOrderFromConfirmedPayment(params: {
     paymentReference: string;
     orderIntentId?: string;
     customerId?: string;
     shippingAddress?: Order['shippingAddress'];
     customerNotes?: string;
-  }): { order: Order; payment: Payment } {
+  }): Promise<{ order: Order; payment: Payment }> {
     let payment = this.getPaymentByReference(params.paymentReference);
     if (!payment) {
       throw new Error(`Payment reference ${params.paymentReference} not found`);
@@ -1211,19 +1209,38 @@ class CommerceRepository {
       }
     }
 
-    // If no order intent was linked, create item from payment amount
+    // If no order intent was linked, try to create items from payment metadata
     if (orderItems.length === 0) {
-      orderItems.push({
-        id: `item-${orderId}-1`,
-        orderId,
-        variantId: 'custom-item',
-        productName: 'Eyewear Frame Purchase',
-        variantName: 'Online Payment',
-        sku: 'MCD-ONLINE-PAY',
-        unitPrice: payment.amount,
-        quantity: 1,
-        totalPrice: payment.amount,
-      });
+      const metadata = payment.gatewayResponse || {};
+      const metadataItems = metadata.orderItems;
+      
+      if (Array.isArray(metadataItems) && metadataItems.length > 0) {
+        metadataItems.forEach((item: any, index: number) => {
+          orderItems.push({
+            id: `item-${orderId}-${index + 1}`,
+            orderId,
+            variantId: item.variantId || 'custom-item',
+            productName: item.name || item.productName || 'Eyewear Frame Purchase',
+            variantName: item.color || item.variantName || 'Online Payment',
+            sku: item.variantSku || 'MCD-ONLINE-PAY',
+            unitPrice: Number(item.unitPrice || item.price || payment.amount),
+            quantity: Number(item.quantity || 1),
+            totalPrice: Number(item.totalPrice || payment.amount),
+          });
+        });
+      } else {
+        orderItems.push({
+          id: `item-${orderId}-1`,
+          orderId,
+          variantId: 'custom-item',
+          productName: 'Eyewear Frame Purchase',
+          variantName: 'Online Payment',
+          sku: 'MCD-ONLINE-PAY',
+          unitPrice: payment.amount,
+          quantity: 1,
+          totalPrice: payment.amount,
+        });
+      }
     }
 
     const order: Order = {
@@ -1246,22 +1263,18 @@ class CommerceRepository {
 
     this.orders.set(orderId, order);
     if (supabase) {
-      supabase
+      const { error: orderError } = await supabase
         .from('orders')
-        .upsert(mapOrderToRow(order))
-        .then(({ error }) => {
-          if (error) console.error('[Supabase] Failed to persist confirmed order:', error.message);
-        });
+        .upsert(mapOrderToRow(order));
+      if (orderError) console.error('[Supabase] Failed to persist confirmed order:', orderError.message);
 
       if (intentId) {
         const updatedIntent = this.orderIntents.get(intentId);
         if (updatedIntent) {
-          supabase
+          const { error: intentError } = await supabase
             .from('order_intents')
-            .upsert(mapOrderIntentToRow(updatedIntent))
-            .then(({ error }) => {
-              if (error) console.error('[Supabase] Failed to update converted intent in Supabase:', error.message);
-            });
+            .upsert(mapOrderIntentToRow(updatedIntent));
+          if (intentError) console.error('[Supabase] Failed to update converted intent in Supabase:', intentError.message);
         }
       }
     }

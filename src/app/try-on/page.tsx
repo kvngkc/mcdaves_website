@@ -216,66 +216,67 @@ export default function StandaloneTryOnPage() {
             <p className="text-body-sm text-neutral-600">Select any frame from our Sightly Collection below to launch the live camera AR fitting room.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+          <div className="flex overflow-x-auto snap-x snap-mandatory gap-6 pb-8 no-scrollbar">
             {liveProducts.map((product) => (
-              <div
-                key={product.id}
-                className="bg-white border border-neutral-200 hover:border-brand-300 rounded-2xl p-6 flex flex-col justify-between transition-all shadow-card hover:shadow-card-hover group"
-              >
-                <div>
-                  <div className="relative aspect-[4/3] bg-neutral-100 rounded-xl overflow-hidden mb-6 flex items-center justify-center">
-                    <Image
-                      src={product.images[0]}
-                      alt={product.name}
-                      fill
-                      className="object-contain p-4 group-hover:scale-105 transition-transform duration-300"
-                      sizes="(max-width: 768px) 100vw, 33vw"
-                    />
-                    <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-brand-800 text-white text-[10px] font-bold">
-                      {product.frameSize}
+              <div key={product.id} className="snap-center shrink-0 w-[85vw] sm:w-[350px]">
+                <div
+                  className="bg-white border border-neutral-200 hover:border-brand-300 rounded-2xl p-6 flex flex-col justify-between transition-all shadow-card hover:shadow-card-hover group h-full"
+                >
+                  <div>
+                    <div className="relative aspect-[4/3] bg-neutral-100 rounded-xl overflow-hidden mb-6 flex items-center justify-center">
+                      <Image
+                        src={product.images[0]}
+                        alt={product.name}
+                        fill
+                        className="object-contain p-4 group-hover:scale-105 transition-transform duration-300"
+                        sizes="(max-width: 768px) 100vw, 33vw"
+                      />
+                      <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-brand-800 text-white text-[10px] font-bold">
+                        {product.frameSize}
+                      </div>
+
+                      {product.stockLevel === 'low' && (
+                        <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-full bg-amber-500 text-white text-[10px] font-bold shadow">
+                          🔥 Low Stock
+                        </div>
+                      )}
                     </div>
 
-                    {product.stockLevel === 'low' && (
-                      <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-full bg-amber-500 text-white text-[10px] font-bold shadow">
-                        🔥 Low Stock
-                      </div>
-                    )}
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <span className="text-caption font-semibold text-brand-700 uppercase tracking-wider">
+                        {product.material}
+                      </span>
+                      <span className="text-body-sm font-bold text-neutral-900">
+                        ₦{product.price.toLocaleString()}
+                      </span>
+                    </div>
+
+                    <h3 className="text-h4 text-neutral-900 font-semibold mb-2 group-hover:text-brand-700 transition-colors">
+                      {product.name}
+                    </h3>
+
+                    <p className="text-body-sm text-neutral-600 line-clamp-2 mb-4 leading-relaxed">
+                      {product.description}
+                    </p>
                   </div>
 
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <span className="text-caption font-semibold text-brand-700 uppercase tracking-wider">
-                      {product.material}
-                    </span>
-                    <span className="text-body-sm font-bold text-neutral-900">
-                      ₦{product.price.toLocaleString()}
-                    </span>
+                  <div className="pt-4 border-t border-neutral-100 space-y-2 mt-auto">
+                    <button
+                      onClick={() => handleOpenTryOn(product)}
+                      className="w-full py-3 px-4 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-body-sm font-semibold transition-all shadow-md active:scale-[0.98] flex items-center justify-center gap-2"
+                    >
+                      <Camera className="w-4 h-4" />
+                      <span>Try On {product.name}</span>
+                    </button>
+
+                    <button
+                      onClick={() => handleOpenIntent(product)}
+                      className="w-full py-2.5 px-4 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-xs font-semibold transition flex items-center justify-center gap-2"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Buy / Inquire on WhatsApp</span>
+                    </button>
                   </div>
-
-                  <h3 className="text-h4 text-neutral-900 font-semibold mb-2 group-hover:text-brand-700 transition-colors">
-                    {product.name}
-                  </h3>
-
-                  <p className="text-body-sm text-neutral-600 line-clamp-2 mb-4 leading-relaxed">
-                    {product.description}
-                  </p>
-                </div>
-
-                <div className="pt-4 border-t border-neutral-100 space-y-2">
-                  <button
-                    onClick={() => handleOpenTryOn(product)}
-                    className="w-full py-3 px-4 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-body-sm font-semibold transition-all shadow-md active:scale-[0.98] flex items-center justify-center gap-2"
-                  >
-                    <Camera className="w-4 h-4" />
-                    <span>Try On {product.name}</span>
-                  </button>
-
-                  <button
-                    onClick={() => handleOpenIntent(product)}
-                    className="w-full py-2.5 px-4 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-xs font-semibold transition flex items-center justify-center gap-2"
-                  >
-                    <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Buy / Inquire on WhatsApp</span>
-                  </button>
                 </div>
               </div>
             ))}

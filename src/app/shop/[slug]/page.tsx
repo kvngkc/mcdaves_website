@@ -3,7 +3,7 @@ import React from 'react';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { commerceRepository } from '@/lib/commerce/repository';
-import { getLiveResolvedProductBySlug } from '@/lib/commerce/storefront-catalog';
+import { getLiveResolvedProductBySlug, getLiveStorefrontProducts } from '@/lib/commerce/storefront-catalog';
 import { products as legacyProducts } from '@/data/products';
 import ProductDetailClient from './ProductDetailClient';
 
@@ -60,7 +60,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
     notFound();
   }
 
-  const allProducts = commerceRepository.getAllProducts();
+  const allProducts = await getLiveStorefrontProducts();
   const relatedResolved = allProducts
     .filter((p) => p.id !== product.id && p.collection === product.collection)
     .slice(0, 3);

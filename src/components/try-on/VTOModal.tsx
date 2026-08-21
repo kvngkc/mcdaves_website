@@ -180,6 +180,8 @@ export function VTOModal({
       rafRef.current = null;
     }
     stopCamera();
+    latestDetectionRef.current = null;
+    setFaceDetected(false);
     onClose();
   }, [stopCamera, onClose]);
 
@@ -192,6 +194,7 @@ export function VTOModal({
         rafRef.current = null;
       }
       stopCamera();
+      latestDetectionRef.current = null;
     };
   }, [stopCamera]);
 
