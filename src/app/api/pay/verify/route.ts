@@ -27,11 +27,25 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     if (result.status === 'success') {
       const metadata = (result.metadata || {}) as Record<string, unknown>;
       const orderIntentId = metadata.orderIntentId as string | undefined;
-      const customerId = metadata.customerId as string | undefined;
-      const variantId = metadata.variantId as string | undefined;
-      const quantity = metadata.quantity ? Number(metadata.quantity) : 1;
+      // 1. Ensure Customer exists
+      let finalCustomerId = metadata.customerId as string | undefined;
+      if (!finalCustomerId && metadata.customerPhone && metadata.customerName) {
+        const customer = await commerceRepository.findOrCreateCustomer({
+          phone: metadata.customerPhone as string,
+          name: metadata.customerName as string,
+          email: result.email || undefined,
+        });
+        finalCustomerId = customer.id;
+      } else if (!finalCustomerId && result.email) {
+        const customer = await commerceRepository.findOrCreateCustomer({
+          phone: '0000000000',
+          name: 'Anonymous Checkout',
+          email: result.email,
+        });
+        finalCustomerId = customer.id;
+      }
 
-      // 1. Atomic Payment Processing via PostgreSQL RPC
+      // 2. Atomic Payment Processing via PostgreSQL RPC
       const items: Record<string, unknown>[] = [];
       if (metadata.orderItems && Array.isArray(metadata.orderItems)) {
         metadata.orderItems.forEach((item: Record<string, unknown>) => {
@@ -50,7 +64,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       const processResult = await commerceRepository.processConfirmedPayment({
         paymentReference: cleanRef,
         orderIntentId,
-        customerId: customerId || 'MC-ONLINE',
+        customerId: finalCustomerId || 'MC-ONLINE',
         amount: result.amount,
         currency: 'NGN',
         channel: result.channel,

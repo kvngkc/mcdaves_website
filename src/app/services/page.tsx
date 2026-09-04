@@ -25,14 +25,6 @@ export default function ServicesPage() {
       features: ['Turnaround 2–5 business days', 'Anti-reflective coating included', 'Free frame realignment & ultrasonic cleaning'],
     },
     {
-      title: 'Frame Repairs & Realignment',
-      slug: '/services/repairs',
-      description: 'Professional optical repairs for bent hinges, broken screws, loose temple arms, and bridge adjustments.',
-      turnaround: '1–2 business days',
-      icon: <Wrench className="w-8 h-8 text-brand-600" />,
-      features: ['Hinge tightening & screw replacement', 'Nose pad replacement', 'Ultrasonic deep clean'],
-    },
-    {
       title: 'How It Works',
       slug: '/services/how-it-works',
       description: 'Simple 3-step process to get your glasses serviced or relensed with nationwide doorstep pickup & delivery.',

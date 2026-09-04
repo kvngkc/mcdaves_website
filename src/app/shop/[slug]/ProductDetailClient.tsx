@@ -284,7 +284,7 @@ export default function ProductDetailClient({
                 onClick={handleAddToCart}
                 leadingIcon={<ShoppingBag className="w-5 h-5 text-neutral-700" />}
               >
-                {isOutOfStock ? 'Sold Out' : 'Add to Bag'}
+                {isOutOfStock ? 'Sold Out' : 'Add to Cart'}
               </Button>
             </div>
 

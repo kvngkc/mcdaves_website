@@ -33,7 +33,7 @@ export function HowItWorks() {
         {/* Section Header */}
         <div className="text-center max-w-xl mx-auto mb-12 lg:mb-16">
           <h2 className="text-h2 text-neutral-900 mb-3">How It Works</h2>
-          <p className="text-body text-neutral-600">No store? No problem.</p>
+          <p className="text-body text-neutral-600">Seamless virtual service. We handle your eyewear needs completely online, straight to your door.</p>
         </div>
 
         {/* 3-Step Grid */}
