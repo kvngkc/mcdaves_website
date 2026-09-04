@@ -61,7 +61,13 @@ export function ProductGrid({
                   product={product}
                   showTryOn={showTryOn}
                   onAddToCart={(prod) => {
-                    addItem(prod, 1);
+                    addItem(
+                      prod, 
+                      prod.id, 
+                      prod.id, 
+                      1, 
+                      prod.colors?.[0]?.name
+                    );
                     openDrawer();
                   }}
                   onTryOn={(prod) => setTryOnProduct(prod)}

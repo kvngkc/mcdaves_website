@@ -2,22 +2,27 @@
 'use client';
 
 import React, { createContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { CartItem, Product } from '@/lib/types';
+import { CartItem } from '@/lib/types';
+import { ResolvedProduct } from '@/lib/commerce/types';
+import { Product as LegacyProduct } from '@/data/products';
 import { deliveryConfig } from '@/config/services';
+
+type CartProduct = ResolvedProduct | LegacyProduct;
 
 export interface CartContextType {
   items: CartItem[];
   isOpen: boolean;
   addItem: (
-    product: Product,
+    product: CartProduct,
+    variantId: string,
+    variantSku: string,
     quantity?: number,
     color?: string,
-    variantId?: string,
-    variantSku?: string,
     priceOverride?: number,
+    unitsInStock?: number,
   ) => void;
-  removeItem: (productId: string, color?: string, variantId?: string) => void;
-  updateQuantity: (productId: string, quantity: number, color?: string, variantId?: string) => void;
+  removeItem: (variantId: string) => void;
+  updateQuantity: (variantId: string, quantity: number) => void;
   clearCart: () => void;
   toggleDrawer: () => void;
   openDrawer: () => void;
@@ -49,6 +54,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.error('Failed to load cart from localStorage:', error);
+      // Remove the corrupt cart data so it doesn't cause repeated failures
+      localStorage.removeItem(LOCAL_STORAGE_KEY);
+      throw new Error('Cart data was corrupted and has been cleared.');
     } finally {
       setIsHydrated(true);
     }
@@ -78,54 +86,62 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const addItem = useCallback(
     (
-      product: Product,
+      product: CartProduct,
+      variantId: string,
+      variantSku: string,
       quantity = 1,
       color?: string,
-      variantId?: string,
-      variantSku?: string,
       priceOverride?: number,
+      unitsInStock?: number,
     ) => {
       setItems((prevItems) => {
-        const itemVariantId = variantId;
-        const itemColor = color;
-        const effectivePrice = priceOverride ?? product.price;
+        // Resolve price and image depending on whether it's a ResolvedProduct or LegacyProduct
+        const isResolvedProduct = 'defaultPrice' in product;
+        const basePrice = isResolvedProduct ? product.defaultPrice : (product as LegacyProduct).price;
+        const effectivePrice = priceOverride ?? basePrice;
 
-        const existingIndex = prevItems.findIndex((item) => {
-          if (itemVariantId && item.variantId) {
-            return item.variantId === itemVariantId;
-          }
-          if (itemColor !== undefined) {
-            return item.productId === product.id && item.color === itemColor;
-          }
-          return item.productId === product.id;
-        });
+        const existingIndex = prevItems.findIndex((item) => item.variantId === variantId);
 
         if (existingIndex > -1) {
           const updated = [...prevItems];
           const existing = updated[existingIndex];
+          const newQuantity = existing.quantity + quantity;
+          if (unitsInStock !== undefined && newQuantity > unitsInStock) {
+            alert(`Cannot add more than ${unitsInStock} units to cart.`);
+            return prevItems;
+          }
+
           updated[existingIndex] = {
             ...existing,
-            quantity: existing.quantity + quantity,
+            quantity: newQuantity,
             price: effectivePrice,
           };
           return updated;
         }
 
-        const image =
-          product.images?.[0] ||
-          '/images/products/sightly/classic-havana/front.webp';
+          const baseImage = isResolvedProduct
+            ? (product.media?.[0]?.url || '/images/products/sightly/classic-havana/front.webp')
+            : ((product as LegacyProduct).images?.[0] || '/images/products/sightly/classic-havana/front.webp');
+          
+          const image = baseImage;
+
+        if (unitsInStock !== undefined && quantity > unitsInStock) {
+          alert(`Cannot add more than ${unitsInStock} units to cart.`);
+          return prevItems;
+        }
 
         const newItem: CartItem = {
           productId: product.id,
-          variantId: itemVariantId,
-          variantSku: variantSku,
+          variantId,
+          variantSku,
           slug: product.slug,
           name: product.name,
           price: effectivePrice,
-          color: itemColor,
+          color,
           image,
           quantity,
           prescriptionRequired: product.prescriptionRequired ?? false,
+          unitsInStock,
         };
 
         return [...prevItems, newItem];
@@ -135,37 +151,24 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
-  const removeItem = useCallback((productId: string, color?: string, variantId?: string) => {
-    setItems((prevItems) =>
-      prevItems.filter((item) => {
-        if (variantId && item.variantId) {
-          return item.variantId !== variantId;
-        }
-        if (color !== undefined) {
-          return !(item.productId === productId && item.color === color);
-        }
-        return item.productId !== productId;
-      })
-    );
+  const removeItem = useCallback((variantId: string) => {
+    setItems((prevItems) => prevItems.filter((item) => item.variantId !== variantId));
   }, []);
 
   const updateQuantity = useCallback(
-    (productId: string, quantity: number, color?: string, variantId?: string) => {
+    (variantId: string, quantity: number) => {
       if (quantity <= 0) {
-        removeItem(productId, color, variantId);
+        removeItem(variantId);
         return;
       }
 
       setItems((prevItems) =>
         prevItems.map((item) => {
-          const match =
-            variantId && item.variantId
-              ? item.variantId === variantId
-              : color !== undefined
-              ? item.productId === productId && item.color === color
-              : item.productId === productId;
-
-          if (match) {
+          if (item.variantId === variantId) {
+            if (item.unitsInStock !== undefined && quantity > item.unitsInStock) {
+              alert(`Cannot add more than ${item.unitsInStock} units to cart.`);
+              return item;
+            }
             return { ...item, quantity };
           }
           return item;

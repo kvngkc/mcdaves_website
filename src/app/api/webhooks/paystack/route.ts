@@ -55,57 +55,37 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       const variantId = metadata.variantId as string | undefined;
       const quantity = metadata.quantity ? Number(metadata.quantity) : 1;
 
-      // 1. Idempotency Check: if order already exists for this payment reference, acknowledge without duplicate processing
-      const existingOrder = await commerceRepository.getOrderByPaymentReference(reference);
-      if (existingOrder) {
-        console.log(`[Paystack Webhook] Order already confirmed for reference ${reference}. Skipping.`);
-        return NextResponse.json({ status: 'success', message: 'Order already processed' }, { status: 200 });
-      }
-
-      // 2. Atomic Inventory Decrement via PostgreSQL RPC / Repository
-      const itemsToDecrement: { variantId?: string; quantity: number }[] = [];
+      // 1. Atomic Payment Processing via PostgreSQL RPC (handles idempotency natively)
+      const items: Record<string, unknown>[] = [];
       if (metadata.orderItems && Array.isArray(metadata.orderItems)) {
-        metadata.orderItems.forEach((item: any) => {
-          if (item.variantId) {
-            itemsToDecrement.push({
-              variantId: item.variantId,
-              quantity: item.quantity ? Number(item.quantity) : 1,
-            });
-          }
+        metadata.orderItems.forEach((item: Record<string, unknown>) => {
+          items.push({
+            ...item,
+            quantity: item.quantity ? Number(item.quantity) : 1,
+          });
         });
-      } else if (metadata.variantId) {
-        itemsToDecrement.push({
-          variantId: metadata.variantId,
+      } else if (variantId) {      items.push({
+          variantId: metadata.variantId || 'custom-item',
           quantity: metadata.quantity ? Number(metadata.quantity) : 1,
         });
       }
 
-      for (const item of itemsToDecrement) {
-        if (item.variantId) {
-          await commerceRepository.decrementVariantStock(item.variantId, item.quantity);
-        }
-      }
-
-      // 3. Record Payment
-      await commerceRepository.recordPayment({
-        reference,
-        orderIntentId,
-        customerId,
-        amount,
-        status: 'PAID',
-        channel: data.channel,
-        paidAt: data.paid_at,
-        gatewayResponse: data,
-      });
-
-      // 4. Create Confirmed Order
-      await commerceRepository.createOrderFromConfirmedPayment({
+      const processResult = await commerceRepository.processConfirmedPayment({
         paymentReference: reference,
         orderIntentId,
         customerId,
+        amount,
+        currency: 'NGN',
+        channel: data.channel,
+        paidAt: data.paid_at,
+        gatewayResponse: data,
+        items,
+        subtotal: amount,
+        shippingFee: 0,
+        totalAmount: amount,
       });
 
-      console.log(`[Paystack Webhook] Successfully processed confirmed order for reference ${reference}.`);
+      console.log(`[Paystack Webhook] Successfully processed confirmed order for reference ${reference}. Order ID: ${processResult.orderId}`);
     }
 
     return NextResponse.json({ status: 'success' }, { status: 200 });

@@ -27,6 +27,25 @@ import { Matrix4, Quaternion, Vector3, Euler } from 'three';
 
 export const CANONICAL_NOSE_BRIDGE = new Vector3(0.0, 3.271027, 5.236015);
 
+const _m = new Matrix4();
+const _rawPos = new Vector3();
+const _rawQuat = new Quaternion();
+const _rawScale = new Vector3();
+const _bridgeInCamera = new Vector3();
+const _euler = new Euler();
+const _mirroredEuler = new Euler();
+
+const _outPosition = new Vector3();
+const _outQuaternion = new Quaternion();
+
+// Cached return object to prevent allocation per frame
+const _poseResult = {
+  position: _outPosition,
+  quaternion: _outQuaternion,
+  scale: _rawScale,
+  euler: _mirroredEuler,
+};
+
 /**
  * Calculates the metric camera-space nose bridge position and rotation quaternion.
  * When `mirrored = true` (selfie mode), reflects X position, yaw, and roll so that
@@ -41,40 +60,32 @@ export function getMetricBridgePose(
   scale: Vector3;
   euler: Euler;
 } {
-  const m = new Matrix4().fromArray(faceMatrix);
-  const rawPos = new Vector3();
-  const rawQuat = new Quaternion();
-  const rawScale = new Vector3();
-  m.decompose(rawPos, rawQuat, rawScale);
+  _m.fromArray(faceMatrix);
+  _m.decompose(_rawPos, _rawQuat, _rawScale);
 
   // Compute the transformed bridge landmark (landmark 168) in camera space:
-  const bridgeInCamera = CANONICAL_NOSE_BRIDGE.clone().applyMatrix4(m);
+  _bridgeInCamera.copy(CANONICAL_NOSE_BRIDGE).applyMatrix4(_m);
 
-  const euler = new Euler().setFromQuaternion(rawQuat, 'YXZ');
+  _euler.setFromQuaternion(_rawQuat, 'YXZ');
 
-  const position = new Vector3(
-    mirrored ? -bridgeInCamera.x : bridgeInCamera.x,
-    bridgeInCamera.y,
-    bridgeInCamera.z,
+  _outPosition.set(
+    mirrored ? -_bridgeInCamera.x : _bridgeInCamera.x,
+    _bridgeInCamera.y,
+    _bridgeInCamera.z,
   );
 
   // Reflect rotation across Y-Z plane for selfie mirror presentation:
   // Pitch (nodding up/down) is preserved
   // Yaw (turning left/right) is negated
   // Roll (head tilt) is negated
-  const mirroredEuler = new Euler(
-    euler.x,
-    mirrored ? -euler.y : euler.y,
-    mirrored ? -euler.z : euler.z,
+  _mirroredEuler.set(
+    _euler.x,
+    mirrored ? -_euler.y : _euler.y,
+    mirrored ? -_euler.z : _euler.z,
     'YXZ',
   );
 
-  const quaternion = new Quaternion().setFromEuler(mirroredEuler);
+  _outQuaternion.setFromEuler(_mirroredEuler);
 
-  return {
-    position,
-    quaternion,
-    scale: rawScale,
-    euler: mirroredEuler,
-  };
+  return _poseResult;
 }

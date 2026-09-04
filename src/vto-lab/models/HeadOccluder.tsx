@@ -56,7 +56,7 @@ export function HeadOccluder({
   });
 
   return (
-    <group ref={rootRef} name="VTO_HeadOccluderRoot" renderOrder={0}>
+    <group ref={rootRef} name="VTO_HeadOccluderRoot" renderOrder={-1}>
       {/* 
         Head & Cranium Volume Occluder:
         Positioned strictly behind the face plane relative to Landmark 168 (Nose bridge):
@@ -65,7 +65,7 @@ export function HeadOccluder({
       */}
       <group position={[0, 0, 0]}>
         {/* Rear Cranium Sphere */}
-        <mesh position={[0, -1.5, -7.5]} renderOrder={0}>
+        <mesh position={[0, -1.5, -7.5]} renderOrder={-1}>
           <sphereGeometry args={[5.8, 32, 24]} />
           <meshBasicMaterial
             colorWrite={debugVisible}
@@ -79,7 +79,7 @@ export function HeadOccluder({
         </mesh>
 
         {/* Mid-Head / Jaw Volume behind cheeks */}
-        <mesh position={[0, -3.5, -6.5]} renderOrder={0}>
+        <mesh position={[0, -3.5, -6.5]} renderOrder={-1}>
           <cylinderGeometry args={[4.8, 4.0, 7.0, 32]} />
           <meshBasicMaterial
             colorWrite={debugVisible}
@@ -93,7 +93,7 @@ export function HeadOccluder({
         </mesh>
 
         {/* Left Ear / Temple Occluder Block */}
-        <mesh position={[-6.2, -1.5, -5.0]} renderOrder={0}>
+        <mesh position={[-6.2, -1.5, -5.0]} renderOrder={-1}>
           <sphereGeometry args={[2.8, 16, 16]} />
           <meshBasicMaterial
             colorWrite={debugVisible}
@@ -107,7 +107,7 @@ export function HeadOccluder({
         </mesh>
 
         {/* Right Ear / Temple Occluder Block */}
-        <mesh position={[6.2, -1.5, -5.0]} renderOrder={0}>
+        <mesh position={[6.2, -1.5, -5.0]} renderOrder={-1}>
           <sphereGeometry args={[2.8, 16, 16]} />
           <meshBasicMaterial
             colorWrite={debugVisible}

@@ -43,8 +43,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     return NextResponse.json({ orders }, { status: 200 });
   } catch (err: unknown) {
+    console.error('[/api/orders GET]', err);
     const msg = err instanceof Error ? err.message : 'Failed to retrieve orders';
-    console.error('[/api/orders GET]', msg);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

@@ -76,6 +76,14 @@ CREATE POLICY "customers_no_anon_access"
   USING (false)
   WITH CHECK (false);
 
+-- Authenticated users can read/update their own customer record
+CREATE POLICY "customers_auth_own_row"
+  ON public.customers
+  FOR ALL
+  TO authenticated
+  USING (auth.uid()::text = id)
+  WITH CHECK (auth.uid()::text = id);
+
 -- (Future) Authenticated users can read/update their own customer record
 -- Uncomment when Supabase Auth is integrated:
 -- CREATE POLICY "customers_auth_own_row"
@@ -96,6 +104,13 @@ CREATE POLICY "order_intents_no_anon_access"
   USING (false)
   WITH CHECK (false);
 
+CREATE POLICY "order_intents_auth_own_row"
+  ON public.order_intents
+  FOR ALL
+  TO authenticated
+  USING (auth.uid()::text = customer_id)
+  WITH CHECK (auth.uid()::text = customer_id);
+
 -- ─── Step 7: ORDERS — No public access ──────────────────────────────────────
 
 DROP POLICY IF EXISTS "orders_no_anon_access" ON public.orders;
@@ -106,6 +121,13 @@ CREATE POLICY "orders_no_anon_access"
   TO anon
   USING (false)
   WITH CHECK (false);
+
+CREATE POLICY "orders_auth_own_row"
+  ON public.orders
+  FOR ALL
+  TO authenticated
+  USING (auth.uid()::text = customer_id)
+  WITH CHECK (auth.uid()::text = customer_id);
 
 -- ─── Step 8: Verify RLS is enabled ──────────────────────────────────────────
 -- Run this query to verify each table has RLS enabled and expected policies:
@@ -124,3 +146,49 @@ CREATE POLICY "orders_no_anon_access"
 --     'customers', 'order_intents', 'orders'
 --   )
 -- ORDER BY tablename, policyname;
+
+-- ─── Step 9: PAYMENTS — No public access ─────────────────────────────────────
+
+ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "payments_no_anon_access" ON public.payments;
+CREATE POLICY "payments_no_anon_access"
+  ON public.payments
+  FOR ALL
+  TO anon
+  USING (false)
+  WITH CHECK (false);
+
+CREATE POLICY "payments_auth_own_row"
+  ON public.payments
+  FOR ALL
+  TO authenticated
+  USING (auth.uid()::text = customer_id)
+  WITH CHECK (auth.uid()::text = customer_id);
+
+-- ─── Step 10: LENS REQUESTS — No public access ───────────────────────────────
+
+ALTER TABLE public.lens_requests ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "lens_requests_no_anon_access" ON public.lens_requests;
+CREATE POLICY "lens_requests_no_anon_access"
+  ON public.lens_requests
+  FOR ALL
+  TO anon
+  USING (false)
+  WITH CHECK (false);
+
+CREATE POLICY "lens_requests_auth_own_row"
+  ON public.lens_requests
+  FOR ALL
+  TO authenticated
+  USING (auth.uid()::text = customer_id)
+  WITH CHECK (auth.uid()::text = customer_id);
+
+-- ─── Step 11: VTO ASSET CALIBRATIONS — Public read for active assets ─────────
+
+ALTER TABLE public.vto_asset_calibrations ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "vto_calibrations_anon_read" ON public.vto_asset_calibrations;
+CREATE POLICY "vto_calibrations_anon_read"
+  ON public.vto_asset_calibrations
+  FOR SELECT
+  TO anon
+  USING (status IN ('APPROVED', 'PUBLISHED'));

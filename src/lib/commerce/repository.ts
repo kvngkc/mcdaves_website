@@ -401,8 +401,7 @@ class CommerceRepository {
     
     const { data: prods, error } = await query;
     if (error) {
-      console.error('[Repository] Error fetching products:', error.message);
-      return [];
+      throw new Error(`Error fetching products: ${error.message}`);
     }
     if (!prods || prods.length === 0) return [];
 
@@ -421,8 +420,7 @@ class CommerceRepository {
       .maybeSingle();
 
     if (error) {
-      console.error('[Repository] Error fetching product by slug:', error.message);
-      return null;
+      throw new Error(`Error fetching product by slug: ${error.message}`);
     }
     if (!data) return null;
 
@@ -438,7 +436,8 @@ class CommerceRepository {
       .eq('id', id)
       .maybeSingle();
 
-    if (error || !data) return null;
+    if (error) throw new Error(`Error fetching product by id: ${error.message}`);
+    if (!data) return null;
     return this.resolveProduct(mapRowToProduct(data));
   }
 
@@ -464,7 +463,8 @@ class CommerceRepository {
       .eq('id', variantId)
       .maybeSingle();
 
-    if (variantError || !variantData) return null;
+    if (variantError) throw new Error(`Error fetching variant by id: ${variantError.message}`);
+    if (!variantData) return null;
     const variant = mapRowToVariant(variantData);
 
     const { data: productData, error: productError } = await supabase
@@ -473,7 +473,8 @@ class CommerceRepository {
       .eq('id', variant.productId)
       .maybeSingle();
 
-    if (productError || !productData) return null;
+    if (productError) throw new Error(`Error fetching product for variant: ${productError.message}`);
+    if (!productData) return null;
     const product = mapRowToProduct(productData);
 
     return this.resolveVariant(product, variant);
@@ -519,8 +520,7 @@ class CommerceRepository {
     if (!supabase) throw new Error("Supabase client missing");
     const { error } = await supabase.from('products').delete().eq('id', id);
     if (error) {
-      console.error('[Repository] Error deleting product:', error.message);
-      return false;
+      throw new Error(`Error deleting product: ${error.message}`);
     }
     return true;
   }
@@ -572,8 +572,7 @@ class CommerceRepository {
     if (!supabase) throw new Error("Supabase client missing");
     const { error } = await supabase.from('product_variants').delete().eq('id', id);
     if (error) {
-      console.error('[Repository] Error deleting variant:', error.message);
-      return false;
+      throw new Error(`Error deleting variant: ${error.message}`);
     }
     return true;
   }
@@ -590,8 +589,7 @@ class CommerceRepository {
     });
 
     if (error) {
-      console.error('[Repository] RPC decrement_variant_stock failed:', error.message);
-      return { success: false, remaining: 0, message: error.message };
+      throw new Error(`RPC decrement_variant_stock failed: ${error.message}`);
     }
 
     if (data && Array.isArray(data) && data.length > 0) {
@@ -617,8 +615,7 @@ class CommerceRepository {
     if (!supabase) throw new Error("Supabase client missing");
     const { error } = await supabase.from('product_media').delete().eq('id', id);
     if (error) {
-      console.error('[Repository] Error deleting product media:', error.message);
-      return false;
+      throw new Error(`Error deleting product media: ${error.message}`);
     }
     return true;
   }
@@ -853,7 +850,10 @@ class CommerceRepository {
 
     if (supabase) {
       const { error } = await supabase.from('order_intents').upsert(mapOrderIntentToRow(intent));
-      if (error) console.error('[Supabase] Failed to persist order intent:', error.message);
+      if (error) {
+        console.error('[Supabase] Failed to persist order intent:', error.message);
+        throw new Error(`Failed to persist order intent: ${error.message}`);
+      }
     }
 
     const waNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || siteConfig.whatsappNumber;
@@ -909,7 +909,9 @@ class CommerceRepository {
     };
 
     const { error } = await supabase.from('order_intents').upsert(mapOrderIntentToRow(updated));
-    if (error) console.error('[Supabase] Failed to update order intent status:', error.message);
+    if (error) {
+      throw new Error(`Failed to update order intent status: ${error.message}`);
+    }
     
     return updated;
   }
@@ -932,7 +934,9 @@ class CommerceRepository {
     };
 
     const { error } = await supabase.from('order_intents').upsert(mapOrderIntentToRow(updated));
-    if (error) console.error('[Supabase] Failed to update order intent payment link:', error.message);
+    if (error) {
+      throw new Error(`Failed to update order intent payment link: ${error.message}`);
+    }
     
     return updated;
   }
@@ -955,7 +959,9 @@ class CommerceRepository {
     };
 
     const { error } = await supabase.from('lens_requests').upsert(mapLensRequestToRow(req));
-    if (error) console.error('[Supabase] Failed to persist lens request:', error.message);
+    if (error) {
+      throw new Error(`Failed to persist lens request: ${error.message}`);
+    }
     
     return req;
   }
@@ -1000,7 +1006,10 @@ class CommerceRepository {
     };
 
     const { error } = await supabase.from('payments').upsert(mapPaymentToRow(payment));
-    if (error) console.error('[Supabase] Failed to persist payment:', error.message);
+    if (error) {
+      console.error('[Supabase] Failed to persist payment:', error.message);
+      throw new Error(`Failed to persist payment: ${error.message}`);
+    }
     
     return payment;
   }
@@ -1062,7 +1071,9 @@ class CommerceRepository {
         intent.status = 'CONVERTED';
         intent.updatedAt = now;
         const { error: intentError } = await supabase.from('order_intents').upsert(mapOrderIntentToRow(intent));
-        if (intentError) console.error('[Supabase] Failed to update converted intent in Supabase:', intentError.message);
+        if (intentError) {
+          throw new Error(`Failed to update converted intent in Supabase: ${intentError.message}`);
+        }
       }
     }
 
@@ -1071,14 +1082,14 @@ class CommerceRepository {
       const metadataItems = metadata.orderItems;
       
       if (Array.isArray(metadataItems) && metadataItems.length > 0) {
-        metadataItems.forEach((item: any, index: number) => {
+        metadataItems.forEach((item: Record<string, unknown>, index: number) => {
           orderItems.push({
             id: `item-${orderId}-${index + 1}`,
             orderId,
-            variantId: item.variantId || 'custom-item',
-            productName: item.name || item.productName || 'Eyewear Frame Purchase',
-            variantName: item.color || item.variantName || 'Online Payment',
-            sku: item.variantSku || 'MCD-ONLINE-PAY',
+            variantId: (item.variantId as string) || 'custom-item',
+            productName: (item.name as string) || (item.productName as string) || 'Eyewear Frame Purchase',
+            variantName: (item.color as string) || (item.variantName as string) || 'Online Payment',
+            sku: (item.variantSku as string) || 'MCD-ONLINE-PAY',
             unitPrice: Number(item.unitPrice || item.price || payment.amount),
             quantity: Number(item.quantity || 1),
             totalPrice: Number(item.totalPrice || payment.amount),
@@ -1118,7 +1129,10 @@ class CommerceRepository {
     };
 
     const { error: orderError } = await supabase.from('orders').upsert(mapOrderToRow(order));
-    if (orderError) console.error('[Supabase] Failed to persist confirmed order:', orderError.message);
+    if (orderError) {
+      console.error('[Supabase] Failed to persist confirmed order:', orderError.message);
+      throw new Error(`Failed to persist confirmed order: ${orderError.message}`);
+    }
 
     return { order, payment };
   }
@@ -1142,6 +1156,80 @@ class CommerceRepository {
     const { data, error } = await supabase.from('orders').select('*').eq('payment_reference', ref).maybeSingle();
     if (error || !data) return null;
     return mapRowToOrder(data);
+  }
+
+  public async getOrdersByCustomerEmail(email: string): Promise<Order[]> {
+    if (!supabase) throw new Error("Supabase client missing");
+    
+    // First find customers with this email
+    const { data: customers, error: custError } = await supabase
+      .from('customers')
+      .select('id')
+      .eq('email', email);
+      
+    if (custError || !customers || customers.length === 0) return [];
+    
+    const customerIds = customers.map(c => c.id);
+    
+    // Then find their orders
+    const { data: orders, error: orderError } = await supabase
+      .from('orders')
+      .select('*')
+      .in('customer_id', customerIds)
+      .order('created_at', { ascending: false });
+      
+    if (orderError || !orders) return [];
+    
+    return orders.map(mapRowToOrder);
+  }
+
+  public async processConfirmedPayment(params: {
+    paymentReference: string;
+    orderIntentId?: string;
+    customerId?: string;
+    amount: number;
+    currency: string;
+    channel?: string;
+    paidAt?: string;
+    gatewayResponse?: Record<string, unknown>;
+    items: Partial<OrderItem>[];
+    subtotal: number;
+    shippingFee: number;
+    totalAmount: number;
+  }): Promise<{ success: boolean; orderId?: string; message?: string }> {
+    if (!supabase) throw new Error("Supabase client missing");
+    
+    const { data, error } = await supabase.rpc('process_confirmed_payment', {
+      p_payment_ref: params.paymentReference,
+      p_order_intent_id: params.orderIntentId || null,
+      p_customer_id: params.customerId || 'MC-ANON',
+      p_amount: params.amount,
+      p_currency: params.currency,
+      p_channel: params.channel || null,
+      p_paid_at: params.paidAt || new Date().toISOString(),
+      p_gateway_response: params.gatewayResponse || {},
+      p_items: params.items,
+      p_subtotal: params.subtotal,
+      p_shipping_fee: params.shippingFee,
+      p_total_amount: params.totalAmount
+    });
+
+    if (error) {
+      console.error('[Repository] RPC process_confirmed_payment failed:', error.message);
+      throw new Error(`Payment processing failed: ${error.message}`);
+    }
+
+    if (data && Array.isArray(data) && data.length > 0) {
+      const res = data[0];
+      if (!res.success) throw new Error(res.message);
+      return {
+        success: res.success,
+        orderId: res.order_id,
+        message: res.message,
+      };
+    }
+
+    throw new Error('Unknown RPC response during payment processing');
   }
 }
 

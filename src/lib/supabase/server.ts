@@ -24,13 +24,11 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl) {
-  console.error('[Supabase Server] NEXT_PUBLIC_SUPABASE_URL is not configured.');
+  throw new Error('[Supabase Server] NEXT_PUBLIC_SUPABASE_URL is not configured.');
 }
 
 if (!supabaseServiceKey) {
-  console.error(
-    '[Supabase Server] SUPABASE_SERVICE_ROLE_KEY is not configured. Server-side DB access will fail.',
-  );
+  throw new Error('[Supabase Server] SUPABASE_SERVICE_ROLE_KEY is not configured. Server-side DB access will fail.');
 }
 
 /**

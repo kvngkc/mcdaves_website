@@ -25,67 +25,63 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const result = await paymentService.verifyPayment(cleanRef);
 
     if (result.status === 'success') {
-      const metadata = (result.metadata || {}) as Record<string, any>;
+      const metadata = (result.metadata || {}) as Record<string, unknown>;
       const orderIntentId = metadata.orderIntentId as string | undefined;
       const customerId = metadata.customerId as string | undefined;
       const variantId = metadata.variantId as string | undefined;
       const quantity = metadata.quantity ? Number(metadata.quantity) : 1;
 
-      // 1. Atomic Inventory Decrement via PostgreSQL RPC / Repository
-      const itemsToDecrement: { variantId?: string; quantity: number }[] = [];
+      // 1. Atomic Payment Processing via PostgreSQL RPC
+      const items: Record<string, unknown>[] = [];
       if (metadata.orderItems && Array.isArray(metadata.orderItems)) {
-        metadata.orderItems.forEach((item: any) => {
-          if (item.variantId) {
-            itemsToDecrement.push({
-              variantId: item.variantId,
-              quantity: item.quantity ? Number(item.quantity) : 1,
-            });
-          }
+        metadata.orderItems.forEach((item: Record<string, unknown>) => {
+          items.push({
+            ...item,
+            quantity: item.quantity ? Number(item.quantity) : 1,
+          });
         });
-      } else if (metadata.variantId) {
-        itemsToDecrement.push({
-          variantId: metadata.variantId,
+      } else {
+        items.push({
+          variantId: metadata.variantId || 'custom-item',
           quantity: metadata.quantity ? Number(metadata.quantity) : 1,
         });
       }
 
-      for (const item of itemsToDecrement) {
-        if (item.variantId) {
-          await commerceRepository.decrementVariantStock(item.variantId, item.quantity);
-        }
-      }
-
-      // Record successful payment
-      await commerceRepository.recordPayment({
-        reference: cleanRef,
+      const processResult = await commerceRepository.processConfirmedPayment({
+        paymentReference: cleanRef,
         orderIntentId,
         customerId: customerId || 'MC-ONLINE',
         amount: result.amount,
-        status: 'PAID',
+        currency: 'NGN',
         channel: result.channel,
         paidAt: result.paidAt,
         gatewayResponse: result.metadata,
+        items,
+        subtotal: result.amount,
+        shippingFee: 0,
+        totalAmount: result.amount,
       });
 
-      // Create official confirmed order (converts OrderIntent to CONVERTED)
-      let createdOrder;
-      const existingOrder = await commerceRepository.getOrderByPaymentReference(cleanRef);
-      if (existingOrder) {
-        createdOrder = existingOrder;
-      } else {
-        const orderResult = await commerceRepository.createOrderFromConfirmedPayment({
-          paymentReference: cleanRef,
-          orderIntentId,
-          customerId,
-        });
-        createdOrder = orderResult.order;
+      // Send confirmation email
+      let createdOrder = null;
+      if (processResult.orderId) {
+        createdOrder = await commerceRepository.getOrderById(processResult.orderId);
+      }
+      
+      if (createdOrder && createdOrder.customerId) {
+        const customer = await commerceRepository.getCustomerById(createdOrder.customerId);
+        if (customer && customer.email) {
+          import('@/lib/email').then(({ sendOrderConfirmationEmail }) => {
+            sendOrderConfirmationEmail(createdOrder, customer.email!, customer.name);
+          });
+        }
       }
 
       return NextResponse.json(
         {
           ...result,
-          orderId: createdOrder.id,
-          customerId: createdOrder.customerId,
+          orderId: createdOrder?.id,
+          customerId: createdOrder?.customerId,
           order: createdOrder,
         },
         { status: 200 },

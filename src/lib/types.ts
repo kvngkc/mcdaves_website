@@ -4,8 +4,8 @@ export type { Product } from '@/data/products';
 
 export interface CartItem {
   productId: string;
-  variantId?: string;
-  variantSku?: string;
+  variantId: string;
+  variantSku: string;
   slug: string;
   name: string;
   price: number;
@@ -13,6 +13,7 @@ export interface CartItem {
   color?: string;
   prescriptionRequired: boolean;
   image: string;
+  unitsInStock?: number;
 }
 
 export interface CartState {

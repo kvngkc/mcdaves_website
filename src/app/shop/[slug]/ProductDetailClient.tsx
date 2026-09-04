@@ -99,32 +99,14 @@ export default function ProductDetailClient({
 
   const handleAddToCart = () => {
     if (isOutOfStock) return;
-    // Map to legacy CartItem shape for backward compatibility with existing CartDrawer
     addItem(
-      {
-        id: selectedVariant.id,
-        slug: product.slug,
-        name: `${product.name} (${selectedVariant.colorName})`,
-        price: selectedVariant.effectivePrice,
-        colors: product.variants.map((v) => ({
-          name: v.colorName,
-          hex: v.colorHex,
-          imageSuffix: v.slug,
-        })),
-        sizes: selectedVariant.effectiveSpecifications.frameSize,
-        material: selectedVariant.effectiveMaterial,
-        description: selectedVariant.effectiveDescription,
-        features: product.features,
-        images,
-        inStock: selectedVariant.inStock,
-        stockLevel: selectedVariant.stockLevel,
-        prescriptionRequired: product.prescriptionRequired,
-        tryOnAvailable: product.tryOnAvailable,
-        collection: product.collection,
-        category: product.category,
-      },
+      product,
+      selectedVariant.id,
+      selectedVariant.sku,
       quantity,
       selectedVariant.colorName,
+      selectedVariant.effectivePrice,
+      selectedVariant.unitsInStock,
     );
     openDrawer();
   };

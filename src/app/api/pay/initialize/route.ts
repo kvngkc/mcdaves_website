@@ -18,8 +18,8 @@ export const dynamic = 'force-dynamic';
 
 const CartItemSchema = z.object({
   productId: z.string(),
-  variantId: z.string().optional(),
-  variantSku: z.string().optional(),
+  variantId: z.string(),
+  variantSku: z.string(),
   name: z.string().optional(),
   quantity: z.number().int().positive(),
   price: z.number().positive().optional(),
@@ -94,15 +94,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   if (body.items && body.items.length > 0) {
     for (const item of body.items) {
-      let unitPrice = 35000;
-      let variantName = item.name || 'Standard Eyewear';
-      let sku = item.variantSku || 'MCD-FRAME';
+      let unitPrice: number;
+      let variantName: string;
+      let sku: string;
 
       // Look up variant if variantId provided
       if (item.variantId) {
         const variant = await commerceRepository.getVariantById(item.variantId);
         if (variant) {
-          unitPrice = variant.effectivePrice ?? variant.priceOverride ?? 35000;
+          unitPrice = variant.effectivePrice; // effectivePrice is guaranteed to resolve from priceOverride or defaultPrice
           variantName = variant.name;
           sku = variant.sku;
 
@@ -116,17 +116,27 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
               { status: 400 },
             );
           }
+        } else {
+            return NextResponse.json(
+              { error: `Variant ID ${item.variantId} not found in database. Cannot authorize checkout.` },
+              { status: 400 }
+            );
         }
       } else {
         // Fall back to product lookup
         const product =
           (await commerceRepository.getProductById(item.productId)) ||
           (await commerceRepository.getProductBySlug(item.productId));
+        
         if (product) {
           unitPrice = product.defaultPrice;
           variantName = product.name;
-        } else if (item.price) {
-          unitPrice = item.price;
+          sku = 'MCD-FRAME';
+        } else {
+            return NextResponse.json(
+              { error: `Product ${item.productId} not found in database. Cannot authorize checkout.` },
+              { status: 400 }
+            );
         }
       }
 

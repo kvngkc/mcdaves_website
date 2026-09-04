@@ -122,7 +122,7 @@ export async function getLiveStorefrontProducts(): Promise<StorefrontProduct[]> 
   }
 }
 
-export async function getLiveResolvedProductBySlug(slug: string): Promise<any | null> {
+export async function getLiveResolvedProductBySlug(slug: string): Promise<StorefrontProduct | null> {
   try {
     if (!supabase) return null;
 
@@ -146,7 +146,7 @@ export async function getLiveResolvedProductBySlug(slug: string): Promise<any | 
       .eq('product_id', p.id)
       .order('sort_order', { ascending: true });
 
-    const media = (rawMedia || []).map((m: any, idx: number) => ({
+    const media = (rawMedia || []).map((m: Record<string, unknown>, idx: number) => ({
       id: m.id,
       productId: m.product_id,
       variantId: m.variant_id || undefined,
@@ -157,7 +157,7 @@ export async function getLiveResolvedProductBySlug(slug: string): Promise<any | 
       sortOrder: m.sort_order || idx,
     }));
 
-    const variants = (rawVariants || []).map((v: any, idx: number) => ({
+    const variants = (rawVariants || []).map((v: Record<string, unknown>, idx: number) => ({
       id: v.id,
       productId: v.product_id,
       slug: v.slug,
@@ -235,7 +235,7 @@ export async function getLiveResolvedProductBySlug(slug: string): Promise<any | 
       id: p.id,
       slug: p.slug,
       name: p.name,
-      collection: (p.collection || 'sightly') as any,
+      collection: (p.collection || 'sightly') as "sightly" | "premium" | "essentials",
       category: p.category || 'unisex',
       description: p.description || '',
       features: Array.isArray(p.features) ? p.features : [],
