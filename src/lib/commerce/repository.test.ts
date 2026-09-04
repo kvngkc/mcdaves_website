@@ -88,10 +88,12 @@ describe('CommerceRepository', () => {
       const mockResult = {
         payment_id: 'pay-123',
         order_id: 'ord-123',
-        status: 'SUCCESS'
+        status: 'SUCCESS',
+        success: true,
+        message: 'Success'
       };
 
-      vi.mocked(supabase.rpc).mockResolvedValue({ data: mockResult, error: null } as any);
+      vi.mocked(supabase.rpc).mockResolvedValue({ data: [mockResult], error: null } as any);
 
       const result = await commerceRepository.processConfirmedPayment({
         paymentReference: 'test-ref',
@@ -114,7 +116,7 @@ describe('CommerceRepository', () => {
     it('should handle RPC failure and return success: false', async () => {
       vi.mocked(supabase.rpc).mockResolvedValue({ data: null, error: new Error('RPC Failed') } as any);
 
-      const result = await commerceRepository.processConfirmedPayment({
+      await expect(commerceRepository.processConfirmedPayment({
         paymentReference: 'test-ref',
         amount: 1000,
         currency: 'NGN',
@@ -125,11 +127,9 @@ describe('CommerceRepository', () => {
         subtotal: 1000,
         shippingFee: 0,
         totalAmount: 1000
-      });
+      })).rejects.toThrow('Payment processing failed: RPC Failed');
 
       expect(supabase.rpc).toHaveBeenCalledWith('process_confirmed_payment', expect.any(Object));
-      expect(result.success).toBe(false);
-      expect(result.message).toBeDefined();
     });
   });
 });

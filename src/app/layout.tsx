@@ -1,8 +1,15 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import NextTopLoader from 'nextjs-toploader';
 import { SiteShell } from '@/components/layout/SiteShell';
 import { CartProvider } from '@/context/CartContext';
 import { businessIdentity, urlConfig } from '@/config';
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+};
 
 export const metadata: Metadata = {
   title: {
@@ -155,7 +162,8 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(globalSchemaJsonLd) }}
         />
       </head>
-      <body className="min-h-full flex flex-col antialiased bg-white text-neutral-900 selection:bg-brand-100 selection:text-brand-900">
+      <body className="min-h-full flex flex-col antialiased bg-white text-neutral-900 selection:bg-brand-100 selection:text-brand-900 overflow-x-hidden">
+        <NextTopLoader color="#d97706" height={3} showSpinner={false} />
         <CartProvider>
           <SiteShell>{children}</SiteShell>
         </CartProvider>

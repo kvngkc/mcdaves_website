@@ -17,8 +17,12 @@ export async function getLiveStorefrontProducts(): Promise<StorefrontProduct[]> 
       .eq('status', 'ACTIVE')
       .order('created_at', { ascending: false });
 
-    if (prodErr || !rawProducts || rawProducts.length === 0) {
+    if (prodErr || !rawProducts) {
       return fallbackSeedProducts;
+    }
+
+    if (rawProducts.length === 0) {
+      return [];
     }
 
     const { data: rawVariants, error: varErr } = await supabase

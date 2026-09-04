@@ -6,6 +6,22 @@ vi.mock('@/lib/supabase/service', () => ({
   supabase: {
     from: vi.fn(),
   },
+  mapRowToProduct: vi.fn((row) => ({ ...row })),
+  mapProductToRow: vi.fn((product) => ({ ...product })),
+  mapRowToVariant: vi.fn((row) => ({ ...row })),
+  mapVariantToRow: vi.fn((variant) => ({ ...variant })),
+  mapRowToMedia: vi.fn((row) => ({ ...row })),
+  mapMediaToRow: vi.fn((media) => ({ ...media })),
+  mapRowToCustomer: vi.fn((row) => ({ ...row })),
+  mapCustomerToRow: vi.fn((customer) => ({ ...customer })),
+  mapRowToOrderIntent: vi.fn((row) => ({ ...row })),
+  mapOrderIntentToRow: vi.fn((intent) => ({ ...intent })),
+  mapRowToOrder: vi.fn((row) => ({ ...row })),
+  mapOrderToRow: vi.fn((order) => ({ ...order })),
+  mapRowToPayment: vi.fn((row) => ({ ...row })),
+  mapPaymentToRow: vi.fn((payment) => ({ ...payment })),
+  mapRowToLensRequest: vi.fn((row) => ({ ...row })),
+  mapLensRequestToRow: vi.fn((request) => ({ ...request }))
 }));
 
 describe('commerceRepository', () => {
