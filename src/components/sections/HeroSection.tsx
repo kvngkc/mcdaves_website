@@ -15,7 +15,7 @@ export function HeroSection() {
   };
 
   return (
-    <section className="relative flex flex-col justify-between min-h-screen lg:min-h-[640px] bg-gradient-to-b from-brand-50/80 via-white to-brand-50/40 pt-[calc(var(--header-height,4rem)+1.5rem)] pb-12 px-4 sm:px-6 lg:px-8 text-center overflow-hidden">
+    <section className="relative w-full flex flex-col justify-between min-h-screen lg:min-h-[640px] bg-gradient-to-b from-brand-50/80 via-white to-brand-50/40 pt-[calc(var(--header-height,4rem)+1.5rem)] pb-12 px-4 sm:px-6 lg:px-8 text-center overflow-hidden">
       {/* Background subtle ambient glow */}
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_50%_20%,rgba(90,158,90,0.12),transparent_70%)]" />
       <div className="absolute -top-32 -left-32 w-96 h-96 bg-brand-200/30 rounded-full blur-3xl pointer-events-none" />

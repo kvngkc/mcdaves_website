@@ -148,7 +148,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="h-full w-full overflow-x-hidden">
+    <html lang="en" className="h-full w-full overflow-x-hidden" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -162,10 +162,10 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(globalSchemaJsonLd) }}
         />
       </head>
-      <body className="min-h-full w-full antialiased bg-white text-neutral-900 selection:bg-brand-100 selection:text-brand-900 overflow-x-hidden">
+      <body suppressHydrationWarning className="min-h-full w-full antialiased bg-white text-neutral-900 selection:bg-brand-100 selection:text-brand-900 overflow-x-hidden">
         <NextTopLoader color="#d97706" height={3} showSpinner={false} />
         <CartProvider>
-          <div className="flex flex-col min-h-screen w-full">
+          <div className="flex flex-col min-h-screen w-full relative overflow-x-hidden">
             <SiteShell>{children}</SiteShell>
           </div>
         </CartProvider>
