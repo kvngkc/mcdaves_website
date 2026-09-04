@@ -17,10 +17,15 @@ interface PageProps {
 }
 
 export async function generateStaticParams() {
-  const products = await commerceRepository.getAllProducts();
-  return products.map((product) => ({
-    slug: product.slug,
-  }));
+  try {
+    const products = await commerceRepository.getAllProducts();
+    return products.map((product) => ({
+      slug: product.slug,
+    }));
+  } catch (error) {
+    console.warn('[Build] Skipping static generation for shop slugs due to DB fetch error.', error);
+    return [];
+  }
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -33,8 +38,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 
   const primaryImage =
-    product.defaultVariant.media?.[0]?.url ||
-    product.media?.[0]?.url ||
+    ('defaultVariant' in product && (product as any).defaultVariant?.media?.[0]?.url) ||
+    ('images' in product && (product as any).images?.[0]) ||
     '/images/products/placeholder.webp';
 
   return {
@@ -102,9 +107,9 @@ export default async function ProductDetailPage({ params }: PageProps) {
     '@context': 'https://schema.org/',
     '@type': 'Product',
     name: product.name,
-    image: product.media.map((m) => m.url),
+    image: 'images' in product ? (product as any).images : ('media' in product ? (product as any).media.map((m: any) => m.url) : []),
     description: product.description,
-    sku: product.defaultVariant.sku,
+    sku: 'defaultVariant' in product ? (product as any).defaultVariant.sku : product.id,
     brand: {
       '@type': 'Brand',
       name: 'Sightly by McDaves',
@@ -113,7 +118,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
       '@type': 'Offer',
       url: `https://mcdaves.com.ng/shop/${product.slug}`,
       priceCurrency: 'NGN',
-      price: product.defaultPrice,
+      price: 'defaultPrice' in product ? (product as any).defaultPrice : product.price,
       itemCondition: 'https://schema.org/NewCondition',
       availability: 'https://schema.org/InStock',
     },
@@ -129,8 +134,8 @@ export default async function ProductDetailPage({ params }: PageProps) {
       />
 
       <ProductDetailClient
-        product={product}
-        relatedProducts={relatedLegacy}
+        product={product as any}
+        relatedProducts={relatedLegacy as any}
       />
     </>
   );

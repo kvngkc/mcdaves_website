@@ -20,19 +20,24 @@ interface PageProps {
 }
 
 export async function generateStaticParams() {
-  const products = await commerceRepository.getAllProducts();
-  const params: { productSlug: string; variantSlug: string }[] = [];
+  try {
+    const products = await commerceRepository.getAllProducts();
+    const params: { productSlug: string; variantSlug: string }[] = [];
 
-  products.forEach((product) => {
-    product.variants.forEach((variant) => {
-      params.push({
-        productSlug: product.slug,
-        variantSlug: variant.slug,
+    products.forEach((product) => {
+      product.variants.forEach((variant) => {
+        params.push({
+          productSlug: product.slug,
+          variantSlug: variant.slug,
+        });
       });
     });
-  });
 
-  return params;
+    return params;
+  } catch (error) {
+    console.warn('[Build] Skipping static generation for variant slugs due to DB fetch error.', error);
+    return [];
+  }
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -145,9 +150,9 @@ export default async function ExactVariantPage({ params }: PageProps) {
       />
 
       <ProductDetailClient
-        product={product}
+        product={product as any}
         initialVariantSlug={variantSlug}
-        relatedProducts={relatedLegacy}
+        relatedProducts={relatedLegacy as any}
       />
     </>
   );

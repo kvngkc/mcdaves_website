@@ -54,7 +54,7 @@ export default async function CustomerOrdersPage() {
           <div className="space-y-6">
             {orders.map((order) => {
               const items = Array.isArray(order.items) ? order.items : [];
-              const date = new Date(order.created_at).toLocaleDateString('en-GB', {
+              const date = new Date(order.createdAt || (order as any).created_at).toLocaleDateString('en-GB', {
                 day: 'numeric',
                 month: 'short',
                 year: 'numeric',
@@ -70,7 +70,7 @@ export default async function CustomerOrdersPage() {
                       </div>
                       <div>
                         <span className="block text-xs uppercase tracking-wider text-neutral-500 font-semibold mb-1">Total</span>
-                        <Price amount={order.total_amount} className="font-medium text-neutral-900" />
+                        <Price amount={order.totalAmount || (order as any).total_amount} className="font-medium text-neutral-900" />
                       </div>
                     </div>
                     <div className="text-right sm:text-left">

@@ -122,7 +122,7 @@ export async function getLiveStorefrontProducts(): Promise<StorefrontProduct[]> 
   }
 }
 
-export async function getLiveResolvedProductBySlug(slug: string): Promise<StorefrontProduct | null> {
+export async function getLiveResolvedProductBySlug(slug: string): Promise<any | null> {
   try {
     if (!supabase) return null;
 
@@ -172,8 +172,8 @@ export async function getLiveResolvedProductBySlug(slug: string): Promise<Storef
       specificationsOverride: v.specifications_override || undefined,
       descriptionOverride: v.description_override || undefined,
       glbPath: v.glb_path || undefined,
-      inStock: v.in_stock && (v.units_in_stock === undefined || v.units_in_stock > 0),
-      stockLevel: !v.in_stock || (v.units_in_stock !== undefined && v.units_in_stock === 0) ? 'out' : (v.units_in_stock ?? 10) <= 3 ? 'low' : 'high',
+      inStock: v.in_stock && (v.units_in_stock === undefined || (v.units_in_stock as number) > 0),
+      stockLevel: !v.in_stock || (v.units_in_stock !== undefined && v.units_in_stock === 0) ? 'out' : ((v.units_in_stock as number) ?? 10) <= 3 ? 'low' : 'high',
       unitsInStock: v.units_in_stock ?? 10,
       hideWhenOutOfStock: v.hide_when_out_of_stock ?? false,
       sortOrder: v.sort_order ?? idx,
@@ -188,7 +188,7 @@ export async function getLiveResolvedProductBySlug(slug: string): Promise<Storef
         bridgeWidthMm: Number(p.bridge_width_mm) || 18,
         templeLengthMm: Number(p.temple_length_mm) || 140,
         frameSize: p.frame_size || '52□18-140',
-        ...(v.specifications_override || {}),
+        ...(v.specifications_override as Record<string, any> || {}),
       },
       effectiveDescription: v.description_override || p.description || '',
       media: [],
@@ -235,7 +235,7 @@ export async function getLiveResolvedProductBySlug(slug: string): Promise<Storef
       id: p.id,
       slug: p.slug,
       name: p.name,
-      collection: (p.collection || 'sightly') as "sightly" | "premium" | "essentials",
+      collection: (p.collection || 'sightly') as "sightly",
       category: p.category || 'unisex',
       description: p.description || '',
       features: Array.isArray(p.features) ? p.features : [],

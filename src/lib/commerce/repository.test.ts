@@ -91,41 +91,45 @@ describe('CommerceRepository', () => {
         status: 'SUCCESS'
       };
 
-      vi.mocked(supabase.rpc).mockResolvedValue({ data: mockResult, error: null });
+      vi.mocked(supabase.rpc).mockResolvedValue({ data: mockResult, error: null } as any);
 
       const result = await commerceRepository.processConfirmedPayment({
-        reference: 'test-ref',
+        paymentReference: 'test-ref',
         amount: 1000,
         currency: 'NGN',
-        status: 'PAID',
         channel: 'card',
-        gateway_response: 'Approved',
-        customer_id: 'cust-123',
-        items: [{ variantId: 'var-1', quantity: 2 }]
+        gatewayResponse: { status: 'Approved' },
+        customerId: 'cust-123',
+        items: [{ variantId: 'var-1', quantity: 2 }],
+        subtotal: 1000,
+        shippingFee: 0,
+        totalAmount: 1000
       });
 
       expect(supabase.rpc).toHaveBeenCalledWith('process_confirmed_payment', expect.any(Object));
       expect(result.success).toBe(true);
-      expect(result.data).toEqual(mockResult);
+      expect(result.orderId).toBeDefined();
     });
 
     it('should handle RPC failure and return success: false', async () => {
-      vi.mocked(supabase.rpc).mockResolvedValue({ data: null, error: new Error('RPC Failed') as any });
+      vi.mocked(supabase.rpc).mockResolvedValue({ data: null, error: new Error('RPC Failed') } as any);
 
       const result = await commerceRepository.processConfirmedPayment({
-        reference: 'test-ref',
+        paymentReference: 'test-ref',
         amount: 1000,
         currency: 'NGN',
-        status: 'PAID',
         channel: 'card',
-        gateway_response: 'Approved',
-        customer_id: 'cust-123',
-        items: [{ variantId: 'var-1', quantity: 2 }]
+        gatewayResponse: { status: 'Approved' },
+        customerId: 'cust-123',
+        items: [{ variantId: 'var-1', quantity: 2 }],
+        subtotal: 1000,
+        shippingFee: 0,
+        totalAmount: 1000
       });
 
       expect(supabase.rpc).toHaveBeenCalledWith('process_confirmed_payment', expect.any(Object));
       expect(result.success).toBe(false);
-      expect(result.error).toBeDefined();
+      expect(result.message).toBeDefined();
     });
   });
 });
