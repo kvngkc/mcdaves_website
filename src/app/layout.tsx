@@ -162,10 +162,12 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(globalSchemaJsonLd) }}
         />
       </head>
-      <body className="min-h-full w-full flex flex-col antialiased bg-white text-neutral-900 selection:bg-brand-100 selection:text-brand-900 overflow-x-hidden">
+      <body className="min-h-full w-full antialiased bg-white text-neutral-900 selection:bg-brand-100 selection:text-brand-900 overflow-x-hidden">
         <NextTopLoader color="#d97706" height={3} showSpinner={false} />
         <CartProvider>
-          <SiteShell>{children}</SiteShell>
+          <div className="flex flex-col min-h-screen w-full">
+            <SiteShell>{children}</SiteShell>
+          </div>
         </CartProvider>
       </body>
     </html>
