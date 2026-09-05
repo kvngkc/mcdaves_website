@@ -119,11 +119,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           return updated;
         }
 
-          const baseImage = isResolvedProduct
-            ? (product.media?.[0]?.url || '/images/products/sightly/classic-havana/front.webp')
-            : ((product as LegacyProduct).images?.[0] || '/images/products/sightly/classic-havana/front.webp');
-          
-          const image = baseImage;
+        const rawBaseImage = isResolvedProduct
+          ? (product.media?.[0]?.url || '/images/products/sightly/classic-havana/front.webp')
+          : ((product as LegacyProduct).images?.[0] || '/images/products/sightly/classic-havana/front.webp');
+        
+        const image = (typeof rawBaseImage === 'string' && rawBaseImage.trim() !== '') ? rawBaseImage : '/images/products/placeholder.webp';
 
         if (unitsInStock !== undefined && quantity > unitsInStock) {
           alert(`Cannot add more than ${unitsInStock} units to cart.`);

@@ -65,7 +65,7 @@ export async function getLiveStorefrontProducts(): Promise<StorefrontProduct[]> 
           variants.find((v) => v.glb_path)?.glb_path ||
           (p.slug === 'ikoyi-cat-eye'
             ? '/models/Meshy_AI_Purple_Cat_Eye_Glasse_0810153235_texture.glb'
-            : '/models/glasses.glb');
+            : undefined);
 
         const productMedia = (rawMedia || [])
           .filter((m) => m.product_id === p.id)
@@ -202,7 +202,7 @@ export async function getLiveResolvedProductBySlug(slug: string): Promise<any | 
       updatedAt: v.updated_at || new Date().toISOString(),
     }));
 
-    const defaultVariant = variants[0] || {
+    const defaultVariant = variants.find(v => v.glbPath) || variants[0] || {
       id: `default-${p.id}`,
       productId: p.id,
       slug: 'default',

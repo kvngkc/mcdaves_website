@@ -162,7 +162,6 @@ const SEED_VARIANTS: ProductVariant[] = [
     sku: 'SIG-001-HAV',
     colorName: 'Havana',
     colorHex: '#8B4513',
-    glbPath: '/models/glasses.glb',
     vtoCalibrationId: 'classic-havana-glasses',
     inStock: true,
     stockLevel: 'high',
@@ -179,7 +178,6 @@ const SEED_VARIANTS: ProductVariant[] = [
     sku: 'SIG-001-BLK',
     colorName: 'Black',
     colorHex: '#1A1A1A',
-    glbPath: '/models/glasses.glb',
     vtoCalibrationId: 'classic-havana-glasses',
     inStock: true,
     stockLevel: 'high',
@@ -198,7 +196,6 @@ const SEED_VARIANTS: ProductVariant[] = [
     sku: 'SIG-002-GLD',
     colorName: 'Gold',
     colorHex: '#C9A227',
-    glbPath: '/models/glasses.glb',
     vtoCalibrationId: 'classic-havana-glasses',
     inStock: true,
     stockLevel: 'high',
@@ -216,7 +213,6 @@ const SEED_VARIANTS: ProductVariant[] = [
     colorName: 'Gunmetal',
     colorHex: '#4A5568',
     priceOverride: 44000, // Demonstrates price override
-    glbPath: '/models/glasses.glb',
     vtoCalibrationId: 'classic-havana-glasses',
     inStock: true,
     stockLevel: 'low',
@@ -695,7 +691,7 @@ class CommerceRepository {
       productVariants.map((v) => this.resolveVariant(product, v))
     );
 
-    const defaultVariant = resolvedVariants[0] || (await this.resolveVariant(product, {
+    const defaultVariant = resolvedVariants.find(v => v.glbPath && v.inStock) || resolvedVariants.find(v => v.glbPath) || resolvedVariants[0] || (await this.resolveVariant(product, {
       id: `default-${product.id}`,
       productId: product.id,
       slug: 'default',

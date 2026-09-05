@@ -116,7 +116,7 @@ export default function StandaloneTryOnPage() {
                 activeVariants.find((v: any) => v.glbPath)?.glbPath ||
                 (p.slug === 'ikoyi-cat-eye'
                   ? '/models/Meshy_AI_Purple_Cat_Eye_Glasse_0810153235_texture.glb'
-                  : '/models/glasses.glb');
+                  : undefined);
 
               const totalUnits = activeVariants.reduce(
                 (sum: number, v: any) => sum + (v.unitsInStock ?? (v.inStock ? 10 : 0)),
@@ -295,7 +295,7 @@ export default function StandaloneTryOnPage() {
           variantName={selectedProduct.colors[0]?.name || 'Standard'}
           variantSlug={selectedProduct.colors[0]?.imageSuffix || 'default'}
           price={selectedProduct.price}
-          glbPath={selectedProduct.glbModel || '/models/glasses.glb'}
+          glbPath={selectedProduct.glbModel}
           frameSize={selectedProduct.frameSize || '52□18-140'}
           onOrderIntent={() => {
             setIsTryOnOpen(false);

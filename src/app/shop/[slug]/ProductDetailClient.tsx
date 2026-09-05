@@ -60,6 +60,7 @@ export default function ProductDetailClient({
     useState<ResolvedProductVariant>(initialVariant);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
+  const [swipeProgress, setSwipeProgress] = useState(0);
 
   // Modals
   const [isVTOOpen, setIsVTOOpen] = useState(false);
@@ -74,14 +75,41 @@ export default function ProductDetailClient({
   const isOutOfStock =
     !selectedVariant.inStock || selectedVariant.stockLevel === 'out';
 
-  const images =
+  const rawImages =
     selectedVariant.media && selectedVariant.media.length > 0
       ? selectedVariant.media.map((m) => m.url)
       : product.media && product.media.length > 0
       ? product.media.map((m) => m.url)
-      : ['/images/products/placeholder.webp'];
+      : [];
+
+  const validImages = rawImages.filter(url => typeof url === 'string' && url.trim() !== '');
+  const images = validImages.length > 0 ? validImages : ['/images/products/placeholder.webp'];
 
   const currentImage = images[selectedImageIndex] || images[0];
+
+  useEffect(() => {
+    if (images.length <= 1) {
+      setSwipeProgress(0);
+      return;
+    }
+
+    const DURATION = 4000;
+    const UPDATE_INTERVAL = 50;
+    let elapsed = 0;
+
+    const interval = setInterval(() => {
+      elapsed += UPDATE_INTERVAL;
+      setSwipeProgress(Math.min((elapsed / DURATION) * 100, 100));
+
+      if (elapsed >= DURATION) {
+        setSelectedImageIndex((prev) => (prev + 1) % images.length);
+        elapsed = 0;
+        setSwipeProgress(0);
+      }
+    }, UPDATE_INTERVAL);
+
+    return () => clearInterval(interval);
+  }, [images.length, selectedImageIndex]);
 
   const stockBadge = isOutOfStock ? (
     <Badge variant="error" size="md">
@@ -89,7 +117,7 @@ export default function ProductDetailClient({
     </Badge>
   ) : selectedVariant.stockLevel === 'low' ? (
     <Badge variant="warning" size="md">
-      Low Stock — Ships Today
+      Only {selectedVariant.unitsInStock ?? 'a few'} left — Ships Today
     </Badge>
   ) : (
     <Badge variant="success" size="md">
@@ -141,7 +169,7 @@ export default function ProductDetailClient({
                 fill
                 priority
                 sizes="(max-width: 1024px) 100vw, 58vw"
-                className="object-contain p-4 sm:p-6 transition-all duration-300 group-hover:scale-105"
+                className="object-contain p-2 transition-all duration-300 group-hover:scale-105"
               />
 
               {/* Floating Collection Badge */}
@@ -153,6 +181,16 @@ export default function ProductDetailClient({
 
               {/* Stock Status Badge */}
               <div className="absolute top-4 right-4 z-10">{stockBadge}</div>
+              
+              {/* Swipe Progress Bar */}
+              {images.length > 1 && (
+                <div className="absolute bottom-0 left-0 h-1 bg-neutral-200 w-full z-10 overflow-hidden">
+                  <div 
+                    className="h-full bg-brand-600 transition-all duration-75 ease-linear"
+                    style={{ width: `${swipeProgress}%` }}
+                  />
+                </div>
+              )}
             </div>
 
             {/* Thumbnails */}
@@ -242,7 +280,8 @@ export default function ProductDetailClient({
                   type="button"
                   onClick={() => setQuantity(quantity + 1)}
                   aria-label="Increase quantity"
-                  className="px-3.5 py-2 text-neutral-600 hover:bg-neutral-200 transition"
+                  disabled={selectedVariant.unitsInStock !== undefined && quantity >= selectedVariant.unitsInStock}
+                  className="px-3.5 py-2 text-neutral-600 hover:bg-neutral-200 disabled:opacity-30 transition"
                 >
                   <Plus className="w-4 h-4" />
                 </button>
@@ -399,7 +438,7 @@ export default function ProductDetailClient({
           variantSlug={selectedVariant.slug}
           variantId={selectedVariant.id}
           price={selectedVariant.effectivePrice}
-          glbPath={selectedVariant.glbPath || '/models/glasses.glb'}
+          glbPath={selectedVariant.glbPath}
           frameSize={selectedVariant.effectiveSpecifications.frameSize}
           onOrderIntent={() => {
             setIsVTOOpen(false);
