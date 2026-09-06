@@ -45,42 +45,26 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         finalCustomerId = customer.id;
       }
 
-      // 2. Atomic Payment Processing via PostgreSQL RPC
-      const items: Record<string, unknown>[] = [];
-      if (metadata.orderItems && Array.isArray(metadata.orderItems)) {
-        metadata.orderItems.forEach((item: Record<string, unknown>) => {
-          items.push({
-            ...item,
-            quantity: item.quantity ? Number(item.quantity) : 1,
-          });
-        });
-      } else {
-        items.push({
-          variantId: metadata.variantId || 'custom-item',
-          quantity: metadata.quantity ? Number(metadata.quantity) : 1,
-        });
-      }
-
-      const processResult = await commerceRepository.processConfirmedPayment({
-        paymentReference: cleanRef,
+      // 2. Record Payment and Create Order
+      await commerceRepository.recordPayment({
+        reference: cleanRef,
         orderIntentId,
         customerId: finalCustomerId || 'MC-ONLINE',
         amount: result.amount,
         currency: 'NGN',
+        status: 'PAID',
         channel: result.channel,
         paidAt: result.paidAt,
-        gatewayResponse: result.metadata,
-        items,
-        subtotal: result.amount,
-        shippingFee: 0,
-        totalAmount: result.amount,
+        gatewayResponse: metadata,
+      });
+
+      const { order: createdOrder } = await commerceRepository.createOrderFromConfirmedPayment({
+        paymentReference: cleanRef,
+        orderIntentId,
+        customerId: finalCustomerId || 'MC-ONLINE',
       });
 
       // Send confirmation email
-      let createdOrder = null;
-      if (processResult.orderId) {
-        createdOrder = await commerceRepository.getOrderById(processResult.orderId);
-      }
       
       if (createdOrder && createdOrder.customerId) {
         const customer = await commerceRepository.getCustomerById(createdOrder.customerId);
