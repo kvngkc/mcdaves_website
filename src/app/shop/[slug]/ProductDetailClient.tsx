@@ -291,15 +291,19 @@ export default function ProductDetailClient({
             {/* PRIMARY CONVERSION CTAs */}
             <div id="product-primary-ctas" className="space-y-3 pt-2">
               {/* 1. VIRTUAL TRY-ON CTA */}
-              {product.tryOnAvailable && selectedVariant.glbPath && (
+              {product.tryOnAvailable && (
                 <button
                   type="button"
                   onClick={() => setIsVTOOpen(true)}
-                  disabled={isOutOfStock}
-                  className="w-full py-4 px-6 rounded-2xl bg-neutral-900 hover:bg-neutral-800 text-white font-bold text-sm sm:text-base transition-all shadow-lg flex items-center justify-center gap-3 active:scale-98"
+                  disabled={isOutOfStock || !selectedVariant.glbPath}
+                  className={`w-full py-4 px-6 rounded-2xl font-bold text-sm sm:text-base transition-all flex items-center justify-center gap-3 ${
+                    isOutOfStock || !selectedVariant.glbPath
+                      ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
+                      : 'bg-neutral-900 hover:bg-neutral-800 text-white shadow-lg active:scale-98'
+                  }`}
                 >
-                  <Camera className="w-5 h-5 text-accent-gold animate-pulse" />
-                  <span>Try This Frame On (3D AR)</span>
+                  <Camera className={`w-5 h-5 ${isOutOfStock || !selectedVariant.glbPath ? 'text-neutral-400' : 'text-accent-gold animate-pulse'}`} />
+                  <span>{!selectedVariant.glbPath ? 'Try On (Select a 3D color)' : 'Try This Frame On (3D AR)'}</span>
                 </button>
               )}
 

@@ -141,11 +141,12 @@ export function ProductCard({
           <Button
             variant="secondary"
             size="sm"
-            className="w-full justify-center"
-            leadingIcon={<Camera className="w-4 h-4 text-brand-600" />}
+            className={`w-full justify-center ${!product.glbModel ? 'opacity-50 cursor-not-allowed' : ''}`}
+            disabled={!product.glbModel}
+            leadingIcon={<Camera className={`w-4 h-4 ${!product.glbModel ? 'text-neutral-400' : 'text-brand-600'}`} />}
             onClick={() => onTryOn?.(product)}
           >
-            Virtual Try-On
+            {!product.glbModel ? 'Try On (No 3D)' : 'Virtual Try-On'}
           </Button>
         )}
 

@@ -2,7 +2,7 @@
 import React from 'react';
 import { Metadata } from 'next';
 import { getLiveStorefrontProducts } from '@/lib/commerce/storefront-catalog';
-import { ProductGrid } from '@/components/sections/ProductGrid';
+import { ShopFilterClient } from './ShopFilterClient';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,11 +26,14 @@ export default async function ShopPage() {
 
   return (
     <main className="min-h-screen bg-neutral-50 pt-8 pb-16">
-      <ProductGrid
-        products={liveProducts}
-        title="Shop Sightly Eyewear"
-        subtitle="Handcrafted frames for discerning individuals. All frames are prescription-ready with virtual try-on available."
-      />
+      <div className="container-main text-center mb-8">
+        <h1 className="text-4xl font-black text-neutral-900 mb-4">Shop Sightly Eyewear</h1>
+        <p className="text-neutral-600 max-w-2xl mx-auto text-sm sm:text-base">
+          Handcrafted frames for discerning individuals. All frames are prescription-ready with virtual try-on available.
+        </p>
+      </div>
+
+      <ShopFilterClient products={liveProducts} />
     </main>
   );
 }

@@ -33,7 +33,8 @@ export class VTOAssetRegistry {
     }
 
     // Match by GLB URL (source or VTO)
-    const cleanUrl = identifier.startsWith('/') ? identifier : `/${identifier}`;
+    const isExternal = identifier.startsWith('http://') || identifier.startsWith('https://');
+    const cleanUrl = isExternal || identifier.startsWith('/') ? identifier : `/${identifier}`;
     for (const metadata of this.assets.values()) {
       if (
         metadata.paths.vtoGlbUrl.endsWith(cleanUrl) ||
