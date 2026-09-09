@@ -8,7 +8,7 @@ export async function middleware(request: NextRequest) {
   // 1. Global API Rate Limiting (DDoS Protection)
   if (pathname.startsWith('/api/')) {
     if (globalApiRateLimiter) {
-      const ip = request.ip ?? request.headers.get('x-forwarded-for') ?? '127.0.0.1';
+      const ip = request.headers.get('x-forwarded-for') ?? '127.0.0.1';
       const { success } = await globalApiRateLimiter.limit(ip);
       
       if (!success) {
