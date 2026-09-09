@@ -11,6 +11,7 @@ import { createPaymentService } from '@/services/payment';
 import { checkRateLimit, getClientIp } from '@/lib/security/rate-limiter';
 import { commerceRepository } from '@/lib/commerce/repository';
 import { deliveryConfig } from '@/config/services';
+import { generateOrderId } from '@/lib/commerce/id-generator';
 
 export const dynamic = 'force-dynamic';
 
@@ -180,17 +181,48 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   // 4. Generate unique cryptographic reference
   const reference = generateReference();
 
+  // 4.5 Save PENDING order to database to ensure items aren't lost in Paystack metadata
+  try {
+    const customer = await commerceRepository.findOrCreateCustomer({
+      phone: (body.metadata?.customerPhone as string) || '0000000000',
+      name: (body.metadata?.customerName as string) || 'Online Checkout',
+      email: body.email,
+    });
+
+    const orderId = generateOrderId();
+    await commerceRepository.saveOrder({
+      id: orderId,
+      customerId: customer.id,
+      paymentReference: reference,
+      items: validatedItems.length > 0 ? validatedItems : (body.metadata?.orderItems as any[]) || [],
+      subtotal: authoritativeSubtotal,
+      shippingFee: deliveryFee,
+      totalAmount: authoritativeTotal,
+      currency: 'NGN',
+      status: 'PENDING',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error('[/api/pay/initialize] Failed to save pending order:', err);
+    return NextResponse.json(
+      { error: 'Failed to create pending order.' },
+      { status: 500 }
+    );
+  }
+
   // 5. Initialize payment via PaystackService (server-side, uses secret key)
   try {
     const paymentService = createPaymentService('paystack');
-    const enrichedMetadata = {
+    const enrichedMetadata: Record<string, any> = {
       ...(body.metadata || {}),
       deliveryMethod: body.deliveryMethod,
       subtotal: authoritativeSubtotal,
       deliveryFee,
       authoritativeTotal,
-      orderItems: validatedItems.length > 0 ? validatedItems : body.metadata?.orderItems,
     };
+    // Ensure we delete orderItems from metadata to prevent Paystack payload size limits
+    delete enrichedMetadata.orderItems;
 
     const result = await paymentService.initializePayment({
       email: body.email,

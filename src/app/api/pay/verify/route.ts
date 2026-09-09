@@ -45,8 +45,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         finalCustomerId = customer.id;
       }
 
-      // 2. Record Payment and Create Order
-      await commerceRepository.recordPayment({
+      // 2. Record Payment and Create/Update Order
+      const paymentRecord = await commerceRepository.recordPayment({
         reference: cleanRef,
         orderIntentId,
         customerId: finalCustomerId || 'MC-ONLINE',
@@ -58,11 +58,33 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         gatewayResponse: metadata,
       });
 
-      const { order: createdOrder } = await commerceRepository.createOrderFromConfirmedPayment({
-        paymentReference: cleanRef,
-        orderIntentId,
-        customerId: finalCustomerId || 'MC-ONLINE',
-      });
+      // 3. Confirm Pending Order or Fallback
+      let createdOrder = await commerceRepository.getOrderByPaymentReference(cleanRef);
+      
+      if (createdOrder) {
+        // Order exists (created in initialize phase) -> confirm it
+        createdOrder.status = 'CONFIRMED';
+        createdOrder.paymentId = paymentRecord.id;
+        createdOrder.updatedAt = new Date().toISOString();
+        await commerceRepository.saveOrder(createdOrder);
+      } else {
+        // Fallback for legacy checkouts that didn't create a pending order
+        const fallbackResult = await commerceRepository.createOrderFromConfirmedPayment({
+          paymentReference: cleanRef,
+          orderIntentId,
+          customerId: finalCustomerId || 'MC-ONLINE',
+        });
+        createdOrder = fallbackResult.order;
+      }
+
+      // 4. Atomically Decrement Inventory & Write Ledger
+      if (createdOrder && createdOrder.items && createdOrder.items.length > 0) {
+        const inventoryItems = createdOrder.items.map(i => ({
+          variant_id: i.variantId,
+          quantity: i.quantity
+        }));
+        await commerceRepository.recordSale(createdOrder.id, inventoryItems);
+      }
 
       // Send confirmation email
       

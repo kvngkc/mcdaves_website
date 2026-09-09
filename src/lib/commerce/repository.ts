@@ -1154,6 +1154,57 @@ class CommerceRepository {
     return mapRowToOrder(data);
   }
 
+  public async saveOrder(order: Order): Promise<Order> {
+    if (!supabase) throw new Error("Supabase client missing");
+    const { error } = await supabase.from('orders').upsert(mapOrderToRow(order));
+    if (error) throw new Error(`Failed to save order: ${error.message}`);
+    return order;
+  }
+
+  /**
+   * Atomically record a sale, decrementing inventory and writing to the stock ledger.
+   * This invokes the record_sale RPC in Supabase.
+   */
+  public async recordSale(orderId: string, items: Array<{ variant_id: string; quantity: number }>): Promise<void> {
+    if (!supabase) throw new Error("Supabase client missing");
+    
+    const { data, error } = await supabase.rpc('record_sale', {
+      p_order_id: orderId,
+      p_items: items,
+    });
+
+    if (error) {
+      console.error('[Supabase] Failed to record sale inventory:', error.message);
+      throw new Error(`Failed to record sale: ${error.message}`);
+    }
+
+    if (data && !data[0]?.success) {
+      console.error('[Supabase] Failed to record sale inventory:', data[0]?.message);
+      throw new Error(`Failed to record sale: ${data[0]?.message}`);
+    }
+  }
+
+  /**
+   * Safely dispatches an order by updating its status via the atomic RPC.
+   */
+  public async dispatchOrder(orderId: string): Promise<void> {
+    if (!supabase) throw new Error("Supabase client missing");
+    const { data, error } = await supabase.rpc('dispatch_order', { p_order_id: orderId });
+    if (error) throw new Error(`Failed to dispatch order: ${error.message}`);
+    if (data && !data[0]?.success) throw new Error(`Failed to dispatch order: ${data[0]?.message}`);
+  }
+
+  /**
+   * Atomically restocks inventory via batch import JSON.
+   */
+  public async importInventoryBatch(items: Array<{ variant_id: string; quantity: number }>): Promise<void> {
+    if (!supabase) throw new Error("Supabase client missing");
+    const { data, error } = await supabase.rpc('import_inventory_batch', { p_items: items });
+    if (error) throw new Error(`Failed to import inventory: ${error.message}`);
+    if (data && !data[0]?.success) throw new Error(`Failed to import inventory: ${data[0]?.message}`);
+  }
+
+
   public async getOrdersByCustomerEmail(email: string): Promise<Order[]> {
     if (!supabase) throw new Error("Supabase client missing");
     

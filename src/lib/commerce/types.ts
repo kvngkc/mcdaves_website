@@ -218,6 +218,7 @@ export interface Payment {
 
 // ─── Confirmed Order ──────────────────────────────────────────────────────────
 export type OrderStatus =
+  | 'PENDING'
   | 'CONFIRMED'
   | 'PROCESSING'
   | 'READY_FOR_DELIVERY'
@@ -252,8 +253,8 @@ export interface Order {
   id: string;
   orderIntentId?: string;
   customerId: string;
-  paymentId: string;
-  paymentReference: string;
+  paymentId?: string;
+  paymentReference?: string;
   
   items: OrderItem[];
   subtotal: number;
