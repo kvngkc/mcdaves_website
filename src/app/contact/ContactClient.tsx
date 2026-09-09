@@ -15,9 +15,15 @@ import {
 } from 'lucide-react';
 import { siteConfig } from '@/data/site-config';
 
+import { Turnstile } from '@marsidev/react-turnstile';
+
 export default function ContactPage() {
   const [inquiryType, setInquiryType] = useState<'retail' | 'b2b'>('retail');
   const [formSubmitted, setFormSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -25,9 +31,34 @@ export default function ContactPage() {
     message: '',
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setFormSubmitted(true);
+    if (!turnstileToken && process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY) {
+      setErrorMsg('Please complete the security check.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setErrorMsg(null);
+
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...formData, inquiryType, turnstileToken }),
+      });
+
+      if (res.ok) {
+        setFormSubmitted(true);
+      } else {
+        const data = await res.json();
+        setErrorMsg(data.error || 'Failed to send message. Please try again.');
+      }
+    } catch {
+      setErrorMsg('Network error. Please try again later.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const getWhatsAppUrl = () => {
@@ -227,12 +258,27 @@ export default function ContactPage() {
                     />
                   </div>
 
+                  {process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && (
+                    <div className="flex justify-start">
+                      <Turnstile 
+                        siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY} 
+                        onSuccess={(token) => setTurnstileToken(token)}
+                        onError={() => setErrorMsg('Security check failed. Please refresh.')}
+                      />
+                    </div>
+                  )}
+
+                  {errorMsg && (
+                    <p className="text-red-500 text-xs font-semibold">{errorMsg}</p>
+                  )}
+
                   <button
                     type="submit"
-                    className="w-full py-3.5 px-6 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-semibold text-body-sm transition-all shadow-md active:scale-[0.98] flex items-center justify-center gap-2"
+                    disabled={isSubmitting || (!turnstileToken && !!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY)}
+                    className="w-full py-3.5 px-6 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-semibold text-body-sm transition-all shadow-md active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     <Send className="w-4 h-4" />
-                    <span>Send Message</span>
+                    <span>{isSubmitting ? 'Sending...' : 'Send Message'}</span>
                   </button>
 
                 </form>

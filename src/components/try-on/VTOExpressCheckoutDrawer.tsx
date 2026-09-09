@@ -74,6 +74,8 @@ export interface VTOExpressCheckoutDrawerProps {
   onSuccess?: () => void;
 }
 
+import { Turnstile } from '@marsidev/react-turnstile';
+
 export function VTOExpressCheckoutDrawer({
   isOpen,
   onClose,
@@ -93,6 +95,7 @@ export function VTOExpressCheckoutDrawer({
   const [customerEmail, setCustomerEmail] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -114,6 +117,11 @@ export function VTOExpressCheckoutDrawer({
       return;
     }
 
+    if (!turnstileToken && process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY) {
+      setErrorMessage('Please complete the security check.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -126,6 +134,7 @@ export function VTOExpressCheckoutDrawer({
           amount: grandTotal,
           currency: 'NGN',
           callbackUrl: `${window.location.origin}/payment/callback`,
+          turnstileToken,
           metadata: {
             source: 'VTO_DIRECT_CHECKOUT',
             productId,
@@ -324,10 +333,20 @@ export function VTOExpressCheckoutDrawer({
             </div>
           </div>
 
+          {process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && (
+            <div className="flex justify-center mt-2 mb-2">
+              <Turnstile 
+                siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY} 
+                onSuccess={(token) => setTurnstileToken(token)}
+                onError={() => setErrorMessage('Security check failed. Please refresh.')}
+              />
+            </div>
+          )}
+
           {/* Checkout Button */}
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || (!turnstileToken && !!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY)}
             className="w-full py-3.5 px-4 bg-brand-600 hover:bg-brand-500 disabled:bg-neutral-800 text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-brand-900/30 flex items-center justify-center gap-2 active:scale-98"
           >
             {isSubmitting ? (

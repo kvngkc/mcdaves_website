@@ -12,6 +12,7 @@ import { checkRateLimit, getClientIp } from '@/lib/security/rate-limiter';
 import { commerceRepository } from '@/lib/commerce/repository';
 import { deliveryConfig } from '@/config/services';
 import { generateOrderId } from '@/lib/commerce/id-generator';
+import { verifyTurnstileToken } from '@/lib/security/turnstile';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,6 +39,7 @@ const InitializeSchema = z.object({
   deliveryMethod: z.enum(['door', 'pickup']).optional().default('door'),
   /** Optional structured metadata: customer name, address, prescription, etc. */
   metadata: z.record(z.unknown()).optional(),
+  turnstileToken: z.string().optional(),
 });
 
 type InitializeBody = z.infer<typeof InitializeSchema>;
@@ -82,6 +84,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
     body = parsed.data;
+
+    // Validate CAPTCHA
+    const isValidToken = await verifyTurnstileToken(body.turnstileToken);
+    if (!isValidToken) {
+      return NextResponse.json(
+        { error: 'Security check failed. Please refresh and try again.' },
+        { status: 400 },
+      );
+    }
   } catch {
     return NextResponse.json(
       { error: 'Invalid JSON body.' },

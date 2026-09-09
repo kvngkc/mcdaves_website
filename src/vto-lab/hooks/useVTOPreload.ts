@@ -12,11 +12,6 @@ import { useGLTF } from '@react-three/drei';
 import { initFaceLandmarker } from '../tracking/FaceLandmarker';
 
 const VTO_CACHE_NAME = 'mcdaves-vto-assets-v1';
-const DEFAULT_PRELOAD_MODELS = [
-  '/models/glasses.glb',
-  '/models/Meshy_AI_Purple_Cat_Eye_Glasse_0810153235_texture.glb',
-];
-
 const PRELOAD_BINARY_ASSETS = [
   '/models/face_landmarker.task',
   '/wasm/vision_wasm_internal.wasm',
@@ -53,8 +48,24 @@ export async function preloadVTOAssets(extraGlbUrls: string[] = []): Promise<voi
   globalPreloadStarted = true;
 
   globalPreloadPromise = (async () => {
+    // 0. Fetch dynamic assets from DB
+    const dbGlbUrls: string[] = [];
+    try {
+      const res = await fetch('/api/vto/assets');
+      if (res.ok) {
+        const rows = await res.json();
+        if (Array.isArray(rows)) {
+          rows.forEach((row: any) => {
+            if (row.vto_glb_url) dbGlbUrls.push(row.vto_glb_url);
+          });
+        }
+      }
+    } catch {
+      // Gracefully continue
+    }
+
     // 1. Preload 3D GLB Models into Three.js texture cache
-    const glbList = Array.from(new Set([...DEFAULT_PRELOAD_MODELS, ...extraGlbUrls]));
+    const glbList = Array.from(new Set([...dbGlbUrls, ...extraGlbUrls]));
     glbList.forEach((url) => {
       if (url && url.endsWith('.glb')) {
         try {

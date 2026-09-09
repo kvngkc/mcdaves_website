@@ -135,8 +135,4 @@ export function GlassesModel({
   );
 }
 
-// Preload models for instant display
-useGLTF.preload('/models/glasses.glb');
-useGLTF.preload('/models/Meshy_AI_Purple_Cat_Eye_Glasse_0810153235_texture.glb');
-
 export default GlassesModel;

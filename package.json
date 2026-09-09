@@ -11,11 +11,14 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@marsidev/react-turnstile": "^1.6.1",
     "@mediapipe/tasks-vision": "^0.10.14",
     "@react-three/drei": "^10.0.0",
     "@react-three/fiber": "^9.0.0",
     "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.112.3",
+    "@upstash/ratelimit": "^2.0.8",
+    "@upstash/redis": "^1.38.4",
     "fuse.js": "^7.0.0",
     "lucide-react": "^0.400.0",
     "next": "^16.3.4",
