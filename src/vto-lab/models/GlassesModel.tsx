@@ -49,7 +49,20 @@ export function GlassesModel({
   const rootRef = useRef<Group>(null);
   const filterRef = useRef(new PoseFilter(45.0, 50.0, 40.0));
 
-  const { scene } = useGLTF(glbPath);
+  // Intercept and rewrite Supabase URLs to leverage Vercel Edge Compression
+  const optimizedGlbPath = useMemo(() => {
+    try {
+      if (glbPath.includes('/storage/v1/object/public/vto-models/')) {
+        const url = new URL(glbPath);
+        return `/vto-models${url.pathname.split('/vto-models')[1]}`;
+      }
+    } catch (e) {
+      // ignore parsing errors
+    }
+    return glbPath;
+  }, [glbPath]);
+
+  const { scene } = useGLTF(optimizedGlbPath);
 
   const calibration = useMemo(() => getCalibrationForGlb(glbPath), [glbPath]);
 

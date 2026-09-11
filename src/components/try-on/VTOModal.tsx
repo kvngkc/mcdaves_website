@@ -114,15 +114,6 @@ export function VTOModal({
     attachVideo,
   } = useCameraController({ autoStart: open });
 
-  // Manage camera on open/close
-  useEffect(() => {
-    if (open) {
-      startCamera();
-    } else {
-      stopCamera();
-    }
-  }, [open, startCamera, stopCamera]);
-
   // 2. Container Resize Observer
   useEffect(() => {
     if (!open) return;

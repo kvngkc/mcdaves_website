@@ -38,6 +38,17 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/pro/catalog', request.url), 301);
   }
 
+  // 4. Products route redirects (VT-04 Fix)
+  if (pathname === '/products' || pathname === '/products/') {
+    return NextResponse.redirect(new URL('/shop', request.url), 301);
+  }
+
+  // If someone visits /products/[slug] without a variant, redirect to /shop/[slug]
+  if (pathname.startsWith('/products/') && pathname.split('/').length === 3) {
+    const slug = pathname.split('/')[2];
+    return NextResponse.redirect(new URL(`/shop/${slug}`, request.url), 301);
+  }
+
   return NextResponse.next();
 }
 
@@ -49,6 +60,8 @@ export const config = {
     '/services/repairs/:path*',
     '/services/frame-repair/:path*',
     '/pro/quote/:path*',
+    '/products',
+    '/products/:path*',
   ],
 };
 
