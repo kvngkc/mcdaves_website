@@ -66,7 +66,7 @@ export function HeadOccluder({
       <group position={[0, 0, 0]}>
         {/* Rear Cranium Sphere */}
         <mesh position={[0, -1.5, -7.5]} renderOrder={-1}>
-          <sphereGeometry args={[5.8, 32, 24]} />
+          <sphereGeometry args={[5.8, 16, 12]} />
           <meshBasicMaterial
             colorWrite={debugVisible}
             depthWrite={true}
@@ -80,7 +80,7 @@ export function HeadOccluder({
 
         {/* Mid-Head / Jaw Volume behind cheeks */}
         <mesh position={[0, -3.5, -6.5]} renderOrder={-1}>
-          <cylinderGeometry args={[4.8, 4.0, 7.0, 32]} />
+          <cylinderGeometry args={[4.8, 4.0, 7.0, 16]} />
           <meshBasicMaterial
             colorWrite={debugVisible}
             depthWrite={true}
@@ -94,7 +94,7 @@ export function HeadOccluder({
 
         {/* Left Ear / Temple Occluder Block */}
         <mesh position={[-6.2, -1.5, -5.0]} renderOrder={-1}>
-          <sphereGeometry args={[2.8, 16, 16]} />
+          <sphereGeometry args={[2.8, 12, 12]} />
           <meshBasicMaterial
             colorWrite={debugVisible}
             depthWrite={true}
@@ -108,7 +108,7 @@ export function HeadOccluder({
 
         {/* Right Ear / Temple Occluder Block */}
         <mesh position={[6.2, -1.5, -5.0]} renderOrder={-1}>
-          <sphereGeometry args={[2.8, 16, 16]} />
+          <sphereGeometry args={[2.8, 12, 12]} />
           <meshBasicMaterial
             colorWrite={debugVisible}
             depthWrite={true}

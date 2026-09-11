@@ -36,7 +36,8 @@ export function ProductGrid({
   const [canScrollRight, setCanScrollRight] = useState(true);
 
   // Preload VTO assets in the background during user browse time
-  useVTOPreload(products.map((p) => p.glbModel).filter(Boolean) as string[]);
+  // FIX (Issue 16): Disabled aggressive preloading to prevent network slowdowns on shop pages with many products.
+  // useVTOPreload(products.map((p) => p.glbModel).filter(Boolean) as string[]);
 
   // Limit products if slider
   const displayProducts = layout === 'slider' ? products.slice(0, 12) : products;

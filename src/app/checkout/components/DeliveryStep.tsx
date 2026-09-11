@@ -44,6 +44,10 @@ export function DeliveryStep({
   onBack,
   onContinue,
 }: DeliveryStepProps) {
+  // Compute effective door delivery fee based on free-threshold eligibility
+  const qualifiesForFreeDelivery = subtotal >= deliveryConfig.freeThreshold;
+  const effectiveDoorFee = qualifiesForFreeDelivery ? 0 : deliveryConfig.standardFee;
+
   return (
     <section
       className="bg-white rounded-xl border border-neutral-200 shadow-sm overflow-hidden"
@@ -100,10 +104,20 @@ export function DeliveryStep({
                     <span
                       className={[
                         'text-caption font-semibold self-start sm:self-auto',
-                        opt.fee === 0 ? 'text-brand-700' : 'text-neutral-700',
+                        // For door delivery, use the effective fee (accounts for free threshold)
+                        // For pickup, always use opt.fee (it is always 0)
+                        (opt.id === 'door' ? effectiveDoorFee : opt.fee) === 0
+                          ? 'text-brand-700'
+                          : 'text-neutral-700',
                       ].join(' ')}
                     >
-                      {opt.fee === 0 ? 'Free' : `+₦${opt.fee.toLocaleString()}`}
+                      {opt.id === 'door'
+                        ? effectiveDoorFee === 0
+                          ? 'Free'
+                          : `+₦${effectiveDoorFee.toLocaleString()}`
+                        : opt.fee === 0
+                          ? 'Free'
+                          : `+₦${opt.fee.toLocaleString()}`}
                     </span>
                   </div>
                   <p className="text-caption text-neutral-500 mt-1">
@@ -113,8 +127,8 @@ export function DeliveryStep({
               </label>
             ))}
 
-            {/* Free delivery banner */}
-            {delivery.method === 'door' && subtotal >= deliveryConfig.freeThreshold && (
+            {/* Free delivery banner — only shown when door method is selected AND subtotal qualifies */}
+            {delivery.method === 'door' && qualifiesForFreeDelivery && (
               <p className="flex items-center gap-2 text-caption text-brand-700 bg-brand-50 border border-brand-200 rounded-lg px-3 py-2.5 font-medium">
                 <ShieldCheck className="w-4 h-4 flex-shrink-0" />
                 Your order qualifies for FREE nationwide delivery!

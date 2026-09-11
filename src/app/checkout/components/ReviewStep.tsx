@@ -9,6 +9,7 @@ import {
   Lock,
   AlertCircle,
 } from 'lucide-react';
+import { Turnstile } from '@marsidev/react-turnstile';
 import { Button, Price } from '@/components/ui';
 import { CartItem } from '@/lib/types';
 import { CustomerDetails, DeliveryDetails } from './types';
@@ -22,6 +23,10 @@ interface ReviewStepProps {
   total: number;
   paying: boolean;
   payError: string | null;
+  /** Called when Turnstile issues or expires a token. Pass null on expiry. */
+  onTokenChange: (token: string | null) => void;
+  /** Whether a valid Turnstile token is currently held */
+  turnstileReady: boolean;
   onPay: () => void;
   onBack: () => void;
 }
@@ -35,9 +40,12 @@ export function ReviewStep({
   total,
   paying,
   payError,
+  onTokenChange,
+  turnstileReady,
   onPay,
   onBack,
 }: ReviewStepProps) {
+  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? '';
   return (
     <section className="space-y-4" aria-labelledby="step3-heading">
       {/* Order Summary card */}
@@ -143,13 +151,31 @@ export function ReviewStep({
         </div>
       )}
 
-      {/* Pay CTA */}
+      {/* Cloudflare Turnstile — required for /api/pay/initialize security check.
+           The Pay button stays disabled until Turnstile issues a valid token. */}
+      <div className="flex flex-col items-center gap-2">
+        <Turnstile
+          siteKey={siteKey}
+          onSuccess={(token) => onTokenChange(token)}
+          onExpire={() => onTokenChange(null)}
+          onError={() => onTokenChange(null)}
+          options={{ theme: 'light', size: 'normal' }}
+        />
+        {!turnstileReady && !paying && (
+          <p className="text-caption text-neutral-400 text-center">
+            Security check loading… Pay button will unlock shortly.
+          </p>
+        )}
+      </div>
+
+      {/* Pay CTA — disabled until Turnstile token is ready */}
       <Button
         id="checkout-pay-btn"
         variant="primary"
         size="lg"
         fullWidth
         loading={paying}
+        disabled={!turnstileReady && !paying}
         onClick={onPay}
         leadingIcon={!paying ? <Lock className="w-4 h-4" /> : undefined}
       >

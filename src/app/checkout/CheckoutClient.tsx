@@ -93,6 +93,9 @@ export default function CheckoutPage() {
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
 
+  // Cloudflare Turnstile token — required by /api/pay/initialize
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+
   // Step 1: Customer details state
   const [customer, setCustomer] = useState<CustomerDetails>({
     email: '',
@@ -204,6 +207,35 @@ export default function CheckoutPage() {
       })),
     };
 
+    // Upload prescription file if customer chose 'upload' and selected a file.
+    // This must happen BEFORE /api/pay/initialize so the durable URL is stored
+    // in the order record for admin retrieval — the File object is lost after redirect.
+    if (
+      hasPrescriptionItems &&
+      delivery.prescriptionOption === 'upload' &&
+      delivery.prescriptionFile
+    ) {
+      try {
+        const form = new FormData();
+        form.append('file', delivery.prescriptionFile);
+        const uploadRes = await fetch('/api/prescriptions/upload', {
+          method: 'POST',
+          body: form,
+        });
+        if (!uploadRes.ok) {
+          const uploadErr = (await uploadRes.json()) as { error?: string };
+          throw new Error(uploadErr.error || 'Prescription upload failed.');
+        }
+        const uploadData = (await uploadRes.json()) as { prescriptionFileUrl: string };
+        metadata.prescriptionFileUrl = uploadData.prescriptionFileUrl;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Could not upload prescription.';
+        setPayError(msg);
+        setPaying(false);
+        return; // Stop checkout — do not proceed without the prescription upload
+      }
+    }
+
     try {
       const res = await fetch('/api/pay/initialize', {
         method: 'POST',
@@ -222,6 +254,8 @@ export default function CheckoutPage() {
           })),
           deliveryMethod: delivery.method,
           metadata,
+          // Pass the Turnstile token so the server can verify the security check
+          turnstileToken,
         }),
       });
 
@@ -246,8 +280,10 @@ export default function CheckoutPage() {
       const msg = err instanceof Error ? err.message : 'Payment error. Please try again.';
       setPayError(msg);
       setPaying(false);
+      // Clear the token so the Turnstile widget resets on the next attempt
+      setTurnstileToken(null);
     }
-  }, [customer, delivery, hasPrescriptionItems, items, total]);
+  }, [customer, delivery, hasPrescriptionItems, items, total, turnstileToken]);
 
   // Empty cart guard
   if (items.length === 0) {
@@ -327,6 +363,8 @@ export default function CheckoutPage() {
             total={total}
             paying={paying}
             payError={payError}
+            onTokenChange={setTurnstileToken}
+            turnstileReady={!!turnstileToken}
             onPay={handlePay}
             onBack={() => {
               setStep(2);

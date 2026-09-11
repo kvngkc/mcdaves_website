@@ -32,6 +32,8 @@ export interface GlassesModelProps {
   onError?: (error: Error) => void;
 }
 
+const preparedModelCache = new Map<string, any>();
+
 export function GlassesModel({
   glbPath,
   frameSize,
@@ -59,26 +61,29 @@ export function GlassesModel({
       return;
     }
 
-    const newPrepared = prepareGlassesModel(scene as Group, calibration, clipTemples, templeDepthCutoff);
-    setPrepared(newPrepared);
+    const cacheKey = `${glbPath}_${clipTemples}_${templeDepthCutoff}`;
+    
+    if (preparedModelCache.has(cacheKey)) {
+      setPrepared(preparedModelCache.get(cacheKey));
+      return;
+    }
 
-    // Clean up only the cloned materials when this specific instance unmounts.
-    // Do NOT dispose geometry, as it is shared via the useGLTF cache.
-    return () => {
-      if (newPrepared && newPrepared.root) {
-        newPrepared.root.traverse((child) => {
-          const mesh = child as any;
-          if (mesh.isMesh && mesh.material) {
-            if (Array.isArray(mesh.material)) {
-              mesh.material.forEach((mat) => mat.dispose());
-            } else {
-              mesh.material.dispose();
-            }
-          }
-        });
-      }
+    // Defer heavy preparation to avoid blocking the main thread
+    const prepareAsync = () => {
+      const newPrepared = prepareGlassesModel(scene as Group, calibration, clipTemples, templeDepthCutoff);
+      preparedModelCache.set(cacheKey, newPrepared);
+      setPrepared(newPrepared);
     };
-  }, [scene, calibration, clipTemples, templeDepthCutoff]);
+
+    if (typeof requestIdleCallback !== 'undefined') {
+      requestIdleCallback(prepareAsync);
+    } else {
+      setTimeout(prepareAsync, 0);
+    }
+
+    // Note: Materials are no longer disposed on unmount since they are cached globally per session.
+    // This allows instant re-renders when toggling the same frame.
+  }, [scene, calibration, clipTemples, templeDepthCutoff, glbPath]);
 
   const { scale } = useMemo(() => {
     const nativeW = prepared?.measurements.nativeWidth || calibration.measuredNativeWidth;

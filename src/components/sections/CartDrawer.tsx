@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { X, ShoppingBag, Trash2, Plus, Minus, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useCart } from '@/hooks/useCart';
 import { Button, Price } from '@/components/ui';
+import { deliveryConfig } from '@/config/services';
 
 export function CartDrawer() {
   const {
@@ -187,10 +188,10 @@ export function CartDrawer() {
         {/* Footer (Calculations & Checkout) */}
         {items.length > 0 && (
           <div className="border-t border-neutral-100 bg-neutral-50/70 p-5 sm:p-6 pb-safe space-y-4">
-            {/* Delivery threshold indicator */}
-            {subtotal < 50000 ? (
+            {/* Delivery threshold indicator — reads from SSOT (deliveryConfig.freeThreshold) */}
+            {subtotal < deliveryConfig.freeThreshold ? (
               <p className="text-caption text-neutral-600 bg-brand-50/80 p-2.5 rounded-lg border border-brand-100 text-center">
-                Add <span className="font-semibold text-brand-800"><Price amount={50000 - subtotal} size="sm" /></span> more for <span className="font-bold text-brand-700">FREE Delivery</span> nationwide!
+                Add <span className="font-semibold text-brand-800"><Price amount={deliveryConfig.freeThreshold - subtotal} size="sm" /></span> more for <span className="font-bold text-brand-700">FREE Delivery</span> nationwide!
               </p>
             ) : (
               <p className="text-caption text-brand-700 bg-brand-50 p-2.5 rounded-lg border border-brand-200 text-center font-medium flex items-center justify-center gap-1.5">

@@ -179,6 +179,10 @@ export function VTOModal({
       cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
     }
+    if (landmarkerRef.current) {
+      landmarkerRef.current.close();
+      landmarkerRef.current = null;
+    }
     stopCamera();
     latestDetectionRef.current = null;
     setFaceDetected(false);
@@ -192,6 +196,10 @@ export function VTOModal({
       if (rafRef.current) {
         cancelAnimationFrame(rafRef.current);
         rafRef.current = null;
+      }
+      if (landmarkerRef.current) {
+        landmarkerRef.current.close();
+        landmarkerRef.current = null;
       }
       stopCamera();
       latestDetectionRef.current = null;

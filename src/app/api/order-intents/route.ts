@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { commerceRepository } from '@/lib/commerce/repository';
 import { requireAdminSession } from '@/lib/auth/admin-auth';
 import { checkRateLimit, getClientIp } from '@/lib/security/rate-limiter';
+import { verifyTurnstileToken } from '@/lib/security/turnstile';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,6 +43,8 @@ const CreateIntentSchema = z.object({
     })
     .optional(),
   vtoSessionRef: z.string().optional(),
+  /** Cloudflare Turnstile token for bot protection */
+  turnstileToken: z.string().optional(),
 });
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -75,6 +78,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const { customer, variantId, quantity, source, notes, lensRequest, vtoSessionRef } =
       parsed.data;
+
+    // 2. Verify Turnstile CAPTCHA token (bot protection)
+    const isValidToken = await verifyTurnstileToken(parsed.data.turnstileToken ?? null);
+    if (!isValidToken) {
+      return NextResponse.json(
+        { error: 'Security check failed. Please refresh and try again.' },
+        { status: 400 },
+      );
+    }
 
     const result = await commerceRepository.createOrderIntent({
       customer: {

@@ -9,6 +9,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
+import { Turnstile } from '@marsidev/react-turnstile';
 import {
   X,
   MessageCircle,
@@ -61,6 +62,7 @@ export function OrderIntentModal({
   // Form State
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [createdIntent, setCreatedIntent] = useState<{
     customerId: string;
     intentId: string;
@@ -127,6 +129,8 @@ export function OrderIntentModal({
           source: 'whatsapp_cta',
           notes: notes.trim() || undefined,
           lensRequest: lensRequestData,
+          // Turnstile token for bot protection
+          turnstileToken,
         }),
       });
 
@@ -463,10 +467,26 @@ export function OrderIntentModal({
                 />
               </div>
 
-              {/* Submit CTA */}
+              {/* Cloudflare Turnstile — bot protection for order intent submission */}
+              <div className="flex flex-col items-center gap-1.5 pt-1">
+                <Turnstile
+                  siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? ''}
+                  onSuccess={(token) => setTurnstileToken(token)}
+                  onExpire={() => setTurnstileToken(null)}
+                  onError={() => setTurnstileToken(null)}
+                  options={{ theme: 'light', size: 'normal' }}
+                />
+                {!turnstileToken && (
+                  <p className="text-[11px] text-neutral-400 text-center">
+                    Security check loading…
+                  </p>
+                )}
+              </div>
+
+              {/* Submit CTA — disabled until Turnstile token is ready */}
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || !turnstileToken}
                 className="w-full py-3.5 px-6 rounded-2xl bg-green-600 hover:bg-green-500 text-white font-bold text-sm transition shadow-lg shadow-green-900/20 flex items-center justify-center gap-2 disabled:opacity-50 active:scale-98"
               >
                 {isSubmitting ? (

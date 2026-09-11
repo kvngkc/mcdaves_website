@@ -90,13 +90,14 @@ function resolveClientProduct(p: Product | null): { product: ResolvedProduct | n
 }
 
 export default function StandaloneTryOnPage() {
-  const [liveProducts, setLiveProducts] = useState<Product[]>(fallbackProducts);
+  const [liveProducts, setLiveProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isTryOnOpen, setIsTryOnOpen] = useState(false);
   const [intentModalOpen, setIntentModalOpen] = useState(false);
 
   // Background pre-warm AI neural engine & 3D frame models during idle time
-  useVTOPreload(liveProducts.map((p) => p.glbModel).filter(Boolean) as string[]);
+  // useVTOPreload(liveProducts.map((p) => p.glbModel).filter(Boolean) as string[]);
 
   useEffect(() => {
     async function loadLive() {
@@ -152,10 +153,17 @@ export default function StandaloneTryOnPage() {
               };
             });
             setLiveProducts(mapped);
+          } else {
+            setLiveProducts(fallbackProducts);
           }
+        } else {
+          setLiveProducts(fallbackProducts);
         }
       } catch {
         // Fallback to initial seed
+        setLiveProducts(fallbackProducts);
+      } finally {
+        setIsLoading(false);
       }
     }
     loadLive();
@@ -216,8 +224,29 @@ export default function StandaloneTryOnPage() {
             <p className="text-body-sm text-neutral-600">Select any frame from our Sightly Collection below to launch the live camera AR fitting room.</p>
           </div>
 
-          <div className="flex overflow-x-auto snap-x snap-mandatory gap-6 pb-8 no-scrollbar">
-            {liveProducts.map((product) => (
+          {isLoading ? (
+            <div className="flex overflow-x-auto snap-x snap-mandatory gap-6 pb-8 no-scrollbar">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="snap-center shrink-0 w-[85vw] sm:w-[350px]">
+                  <div className="bg-white border border-neutral-200 rounded-2xl p-6 flex flex-col justify-between shadow-card h-full animate-pulse min-h-[480px]">
+                    <div>
+                      <div className="relative aspect-[4/3] bg-neutral-100 rounded-xl mb-6"></div>
+                      <div className="h-3 bg-neutral-200 rounded w-1/3 mb-4"></div>
+                      <div className="h-6 bg-neutral-200 rounded w-3/4 mb-4"></div>
+                      <div className="h-4 bg-neutral-100 rounded w-full mb-2"></div>
+                      <div className="h-4 bg-neutral-100 rounded w-5/6 mb-8"></div>
+                    </div>
+                    <div className="space-y-3 mt-auto">
+                      <div className="h-12 bg-neutral-200 rounded-xl w-full"></div>
+                      <div className="h-10 bg-neutral-100 rounded-xl w-full"></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex overflow-x-auto snap-x snap-mandatory gap-6 pb-8 no-scrollbar">
+              {liveProducts.map((product) => (
               <div key={product.id} className="snap-center shrink-0 w-[85vw] sm:w-[350px]">
                 <div
                   className="bg-white border border-neutral-200 hover:border-brand-300 rounded-2xl p-6 flex flex-col justify-between transition-all shadow-card hover:shadow-card-hover group h-full"
@@ -280,7 +309,8 @@ export default function StandaloneTryOnPage() {
                 </div>
               </div>
             ))}
-          </div>
+            </div>
+          )}
         </div>
       </section>
 

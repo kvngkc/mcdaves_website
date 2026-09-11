@@ -277,18 +277,6 @@ export default function LensReplacementB2CPage() {
           <p className="text-body-sm text-neutral-700 leading-relaxed max-w-2xl mx-auto">
             Every pair of glasses requires precise pupillary distance (PD) measurement, optical center alignment, and frame bevel fitting. We coordinate with established optical finishing laboratories to ensure your lenses fit securely and comfortably in your frames.
           </p>
-
-          <div className="pt-4">
-            <a
-              href={whatsappUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-brand-700 hover:bg-brand-800 text-white font-bold text-xs transition-all shadow-md"
-            >
-              <MessageCircle className="w-4 h-4 fill-white" />
-              <span>Ask About Lens Fitting on WhatsApp</span>
-            </a>
-          </div>
         </div>
       </section>
 

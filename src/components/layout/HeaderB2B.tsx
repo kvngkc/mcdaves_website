@@ -84,15 +84,6 @@ export function HeaderB2B({ onMenuClick }: HeaderB2BProps) {
               {label}
             </Link>
           ))}
-          <a
-            href={ORDERING_SYSTEM_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-3 py-2 rounded-lg text-body-sm font-medium text-brand-400 hover:text-brand-300 hover:bg-neutral-800 transition-colors duration-150 inline-flex items-center gap-1"
-          >
-            <span>Order Online</span>
-            <ExternalLink className="w-3 h-3" />
-          </a>
         </nav>
 
         {/* Right CTAs: Cross-track Consumer Link & Order CTA */}
