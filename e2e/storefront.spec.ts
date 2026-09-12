@@ -10,7 +10,7 @@ test.describe('Storefront E2E Tests - Production Checklist', () => {
 
   test('VT-03: VTO Modal handles camera streams cleanly', async ({ page }) => {
     // Navigate to a product page that has VTO
-    await page.goto('/shop/classic-cat-eye');
+    await page.goto('/shop/ikoyi-cat-eye');
     
     // Click Try-On to open modal
     const tryOnBtn = page.locator('button', { hasText: /Try.*On/i });
