@@ -171,7 +171,7 @@ export function VTOModal({
       rafRef.current = null;
     }
     if (landmarkerRef.current) {
-      landmarkerRef.current.close();
+      // Intentionally NOT closing the landmarker to keep the WASM engine 'warm' for instant subsequent loads.
       landmarkerRef.current = null;
     }
     stopCamera();
@@ -189,7 +189,7 @@ export function VTOModal({
         rafRef.current = null;
       }
       if (landmarkerRef.current) {
-        landmarkerRef.current.close();
+        // Intentionally NOT closing the landmarker to keep the WASM engine 'warm' for instant subsequent loads.
         landmarkerRef.current = null;
       }
       stopCamera();
