@@ -147,15 +147,15 @@ export function processFaceLandmarks(
   const pose = faceMatrix
     ? decomposeTransformationMatrix(faceMatrix)
     : {
-        translation: { ...noseBridgePx },
-        pitch: 0,
-        yaw: 0,
-        roll: Math.atan2(
-          rightPupilPx.y - leftPupilPx.y,
-          rightPupilPx.x - leftPupilPx.x,
-        ),
-        quaternion: [0, 0, 0, 1] as [number, number, number, number],
-      };
+      translation: { ...noseBridgePx },
+      pitch: 0,
+      yaw: 0,
+      roll: Math.atan2(
+        rightPupilPx.y - leftPupilPx.y,
+        rightPupilPx.x - leftPupilPx.x,
+      ),
+      quaternion: [0, 0, 0, 1] as [number, number, number, number],
+    };
 
   const rawLandmarks: LandmarkPoint[] = landmarks.map((pt) => ({
     x: pt.x,

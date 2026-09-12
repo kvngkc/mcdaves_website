@@ -4,7 +4,7 @@
  * Measures model bounds programmatically and centers the model around its bridge anchor.
  */
 
-import { Box3, Group, Object3D, Vector3, Plane, Mesh } from 'three';
+import { Box3, Group, Object3D, Vector3, Plane, Mesh, BufferGeometry } from 'three';
 import { CalibrationEntry } from '../calibration/calibrationRegistry';
 import { ModelMeasurement } from '../tracking/FaceTrackingTypes';
 
@@ -14,17 +14,49 @@ export interface PreparedGlassesAsset {
   clippingPlane?: Plane;
 }
 
-export function measureObjectBounds(obj: Object3D): ModelMeasurement {
+/**
+ * Yields the main thread to prevent Long Tasks / INP blocks.
+ */
+const yieldThread = () => new Promise(resolve => setTimeout(resolve, 0));
+
+export async function measureObjectBoundsAsync(obj: Object3D): Promise<ModelMeasurement> {
   obj.updateMatrixWorld(true);
-  const box = new Box3().setFromObject(obj);
-  const size = new Vector3();
-  const center = new Vector3();
-  box.getSize(size);
-  box.getCenter(center);
+
+  const meshes: Mesh[] = [];
+  obj.traverse((child) => {
+    if ((child as Mesh).isMesh) {
+      meshes.push(child as Mesh);
+    }
+  });
+
+  const min = new Vector3(Infinity, Infinity, Infinity);
+  const max = new Vector3(-Infinity, -Infinity, -Infinity);
+
+  for (const mesh of meshes) {
+    if (!mesh.geometry.boundingBox) {
+      mesh.geometry.computeBoundingBox();
+    }
+    if (mesh.geometry.boundingBox) {
+      const box = mesh.geometry.boundingBox.clone();
+      box.applyMatrix4(mesh.matrixWorld);
+      min.min(box.min);
+      max.max(box.max);
+    }
+    await yieldThread();
+  }
+
+  // Fallback if no valid geometry found
+  if (min.x === Infinity) {
+    min.set(-1, -1, -1);
+    max.set(1, 1, 1);
+  }
+
+  const size = new Vector3().subVectors(max, min);
+  const center = new Vector3().addVectors(max, min).multiplyScalar(0.5);
 
   return {
-    min: { x: box.min.x, y: box.min.y, z: box.min.z },
-    max: { x: box.max.x, y: box.max.y, z: box.max.z },
+    min: { x: min.x, y: min.y, z: min.z },
+    max: { x: max.x, y: max.y, z: max.z },
     size: { x: size.x, y: size.y, z: size.z },
     center: { x: center.x, y: center.y, z: center.z },
     nativeWidth: size.x > 0 ? size.x : 1.0,
@@ -66,14 +98,23 @@ export function applyTempleClipping(root: Object3D, maxTempleDepth = 2.5): Plane
   return plane;
 }
 
-export function prepareGlassesModel(
+export async function prepareGlassesModel(
   scene: Group,
   calibration: CalibrationEntry,
   clipTemples = true,
   templeDepthCutoff = 2.5,
-): PreparedGlassesAsset {
+): Promise<PreparedGlassesAsset> {
   const container = new Group();
   const clone = scene.clone(true);
+
+  if (calibration.rotationOffsetEuler) {
+    const { x, y, z } = calibration.rotationOffsetEuler;
+    clone.rotation.set(
+      x * (Math.PI / 180),
+      y * (Math.PI / 180),
+      z * (Math.PI / 180)
+    );
+  }
 
   // Shift model by -bridge offset so container origin (0, 0, 0) becomes the physical bridge
   clone.position.set(
@@ -89,7 +130,7 @@ export function prepareGlassesModel(
     clippingPlane = applyTempleClipping(clone, templeDepthCutoff);
   }
 
-  const measurements = measureObjectBounds(clone);
+  const measurements = await measureObjectBoundsAsync(clone);
 
   return {
     root: container,

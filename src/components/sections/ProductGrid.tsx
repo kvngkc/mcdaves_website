@@ -102,16 +102,21 @@ export function ProductGrid({
                 onScroll={handleScroll}
                 className="flex overflow-x-auto snap-x snap-mandatory gap-4 sm:gap-6 pb-6 no-scrollbar scroll-smooth"
               >
-                {displayProducts.map((product) => (
+                {displayProducts.map((product, index) => (
                   <div key={product.id} className="snap-center shrink-0 w-[85vw] sm:w-[350px]">
                     <ProductCard
                       product={product}
                       showTryOn={showTryOn}
+                      priority={index < 4}
                       onAddToCart={(prod) => {
                         addItem(prod, prod.id, prod.id, 1, prod.colors?.[0]?.name);
                         openDrawer();
                       }}
-                      onTryOn={(prod) => setTryOnProduct(prod)}
+                      onTryOn={(prod) => {
+                        React.startTransition(() => {
+                          setTryOnProduct(prod);
+                        });
+                      }}
                     />
                   </div>
                 ))}
@@ -128,16 +133,21 @@ export function ProductGrid({
             </div>
           ) : (
             <div className={`grid gap-6 ${gridColClass}`}>
-              {displayProducts.map((product) => (
+              {displayProducts.map((product, index) => (
                 <ProductCard
                   key={product.id}
                   product={product}
                   showTryOn={showTryOn}
+                  priority={index < 4}
                   onAddToCart={(prod) => {
                     addItem(prod, prod.id, prod.id, 1, prod.colors?.[0]?.name);
                     openDrawer();
                   }}
-                  onTryOn={(prod) => setTryOnProduct(prod)}
+                  onTryOn={(prod) => {
+                    React.startTransition(() => {
+                      setTryOnProduct(prod);
+                    });
+                  }}
                 />
               ))}
             </div>

@@ -57,63 +57,16 @@ export function HeadOccluder({
 
   return (
     <group ref={rootRef} name="VTO_HeadOccluderRoot" renderOrder={-1}>
-      {/* 
-        Head & Cranium Volume Occluder:
-        Positioned strictly behind the face plane relative to Landmark 168 (Nose bridge):
-        - Cranium center: (0, -1.5, -7.5) with radius 5.8 cm -> front apex at Z = -1.7 cm
-        - Side/Ear cylinders: positioned at temples to occlude ear hooks without extending into cheeks
-      */}
       <group position={[0, 0, 0]}>
-        {/* Rear Cranium Sphere */}
-        <mesh position={[0, -1.5, -7.5]} renderOrder={-1}>
-          <sphereGeometry args={[5.8, 16, 12]} />
+        {/* Massive Occlusion Block behind the head */}
+        {/* Positioned at Z=-9, Depth=14, means the front face is at Z = -2.0 cm */}
+        <mesh position={[0, -2.0, -9.0]} renderOrder={-1}>
+          <boxGeometry args={[17.0, 20.0, 14.0]} />
           <meshBasicMaterial
             colorWrite={debugVisible}
             depthWrite={true}
             depthTest={true}
-            color="#00ff88"
-            wireframe={debugVisible}
-            transparent={debugVisible}
-            opacity={debugVisible ? 0.35 : 1.0}
-          />
-        </mesh>
-
-        {/* Mid-Head / Jaw Volume behind cheeks */}
-        <mesh position={[0, -3.5, -6.5]} renderOrder={-1}>
-          <cylinderGeometry args={[4.8, 4.0, 7.0, 16]} />
-          <meshBasicMaterial
-            colorWrite={debugVisible}
-            depthWrite={true}
-            depthTest={true}
-            color="#0088ff"
-            wireframe={debugVisible}
-            transparent={debugVisible}
-            opacity={debugVisible ? 0.35 : 1.0}
-          />
-        </mesh>
-
-        {/* Left Ear / Temple Occluder Block */}
-        <mesh position={[-6.2, -1.5, -5.0]} renderOrder={-1}>
-          <sphereGeometry args={[2.8, 12, 12]} />
-          <meshBasicMaterial
-            colorWrite={debugVisible}
-            depthWrite={true}
-            depthTest={true}
-            color="#ff8800"
-            wireframe={debugVisible}
-            transparent={debugVisible}
-            opacity={debugVisible ? 0.35 : 1.0}
-          />
-        </mesh>
-
-        {/* Right Ear / Temple Occluder Block */}
-        <mesh position={[6.2, -1.5, -5.0]} renderOrder={-1}>
-          <sphereGeometry args={[2.8, 12, 12]} />
-          <meshBasicMaterial
-            colorWrite={debugVisible}
-            depthWrite={true}
-            depthTest={true}
-            color="#ff8800"
+            color="#ff00ff"
             wireframe={debugVisible}
             transparent={debugVisible}
             opacity={debugVisible ? 0.35 : 1.0}

@@ -35,8 +35,31 @@ import {
   ModelMeasurement,
 } from '@/vto-lab/tracking/FaceTrackingTypes';
 import VTOVideo, { computeLetterboxViewport } from '@/vto-lab/components/VTOVideo';
-import VTOCanvas from '@/vto-lab/components/VTOCanvas';
+import dynamic from 'next/dynamic';
+
+const VTOCanvas = dynamic(() => import('@/vto-lab/components/VTOCanvas'), {
+  ssr: false,
+  loading: () => null,
+});
 import { VTOExpressCheckoutDrawer } from './VTOExpressCheckoutDrawer';
+
+if (typeof window !== 'undefined') {
+  // @ts-ignore - Check for existing interceptor to prevent HMR infinite loop
+  if (!window.__vtoConsoleInterceptorActive) {
+    const originalConsoleError = console.error;
+    console.error = (...args) => {
+      if (
+        typeof args[0] === 'string' &&
+        (args[0].includes('XNNPACK') || args[0].includes('FaceBlendshapesGraph'))
+      ) {
+        return; // Suppress WASM info logs mistakenly written to stderr
+      }
+      originalConsoleError.apply(console, args);
+    };
+    // @ts-ignore
+    window.__vtoConsoleInterceptorActive = true;
+  }
+}
 
 export interface VTOModalProps {
   open: boolean;
@@ -89,6 +112,17 @@ export function VTOModal({
   const [faceDetected, setFaceDetected] = useState(false);
   const [modelLoaded, setModelLoaded] = useState(false);
   const [webglError, setWebglError] = useState(false);
+  const [engineMounted, setEngineMounted] = useState(false);
+
+  // Defer heavy WebGL Canvas and Camera mounting until after initial UI paint to fix INP
+  useEffect(() => {
+    if (open) {
+      const timer = setTimeout(() => setEngineMounted(true), 50);
+      return () => clearTimeout(timer);
+    } else {
+      setEngineMounted(false);
+    }
+  }, [open]);
 
   // Reset modelLoaded when changing glbPath
   useEffect(() => {
@@ -112,7 +146,7 @@ export function VTOModal({
     startCamera,
     stopCamera,
     attachVideo,
-  } = useCameraController({ autoStart: open });
+  } = useCameraController({ autoStart: open && engineMounted });
 
   // 2. Container Resize Observer
   useEffect(() => {
@@ -144,7 +178,7 @@ export function VTOModal({
 
   // 4. Initialize MediaPipe Detector
   const loadDetector = useCallback(async () => {
-    if (!open) return;
+    if (!open || !engineMounted) return;
     setDetectorReady(false);
     setDetectorError(null);
 
@@ -156,13 +190,13 @@ export function VTOModal({
       const msg = err instanceof Error ? err.message : String(err);
       setDetectorError(msg);
     }
-  }, [open]);
+  }, [open, engineMounted]);
 
   useEffect(() => {
-    if (open) {
+    if (open && engineMounted) {
       loadDetector();
     }
-  }, [open, loadDetector]);
+  }, [open, engineMounted, loadDetector]);
 
   const handleClose = useCallback(() => {
     runningRef.current = false;
@@ -279,15 +313,21 @@ export function VTOModal({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [open, handleClose]);
 
-  // Body scroll lock
+  // Body scroll lock with CLS prevention (scrollbar compensation)
   useEffect(() => {
     if (open) {
+      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
       document.body.style.overflow = 'hidden';
+      if (scrollbarWidth > 0) {
+        document.body.style.paddingRight = `${scrollbarWidth}px`;
+      }
     } else {
       document.body.style.overflow = '';
+      document.body.style.paddingRight = '';
     }
     return () => {
       document.body.style.overflow = '';
+      document.body.style.paddingRight = '';
     };
   }, [open]);
 
@@ -300,7 +340,7 @@ export function VTOModal({
       className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 md:p-6 bg-neutral-950/85 backdrop-blur-md transition-all duration-300 animate-in fade-in"
     >
       <div className="relative w-full max-w-4xl bg-neutral-900 rounded-none sm:rounded-3xl overflow-hidden shadow-2xl border-0 sm:border sm:border-neutral-800 flex flex-col h-[100dvh] sm:h-[min(88dvh,680px)] max-h-[100dvh] sm:max-h-[720px]">
-        
+
         {/* Header Bar (Fixed / No Shrink) */}
         <div className="flex-shrink-0 flex items-center justify-between px-4 sm:px-5 py-3 sm:py-4 border-b border-neutral-800/80 bg-neutral-900/90 z-20">
           <div className="flex items-center gap-3 min-w-0">
@@ -322,20 +362,19 @@ export function VTOModal({
             {/* Live Face Tracking Status */}
             <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-neutral-800 border border-neutral-700 text-xs font-medium">
               <span
-                className={`w-2 h-2 rounded-full ${
-                  faceDetected
+                className={`w-2 h-2 rounded-full ${faceDetected
                     ? 'bg-emerald-400 animate-pulse'
                     : isStreaming
-                    ? 'bg-amber-400'
-                    : 'bg-neutral-500'
-                }`}
+                      ? 'bg-amber-400'
+                      : 'bg-neutral-500'
+                  }`}
               />
               <span className="text-neutral-300">
                 {faceDetected
                   ? 'Face Tracked'
                   : isStreaming
-                  ? 'Looking for face...'
-                  : 'Starting Camera...'}
+                    ? 'Looking for face...'
+                    : 'Starting Camera...'}
               </span>
             </div>
 
@@ -367,7 +406,7 @@ export function VTOModal({
           />
 
           {/* Three.js AR Eyewear Canvas with Depth Occlusion */}
-          {glbPath && !webglError && (
+          {engineMounted && glbPath && !webglError && (
             <VTOCanvas
               viewport={viewport}
               mirrored={true}

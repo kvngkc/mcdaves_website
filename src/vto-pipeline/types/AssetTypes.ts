@@ -136,6 +136,7 @@ export const TempleProcessingProfileSchema = z.object({
   customCutZ: z.number().optional(),
   preserveFrontRims: z.boolean().default(true),
   preserveHinges: z.boolean().default(true),
+  useMaterialClipping: z.boolean().default(false),
 });
 
 export const BridgeRegistrationSchema = z.object({
@@ -172,6 +173,7 @@ export const AssetCalibrationMetadataSchema = z.object({
       y: z.number().default(0),
       z: z.number().default(0),
     }).default({ x: 0, y: 0, z: 0 }),
+    pantoscopicTilt: z.number().default(-12),
   }),
 
   // Orientation conventions

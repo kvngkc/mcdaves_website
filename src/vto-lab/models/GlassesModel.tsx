@@ -42,7 +42,7 @@ export function GlassesModel({
   mirrored = true,
   showAxes = false,
   showFitAnchor = false,
-  clipTemples = true,
+  clipTemples,
   templeDepthCutoff = 2.5,
   onModelMeasured,
 }: GlassesModelProps) {
@@ -74,18 +74,23 @@ export function GlassesModel({
       return;
     }
 
-    const cacheKey = `${glbPath}_${clipTemples}_${templeDepthCutoff}`;
-    
+    const activeClipTemples = clipTemples ?? calibration.useMaterialClipping;
+    const cacheKey = `${glbPath}_${activeClipTemples}_${templeDepthCutoff}`;
+
     if (preparedModelCache.has(cacheKey)) {
       setPrepared(preparedModelCache.get(cacheKey));
       return;
     }
 
     // Defer heavy preparation to avoid blocking the main thread
-    const prepareAsync = () => {
-      const newPrepared = prepareGlassesModel(scene as Group, calibration, clipTemples, templeDepthCutoff);
-      preparedModelCache.set(cacheKey, newPrepared);
-      setPrepared(newPrepared);
+    const prepareAsync = async () => {
+      try {
+        const newPrepared = await prepareGlassesModel(scene as Group, calibration, activeClipTemples, templeDepthCutoff);
+        preparedModelCache.set(cacheKey, newPrepared);
+        setPrepared(newPrepared);
+      } catch (err) {
+        console.error("prepareGlassesModel error:", err);
+      }
     };
 
     if (typeof requestIdleCallback !== 'undefined') {
@@ -99,7 +104,13 @@ export function GlassesModel({
   }, [scene, calibration, clipTemples, templeDepthCutoff, glbPath]);
 
   const { scale } = useMemo(() => {
-    const nativeW = prepared?.measurements.nativeWidth || calibration.measuredNativeWidth;
+    let nativeW = prepared?.measurements.nativeWidth;
+    if (calibration.measuredNativeWidth && calibration.measuredNativeWidth !== 1.0) {
+      nativeW = calibration.measuredNativeWidth;
+    } else if (!nativeW) {
+      nativeW = 1.0;
+    }
+    
     return calculateModelScale(
       frameSize || calibration.defaultFrameSize,
       nativeW,
@@ -125,7 +136,7 @@ export function GlassesModel({
     }
 
     root.visible = true;
-    const { position, quaternion } = getMetricBridgePose(matrix, mirrored);
+    const { position, quaternion } = getMetricBridgePose(matrix, mirrored, calibration.pantoscopicTilt);
 
     filterRef.current.setTarget(position, quaternion, scale);
     filterRef.current.update(delta);

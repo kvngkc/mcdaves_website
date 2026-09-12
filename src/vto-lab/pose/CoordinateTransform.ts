@@ -25,8 +25,8 @@
 
 import { Matrix4, Quaternion, Vector3, Euler } from 'three';
 
-// Z is pushed back to 4.436 (from 5.236) to account for origin vs sellion gap
-export const CANONICAL_NOSE_BRIDGE = new Vector3(0.0, 3.271027, 4.436015);
+// Z is pushed back to 3.436 (a moderate depth) since tilt will fix the floating gap.
+export const CANONICAL_NOSE_BRIDGE = new Vector3(0.0, 1.921027, 3.436015);
 const _m = new Matrix4();
 const _rawPos = new Vector3();
 const _rawQuat = new Quaternion();
@@ -54,6 +54,7 @@ const _poseResult = {
 export function getMetricBridgePose(
   faceMatrix: Float32Array,
   mirrored = true,
+  pantoscopicTiltDegrees = -12,
 ): {
   position: Vector3;
   quaternion: Quaternion;
@@ -74,12 +75,14 @@ export function getMetricBridgePose(
     _bridgeInCamera.z,
   );
 
+  const tiltRadians = pantoscopicTiltDegrees * (Math.PI / 180);
+
   // Reflect rotation across Y-Z plane for selfie mirror presentation:
   // Pitch (nodding up/down) is preserved
   // Yaw (turning left/right) is negated
   // Roll (head tilt) is negated
   _mirroredEuler.set(
-    _euler.x,
+    _euler.x + tiltRadians,
     mirrored ? -_euler.y : _euler.y,
     mirrored ? -_euler.z : _euler.z,
     'YXZ',

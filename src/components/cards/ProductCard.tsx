@@ -14,6 +14,7 @@ export interface ProductCardProps {
   onAddToCart?: (product: Product) => void;
   onTryOn?: (product: Product) => void;
   className?: string;
+  priority?: boolean;
 }
 
 export function ProductCard({
@@ -22,7 +23,9 @@ export function ProductCard({
   onAddToCart,
   onTryOn,
   className = '',
+  priority = false,
 }: ProductCardProps) {
+  const [isHovered, setIsHovered] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [swipeProgress, setSwipeProgress] = useState(0);
 
@@ -38,12 +41,12 @@ export function ProductCard({
   }, [product.id]);
 
   useEffect(() => {
-    if (images.length <= 1) {
+    if (!isHovered || images.length <= 1) {
       setSwipeProgress(0);
       return;
     }
 
-    const DURATION = 4000;
+    const DURATION = 2500;
     const UPDATE_INTERVAL = 50;
     let elapsed = 0;
 
@@ -59,13 +62,19 @@ export function ProductCard({
     }, UPDATE_INTERVAL);
 
     return () => clearInterval(interval);
-  }, [images.length, selectedImageIndex]);
+  }, [images.length, isHovered]);
 
   const isOutOfStock = !product.inStock || product.stockLevel === 'out';
   const isLowStock = product.stockLevel === 'low';
 
   return (
     <div
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setSelectedImageIndex(0);
+        setSwipeProgress(0);
+      }}
       className={`bg-white border border-neutral-200 hover:border-brand-300 rounded-2xl p-5 flex flex-col justify-between transition-all shadow-card hover:shadow-card-hover group ${
         isOutOfStock ? 'opacity-75' : ''
       } ${className}`}
@@ -80,6 +89,7 @@ export function ProductCard({
             src={currentImage}
             alt={product.name}
             fill
+            priority={priority}
             className="object-contain p-4 group-hover/img:scale-105 transition-transform duration-300"
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
           />

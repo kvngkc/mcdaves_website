@@ -22,6 +22,9 @@ export interface CalibrationEntry {
   /** Width correction factor if outer mesh includes wide decorative wings. */
   widthMultiplier: number;
   source: string;
+  pantoscopicTilt: number;
+  useMaterialClipping: boolean;
+  rotationOffsetEuler: { x: number; y: number; z: number };
 }
 
 export function getCalibrationForGlb(glbPath: string): CalibrationEntry {
@@ -42,6 +45,13 @@ export function getCalibrationForGlb(glbPath: string): CalibrationEntry {
     measuredNativeWidth: metadata.registration.measuredNativeWidth,
     widthMultiplier: metadata.registration.widthMultiplier,
     source: metadata.metadataSource,
+    pantoscopicTilt: metadata.registration.pantoscopicTilt ?? -12,
+    useMaterialClipping: metadata.templeProcessing?.useMaterialClipping ?? false,
+    rotationOffsetEuler: {
+      x: metadata.registration.rotationOffsetEuler?.x ?? 0,
+      y: metadata.registration.rotationOffsetEuler?.y ?? 0,
+      z: metadata.registration.rotationOffsetEuler?.z ?? 0,
+    },
   };
 }
 
@@ -63,4 +73,7 @@ export const DEFAULT_CALIBRATION: CalibrationEntry = {
   measuredNativeWidth: 1.0,
   widthMultiplier: 1.0,
   source: 'Fallback entry. Assumes model origin is centered at the nose bridge.',
+  pantoscopicTilt: -12,
+  useMaterialClipping: false,
+  rotationOffsetEuler: { x: 0, y: 0, z: 0 },
 };
