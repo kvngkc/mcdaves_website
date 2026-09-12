@@ -20,7 +20,7 @@ test.describe('Storefront E2E Tests - Production Checklist', () => {
     await productCard.locator('a').first().click();
     await expect(page).toHaveURL(/.*\/shop\/.+/);
     // Click Try-On to open modal
-    const tryOnBtn = page.locator('button', { hasText: /Try.*On/i });
+    const tryOnBtn = page.locator('#product-primary-ctas button', { hasText: /Try.*On/i });
     await expect(tryOnBtn).toBeVisible();
     await tryOnBtn.click();
     
