@@ -13,7 +13,7 @@ test.describe('Storefront E2E Tests - Production Checklist', () => {
     await page.goto('/shop/classic-cat-eye');
     
     // Click Try-On to open modal
-    const tryOnBtn = page.locator('button', { hasText: 'Try On' });
+    const tryOnBtn = page.locator('button', { hasText: /Try.*On/i });
     await expect(tryOnBtn).toBeVisible();
     await tryOnBtn.click();
     
