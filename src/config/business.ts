@@ -38,7 +38,7 @@ export const businessIdentity = {
   // Heritage
   foundedYear: 1997,
   foundedDisplay: 'Over two decades',
-  heritageStory: 'Two generations of optical precision in Lagos, Nigeria supplying ophthalmic materials, prescription lenses, and Sightly handcrafted eyewear.',
+  heritageStory: 'Two generations of optical precision in Lagos, Nigeria supplying ophthalmic materials, prescription lenses, and Sightly premium eyewear.',
 
   // Verified Contact Details
   contact: {

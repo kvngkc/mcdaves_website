@@ -37,7 +37,7 @@ export function HeroSection() {
 
         {/* Subheadline */}
         <p className="text-base sm:text-lg text-neutral-700 max-w-2xl mx-auto mb-10 text-balance leading-relaxed">
-          From lens blanks to handcrafted finished frames. We supply Nigerian optical stores and craft luxury eyewear for discerning individuals.
+          From lens blanks to premium finished frames. We supply Nigerian optical stores and craft luxury eyewear for discerning individuals.
         </p>
 
         {/* 3 CTAs */}

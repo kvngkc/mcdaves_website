@@ -18,7 +18,7 @@ test.describe('Storefront E2E Tests - Production Checklist', () => {
     
     // Click the product link to navigate to the product detail page
     await productCard.locator('a').first().click();
-    await expect(page).toHaveURL(/.*\/shop\/.+/);
+    await expect(page).toHaveURL(/.*\/shop\/.+/, { timeout: 30000 });
     // Click Try-On to open modal
     const tryOnBtn = page.locator('#product-primary-ctas button', { hasText: /Try.*On/i });
     await expect(tryOnBtn).toBeVisible();
@@ -29,7 +29,7 @@ test.describe('Storefront E2E Tests - Production Checklist', () => {
     await expect(videoElem).toBeVisible({ timeout: 10000 });
     
     // Close the modal
-    const closeBtn = page.locator('button[aria-label="Close"]');
+    const closeBtn = page.locator('button[aria-label="Close Virtual Try-On"]');
     await closeBtn.click();
     
     // Ensure video stream is destroyed

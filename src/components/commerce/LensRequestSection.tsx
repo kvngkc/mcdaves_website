@@ -68,10 +68,10 @@ export function LensRequestSection() {
         <ShieldCheck className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
         <div className="space-y-1">
           <p className="font-semibold text-neutral-100">
-            Professional Optical Verification Guarantee
+            Professional Optical Guarantee
           </p>
           <p className="text-neutral-300 leading-relaxed">
-            All customer-submitted prescriptions are verified by licensed McDaves optometrists before lab surfacing. If your doctor&apos;s prescription card is on paper or your phone, simply snap a picture and send it in our WhatsApp sales consultation.
+            All customer-submitted prescriptions are processed to your provided specifications. If your doctor&apos;s prescription card is on paper or your phone, simply snap a picture and send it in our WhatsApp sales consultation.
           </p>
         </div>
       </div>

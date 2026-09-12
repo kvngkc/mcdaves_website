@@ -339,7 +339,7 @@ export default function ProductDetailClient({
               </div>
               <div className="flex items-center gap-2.5">
                 <ShieldCheck className="w-4 h-4 text-brand-600 flex-shrink-0" />
-                <span>100% Genuine {selectedVariant.effectiveMaterial || product.defaultMaterial || 'Handcrafted Eyewear Materials'}</span>
+                <span>Genuine {selectedVariant.effectiveMaterial || product.defaultMaterial || 'Premium Eyewear Materials'}</span>
               </div>
               <div className="flex items-center gap-2.5">
                 <RotateCcw className="w-4 h-4 text-brand-600 flex-shrink-0" />
@@ -410,7 +410,7 @@ export default function ProductDetailClient({
                 <strong className="text-neutral-900">Ready-Made Frames:</strong> Return and refund consideration is supported for damaged, defective, or incorrect items supplied upon arrival.
               </p>
               <p>
-                <strong className="text-neutral-900">Custom Prescription Surfacing:</strong> Custom-tailored optical lenses are surfaced to your exact optometrist-verified parameters. Our workmanship guarantee covers remake if lenses do not match your approved prescription.
+                <strong className="text-neutral-900">Custom Prescription Surfacing:</strong> Custom-tailored optical lenses are surfaced to your exact optometrist-verified parameters. Our workmanship warranty covers remake if lenses do not match your approved prescription.
               </p>
               <p>
                 <strong className="text-neutral-900">Delivery Timelines:</strong> 2–5 business days in Lagos; 5–10 business days nationwide.

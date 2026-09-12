@@ -52,7 +52,7 @@ export default function ShippingReturnsPage() {
               <h2>Returns & Optical Guarantee</h2>
             </div>
             <p>
-              We stand behind every pair of handcrafted glasses and prescription lenses we craft. If you experience any visual discomfort or fitting issues, our optical team provides free adjustments and prescription verification within {serviceConfig.policies.lensRemakeDays} days of receiving your order. Unworn frames in original condition may be returned within {serviceConfig.policies.frameReturnDays} days for exchange.
+              We stand behind every pair of premium glasses and prescription lenses we craft. If you experience any visual discomfort or fitting issues, our optical team provides free adjustments and prescription verification within {serviceConfig.policies.lensRemakeDays} days of receiving your order. Unworn frames in original condition may be returned within {serviceConfig.policies.frameReturnDays} days for exchange.
             </p>
           </section>
 

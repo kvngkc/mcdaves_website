@@ -89,7 +89,7 @@ export function CartDrawer() {
               </div>
               <h3 className="text-h4 font-semibold text-neutral-900 mb-2">Your cart is empty</h3>
               <p className="text-body-sm text-neutral-500 max-w-xs mb-6">
-                Explore our handcrafted Sightly optical frames and discover your next pair.
+                Explore our premium Sightly optical frames and discover your next pair.
               </p>
               <Link
                 href="/shop"

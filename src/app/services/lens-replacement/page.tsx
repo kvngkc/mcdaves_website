@@ -73,38 +73,12 @@ const serviceSchemaJsonLd = {
 };
 
 export default function LensReplacementB2CPage() {
-  const lensOptions = [
-    {
-      name: 'Single Vision Clear',
-      desc: 'Standard distance or reading lenses with anti-reflective coating for crisp, glare-free vision.',
-      badge: 'Everyday Essential',
-      price: 'Starting from ₦15,000',
-    },
-    {
-      name: 'Blue Cut (Digital Protection)',
-      desc: 'Filters harmful high-energy blue light from computer screens, phones, and indoor lighting.',
-      badge: 'Screen Protection',
-      price: 'Starting from ₦22,000',
-    },
-    {
-      name: 'Photochromic (Light-Adaptive)',
-      desc: 'Clear indoors, automatically darkens to sunglasses tint when exposed to outdoor UV sunlight.',
-      badge: 'All-Day Versatility',
-      price: 'Starting from ₦25,000',
-    },
-    {
-      name: 'Polycarbonate / High-Index',
-      desc: 'Ultra-thin, impact-resistant, lightweight lenses ideal for higher prescription powers and rimless frames.',
-      badge: 'Thin & Impact-Resistant',
-      price: 'Starting from ₦30,000',
-    },
-    {
-      name: 'Progressive (Multifocal)',
-      desc: 'Seamless transition between distance, intermediate (computer), and close-up reading zones with no visible bifocal lines.',
-      badge: 'No-Line Multifocal',
-      price: 'Starting from ₦45,000',
-    },
-  ];
+  const lensOptions = serviceConfig.lensReplacement.tiers.map((tier) => ({
+    name: tier.name,
+    desc: tier.desc,
+    badge: tier.badge,
+    price: 'Custom Quote',
+  }));
 
   const steps = [
     {
@@ -179,7 +153,7 @@ export default function LensReplacementB2CPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-10 mt-10 border-t border-brand-200/60 max-w-3xl mx-auto text-left">
             <div className="flex items-center gap-3">
               <ShieldCheck className="w-5 h-5 text-brand-600 flex-shrink-0" />
-              <span className="text-xs font-medium text-neutral-700">100% Prescription Accuracy Guarantee</span>
+              <span className="text-xs font-medium text-neutral-700">Precision Prescription Fitting</span>
             </div>
             <div className="flex items-center gap-3">
               <Zap className="w-5 h-5 text-brand-600 flex-shrink-0" />

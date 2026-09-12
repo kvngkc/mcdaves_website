@@ -25,8 +25,8 @@
 
 import { Matrix4, Quaternion, Vector3, Euler } from 'three';
 
-export const CANONICAL_NOSE_BRIDGE = new Vector3(0.0, 3.271027, 5.236015);
-
+// Z is pushed back to 4.436 (from 5.236) to account for origin vs sellion gap
+export const CANONICAL_NOSE_BRIDGE = new Vector3(0.0, 3.271027, 4.436015);
 const _m = new Matrix4();
 const _rawPos = new Vector3();
 const _rawQuat = new Quaternion();

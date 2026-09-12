@@ -52,7 +52,7 @@ export function ShopFilterClient({ products }: ShopFilterClientProps) {
         layout="grid"
         columns={4}
         title=""
-        subtitle={`Explore ${filteredProducts.length} handcrafted frame${filteredProducts.length === 1 ? '' : 's'}.`}
+        subtitle={`Explore ${filteredProducts.length} premium frame${filteredProducts.length === 1 ? '' : 's'}.`}
       />
     </div>
   );

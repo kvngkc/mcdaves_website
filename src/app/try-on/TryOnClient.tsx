@@ -199,14 +199,14 @@ export default function StandaloneTryOnPage() {
           </h1>
 
           <p className="text-body text-neutral-600 max-w-2xl mx-auto leading-relaxed mb-8">
-            Experience our hand-crafted Sightly eyewear collection live on your face using high-precision 3D AR tracking. Instant, private, and 100% on your device.
+            Experience our premium Sightly eyewear collection live on your face using high-precision 3D AR tracking. Instant, private, and fully on your device.
           </p>
 
           {/* Privacy & Tech Badges */}
           <div className="flex flex-wrap items-center justify-center gap-6 text-xs text-neutral-600 font-medium">
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-brand-600" />
-              <span>100% Private (No video recorded or uploaded)</span>
+              <span>Fully Private (No video recorded or uploaded)</span>
             </div>
             <div className="flex items-center gap-2">
               <Camera className="w-4 h-4 text-brand-600" />

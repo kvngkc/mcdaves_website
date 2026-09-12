@@ -44,6 +44,9 @@ const COMPANY_LINKS = [
   { label: 'Our Story',   href: '/our-story' },
   { label: 'FAQ',         href: '/faq' },
   { label: 'Contact',     href: '/contact' },
+  { label: 'Privacy Policy', href: '/privacy' },
+  { label: 'Terms of Service', href: '/terms' },
+  { label: 'Copyright', href: '/copyright' },
 ] as const;
 
 interface SocialLink {

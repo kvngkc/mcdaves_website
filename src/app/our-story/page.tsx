@@ -10,14 +10,14 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
   title: 'Our Story — Two Generations of Optical Precision | McDaves Nigeria',
   description:
-    'Learn about McDaves optical heritage in Lagos, Nigeria. Over two decades of master craftsmanship supplying ophthalmic materials, prescription lenses, and Sightly handcrafted eyewear.',
+    'Learn about McDaves optical heritage in Lagos, Nigeria. Over two decades of master craftsmanship supplying ophthalmic materials, prescription lenses, and Sightly premium eyewear.',
   alternates: {
     canonical: `${urlConfig.productionBaseUrl}/our-story`,
   },
   openGraph: {
     title: 'Our Story — Two Generations of Optical Precision | McDaves Nigeria',
     description:
-      'Learn about McDaves optical heritage in Lagos, Nigeria. Over two decades of master craftsmanship supplying ophthalmic materials, prescription lenses, and Sightly handcrafted eyewear.',
+      'Learn about McDaves optical heritage in Lagos, Nigeria. Over two decades of master craftsmanship supplying ophthalmic materials, prescription lenses, and Sightly premium eyewear.',
     url: `${urlConfig.productionBaseUrl}/our-story`,
   },
 };
@@ -63,7 +63,7 @@ export default function OurStoryPage() {
     {
       year: 'Present',
       title: 'Digital Catalog & Eyewear Launch',
-      desc: 'Launched the Sightly handcrafted eyewear line alongside McDaves Optical Supplies — Nigeria’s direct optical catalog and online ordering platform.',
+      desc: 'Launched the Sightly premium eyewear line alongside McDaves Optical Supplies — Nigeria’s direct optical catalog and online ordering platform.',
     },
   ];
 

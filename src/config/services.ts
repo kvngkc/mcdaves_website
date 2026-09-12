@@ -24,11 +24,19 @@ export const deliveryConfig = {
     address: '4, Nnamdi Azikiwe Street, Lagos, Nigeria',
     instructions: 'Ready for collection within 1–2 business days after order confirmation.',
   },
+
+  // Standard Delivery Zones
+  zones: [
+    { id: 'lagos_mainland', label: 'Lagos Mainland (24-48 hrs)', fee: 2500 },
+    { id: 'lagos_island', label: 'Lagos Island / Lekki / VI (24-48 hrs)', fee: 3000 },
+    { id: 'outside_lagos', label: 'Nationwide Delivery (3-5 days)', fee: 5000 },
+  ]
 } as const;
 
 export const serviceConfig = {
   // Prescription Lens Replacement
   lensReplacement: {
+    pricingMode: 'custom_quote',
     turnaround: {
       standard: '2–5 business days',
       displaySummary: 'Fast 2–5 business day turnaround with precision optical glazing',
@@ -38,35 +46,30 @@ export const serviceConfig = {
         id: 'single_vision_clear',
         name: 'Single Vision Clear',
         desc: 'Standard distance or reading lenses with anti-reflective coating for crisp, glare-free vision.',
-        startingPrice: 15000,
         badge: 'Everyday Essential',
       },
       {
         id: 'blue_cut',
         name: 'Blue Cut (Digital Protection)',
         desc: 'Filters high-energy blue light from computer screens, phones, and indoor LED lighting.',
-        startingPrice: 22000,
         badge: 'Screen Protection',
       },
       {
         id: 'photochromic',
         name: 'Photochromic (Light-Adaptive)',
         desc: 'Clear indoors, automatically adapts to sunglasses tint when exposed to outdoor UV sunlight.',
-        startingPrice: 25000,
         badge: 'All-Day Versatility',
       },
       {
         id: 'polycarbonate_high_index',
         name: 'Polycarbonate / High-Index',
         desc: 'Ultra-thin, impact-resistant, lightweight lenses ideal for higher prescription powers.',
-        startingPrice: 30000,
         badge: 'Thin & Impact-Resistant',
       },
       {
         id: 'progressive',
         name: 'Progressive / Multifocal',
         desc: 'Seamless near, intermediate, and distance vision without visible bifocal dividing lines.',
-        startingPrice: 45000,
         badge: 'Seamless Multifocal',
       },
     ],
@@ -79,13 +82,13 @@ export const serviceConfig = {
     description: 'Mid-premium fashion frames for the modern Nigerian. Expertly fitted. Generationally trusted.',
   },
 
-  // Policies & Guarantees
+  // Policies & Warranties
   policies: {
     frameReturnDays: 7,
     lensRemakeDays: 14,
     frameReturnText: 'Unworn frames in original condition may be returned within 7 days of delivery for exchange or store credit. Return shipping is the customer\'s responsibility.',
-    lensRemakeText: 'If lenses are incorrectly fitted or do not match your verified prescription, we will remake them free of charge within 14 days. Frame damage during lens fitting is covered by our workmanship guarantee.',
-    workmanshipGuaranteeTitle: 'Workmanship Guarantee',
+    lensRemakeText: 'If lenses are incorrectly fitted or do not match your verified prescription, we will remake them free of charge within 14 days. Frame damage during lens fitting is covered by our workmanship warranty.',
+    workmanshipGuaranteeTitle: 'Workmanship Warranty',
     workmanshipGuaranteeText: 'Every lens is surfaced and checked to exact optical tolerances in Lagos. Complete remake coverage if lenses do not match your verified prescription.',
   },
 } as const;

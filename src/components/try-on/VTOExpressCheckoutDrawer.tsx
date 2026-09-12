@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { siteConfig } from '@/data/site-config';
-import { deliveryConfig } from '@/config/services';
+import { deliveryConfig, serviceConfig } from '@/config/services';
 
 export type LensOption = 'frame_only' | 'blue_light' | 'prescription';
 
@@ -31,6 +31,7 @@ interface LensConfig {
   priceDelta: number;
   description: string;
   badge?: string;
+  isCustomQuote?: boolean;
 }
 
 const LENS_CONFIGS: LensConfig[] = [
@@ -39,27 +40,26 @@ const LENS_CONFIGS: LensConfig[] = [
     label: 'Frame Only',
     priceDelta: 0,
     description: 'Standard clear demo lenses (prescription ready)',
+    isCustomQuote: false,
   },
   {
     id: 'blue_light',
-    label: 'Anti-Blue Light Shield',
-    priceDelta: 10000,
-    description: 'Zero-power screen protection for laptops & phones',
+    label: serviceConfig.lensReplacement.tiers.find(t => t.id === 'blue_cut')?.name || 'Anti-Blue Light Shield',
+    priceDelta: 0,
+    description: 'Zero-power screen protection. (Billed later)',
     badge: 'Popular',
+    isCustomQuote: true,
   },
   {
     id: 'prescription',
-    label: 'Prescription Single Vision',
-    priceDelta: 15000,
-    description: 'Custom optical lenses (upload via WhatsApp after payment)',
+    label: 'Prescription Lenses',
+    priceDelta: 0,
+    description: 'Custom optical lenses. (Billed later based on prescription)',
+    isCustomQuote: true,
   },
 ];
 
-const DELIVERY_ZONES = [
-  { id: 'lagos_mainland', label: 'Lagos Mainland (24-48 hrs)', fee: 2500 },
-  { id: 'lagos_island', label: 'Lagos Island / Lekki / VI (24-48 hrs)', fee: 3000 },
-  { id: 'outside_lagos', label: 'Nationwide Delivery (3-5 days)', fee: 5000 },
-];
+const DELIVERY_ZONES = deliveryConfig.zones;
 
 export interface VTOExpressCheckoutDrawerProps {
   isOpen: boolean;
@@ -88,7 +88,7 @@ export function VTOExpressCheckoutDrawer({
   basePrice,
 }: VTOExpressCheckoutDrawerProps) {
   const [selectedLens, setSelectedLens] = useState<LensOption>('frame_only');
-  const [selectedZone, setSelectedZone] = useState(DELIVERY_ZONES[0].id);
+  const [selectedZone, setSelectedZone] = useState<string>(DELIVERY_ZONES[0].id);
 
   // Form State
   const [customerName, setCustomerName] = useState('');
@@ -242,12 +242,17 @@ export function VTOExpressCheckoutDrawer({
                       <p className="text-[11px] text-neutral-400">{lens.description}</p>
                     </div>
                     <span className="font-mono font-bold text-brand-400 whitespace-nowrap">
-                      {lens.priceDelta === 0 ? 'Included' : `+₦${lens.priceDelta.toLocaleString()}`}
+                      {lens.isCustomQuote ? 'Custom Quote' : (lens.priceDelta === 0 ? 'Included' : `+₦${lens.priceDelta.toLocaleString()}`)}
                     </span>
                   </button>
                 );
               })}
             </div>
+            {currentLensConfig.isCustomQuote && (
+              <div className="p-3 bg-brand-500/10 border border-brand-500/30 rounded-xl text-brand-200 text-[11px] leading-relaxed mt-2">
+                <strong>Important:</strong> Because prescriptions vary by complexity, we don't charge for lenses upfront. You are only paying to secure your frame today. Our optical team will review your prescription and send a secure invoice for your custom lenses separately.
+              </div>
+            )}
           </div>
 
           {/* 2. Customer Delivery Details */}
@@ -314,12 +319,12 @@ export function VTOExpressCheckoutDrawer({
               <span>Frame ({productName})</span>
               <span className="font-mono text-white">₦{basePrice.toLocaleString()}</span>
             </div>
-            {lensFee > 0 && (
-              <div className="flex justify-between text-neutral-400 text-xs">
-                <span>{currentLensConfig.label}</span>
-                <span className="font-mono text-white">+₦{lensFee.toLocaleString()}</span>
-              </div>
-            )}
+            <div className="flex justify-between text-neutral-400 text-xs">
+              <span>{currentLensConfig.label}</span>
+              <span className="font-mono text-white">
+                {currentLensConfig.isCustomQuote ? 'Custom Quote (Billed Later)' : (lensFee > 0 ? `+₦${lensFee.toLocaleString()}` : 'Included')}
+              </span>
+            </div>
             <div className="flex justify-between text-neutral-400 text-xs">
               <span>Delivery Fee</span>
               <span className="font-mono text-white">+₦{shippingFee.toLocaleString()}</span>
@@ -365,7 +370,7 @@ export function VTOExpressCheckoutDrawer({
           <div className="flex items-center justify-center gap-4 text-[11px] text-neutral-400 pt-1">
             <span className="flex items-center gap-1">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              100% Secure via Paystack
+              Secure via Paystack
             </span>
             <span>•</span>
             <a

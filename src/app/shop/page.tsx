@@ -9,14 +9,14 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
   title: 'Shop Sightly Eyewear & Designer Frames | McDaves Nigeria',
   description:
-    'Explore the Sightly collection of handcrafted acetate, titanium, and stainless steel eyewear frames by McDaves. Precision prescription fitting, virtual try-on, nationwide delivery.',
+    'Explore the Sightly collection of premium acetate, titanium, and stainless steel eyewear frames by McDaves. Precision prescription fitting, virtual try-on, nationwide delivery.',
   alternates: {
     canonical: 'https://mcdaves.com.ng/shop',
   },
   openGraph: {
     title: 'Shop Sightly Eyewear & Designer Frames | McDaves Nigeria',
     description:
-      'Explore the Sightly collection of handcrafted acetate, titanium, and stainless steel eyewear frames by McDaves. Precision prescription fitting, virtual try-on, nationwide delivery.',
+      'Explore the Sightly collection of premium acetate, titanium, and stainless steel eyewear frames by McDaves. Precision prescription fitting, virtual try-on, nationwide delivery.',
     url: 'https://mcdaves.com.ng/shop',
   },
 };

@@ -30,7 +30,7 @@ export default function FAQPage() {
       items: [
         {
           q: 'How does the Virtual Try-On camera fitting work?',
-          a: 'Our Virtual Try-On uses high-precision MediaPipe Face Landmarker 3D facial tracking directly in your web browser. Grant camera permission when prompted, and the glasses will track onto your face in real-time. It is 100% private and runs locally on your device.',
+          a: 'Our Virtual Try-On uses high-precision MediaPipe Face Landmarker 3D facial tracking directly in your web browser. Grant camera permission when prompted, and the glasses will track onto your face in real-time. It is fully private and runs locally on your device.',
         },
         {
           q: 'What materials are Sightly frames made from?',

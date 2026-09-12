@@ -93,7 +93,7 @@ const globalSchemaJsonLd = {
       logo: `${urlConfig.productionBaseUrl}/images/brand/og-image.jpg`,
       image: `${urlConfig.productionBaseUrl}/images/brand/og-image.jpg`,
       description:
-        'Two generations of optical precision in Lagos, Nigeria. Nigerian optical materials supplier, Sightly handcrafted eyewear, and prescription lens replacement.',
+        'Two generations of optical precision in Lagos, Nigeria. Nigerian optical materials supplier, Sightly premium eyewear, and prescription lens replacement.',
       telephone: `+${businessIdentity.contact.rawPhone}`,
       email: businessIdentity.contact.email,
       priceRange: '₦₦',
