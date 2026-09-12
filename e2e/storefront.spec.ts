@@ -9,9 +9,16 @@ test.describe('Storefront E2E Tests - Production Checklist', () => {
   });
 
   test('VT-03: VTO Modal handles camera streams cleanly', async ({ page }) => {
-    // Navigate to a product page that has VTO
-    await page.goto('/shop/ikoyi-cat-eye');
+    // Navigate to shop and find a dynamic VTO product
+    await page.goto('/shop');
     
+    // Find the first product card that has a "Virtual Try-On" button
+    const productCard = page.locator('.group').filter({ has: page.locator('button', { hasText: 'Virtual Try-On' }) }).first();
+    await expect(productCard).toBeVisible();
+    
+    // Click the product link to navigate to the product detail page
+    await productCard.locator('a').first().click();
+    await expect(page).toHaveURL(/.*\/shop\/.+/);
     // Click Try-On to open modal
     const tryOnBtn = page.locator('button', { hasText: /Try.*On/i });
     await expect(tryOnBtn).toBeVisible();
