@@ -2,7 +2,6 @@
 import React from 'react';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { commerceRepository } from '@/lib/commerce/repository';
 import { getLiveResolvedProductBySlug, getLiveStorefrontProducts } from '@/lib/commerce/storefront-catalog';
 import { products as legacyProducts } from '@/data/products';
 import ProductDetailClient from './ProductDetailClient';
@@ -18,10 +17,8 @@ interface PageProps {
 
 export async function generateStaticParams() {
   try {
-    const products = await commerceRepository.getAllProducts();
-    return products.map((product) => ({
-      slug: product.slug,
-    }));
+    const products = await getLiveStorefrontProducts();
+    return products.map((product) => ({ slug: product.slug }));
   } catch (error) {
     console.warn('[Build] Skipping static generation for shop slugs due to DB fetch error.', error);
     return [];
@@ -30,7 +27,7 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const product = (await getLiveResolvedProductBySlug(slug)) || (await commerceRepository.getProductBySlug(slug));
+  const product = await getLiveResolvedProductBySlug(slug);
   if (!product) {
     return {
       title: 'Product Not Found | McDaves',
@@ -59,18 +56,17 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function ProductDetailPage({ params }: PageProps) {
   const { slug } = await params;
-  const product = (await getLiveResolvedProductBySlug(slug)) || (await commerceRepository.getProductBySlug(slug));
+  const product = await getLiveResolvedProductBySlug(slug);
 
   if (!product) {
     notFound();
   }
 
-  const allProducts = await commerceRepository.getAllProducts();
+  const allProducts = await getLiveStorefrontProducts();
   const relatedResolved = allProducts
     .filter((p) => p.id !== product.id && p.collection === product.collection)
     .slice(0, 3);
 
-  // Map to legacy product format for the ProductGrid component
   const relatedLegacy = relatedResolved.map((p) => {
     const legacy = legacyProducts.find((lp) => lp.slug === p.slug);
     if (legacy) return legacy;
@@ -80,29 +76,24 @@ export default async function ProductDetailPage({ params }: PageProps) {
       name: p.name,
       collection: p.collection,
       category: p.category,
-      price: p.defaultPrice,
-      originalPrice: p.defaultOriginalPrice,
-      colors: p.variants.map((v) => ({
-        name: v.colorName,
-        hex: v.colorHex,
-        imageSuffix: v.slug,
-      })),
-      sizes: p.defaultSpecifications.frameSize,
-      material: p.defaultMaterial,
+      price: p.price,
+      originalPrice: p.originalPrice,
+      colors: p.colors,
+      sizes: p.sizes,
+      material: p.material,
       description: p.description,
       features: p.features,
-      images: p.media.map((m) => m.url),
-      inStock: true,
-      stockLevel: 'high' as const,
+      images: p.images,
+      inStock: p.inStock,
+      stockLevel: p.stockLevel,
       prescriptionRequired: p.prescriptionRequired,
       tryOnAvailable: p.tryOnAvailable,
-      frameSize: p.defaultSpecifications.frameSize,
-      weight: p.defaultWeight,
+      frameSize: p.frameSize,
+      weight: p.weight,
       faceShape: p.faceShape,
     };
   });
 
-  // Schema.org Product JSON-LD
   const jsonLd = {
     '@context': 'https://schema.org/',
     '@type': 'Product',
