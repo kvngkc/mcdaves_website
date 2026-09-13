@@ -1,16 +1,23 @@
 import * as dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { supabase } from '@/lib/supabase/service';
-import { commerceRepository } from '@/lib/commerce/repository';
+import { configureRepositoryForTestDatabase, getTestSupabaseClient } from './supabase-test-client';
+
+configureRepositoryForTestDatabase();
+const supabase = getTestSupabaseClient();
+
+let commerceRepository: typeof import('@/lib/commerce/repository').commerceRepository;
+
+beforeAll(async () => {
+  ({ commerceRepository } = await import('@/lib/commerce/repository'));
+});
 
 describe('Gate 4 End-to-End VTO Integration', () => {
-  let testProductId: string;
+  const testProductId = 'test-prod-gate4';
+  const publishedAssetId = 'vto-g4-published';
+  const uncalibratedAssetId = 'vto-g4-uncalib';
 
   beforeAll(async () => {
-    testProductId = 'test-prod-gate4';
-
-    // 1. Insert a dummy product
     const { error: prodError } = await supabase.from('products').upsert({
       id: testProductId,
       name: 'Gate 4 Test Product',
@@ -20,13 +27,9 @@ describe('Gate 4 End-to-End VTO Integration', () => {
       status: 'ACTIVE',
       category: 'unisex',
     });
-    if (prodError) throw new Error(`Failed to insert dummy product: ${prodError.message}`);
+    if (prodError) throw new Error(`Failed to insert test product: ${prodError.message}`);
 
-    // 2. Setup VTO Asset Calibrations
-    const publishedAssetId = 'vto-g4-published';
-    const uncalibratedAssetId = 'vto-g4-uncalib';
-
-    await supabase.from('vto_asset_calibrations').upsert([
+    const { error: assetError } = await supabase.from('vto_asset_calibrations').upsert([
       {
         id: '99999999-1111-2222-3333-444444444441',
         asset_id: publishedAssetId,
@@ -50,54 +53,31 @@ describe('Gate 4 End-to-End VTO Integration', () => {
         asset_id: uncalibratedAssetId,
         name: 'Gate 4 Uncalibrated Asset',
         status: 'UPLOADED',
-        // MISSING calibration data intentionally
         measured_native_width: 1.0,
         width_multiplier: 1.0,
         source_glb_url: '/models/gate4-uncalib.glb',
         vto_glb_url: '/models/gate4-uncalib.glb',
         metadata_source: 'Gate 4 Test',
-      }
+      },
     ]);
+    if (assetError) throw new Error(`Failed to insert test assets: ${assetError.message}`);
 
-    // 3. Setup Product Variants referencing those assets
-    const { data: variantsData, error: varError } = await supabase.from('product_variants').upsert([
+    const { error: varError } = await supabase.from('product_variants').upsert([
       {
-        id: 'var-g4-published',
-        product_id: testProductId,
-        slug: 'g4-published',
-        name: 'G4 Published',
-        sku: 'G4-PUB',
-        color_name: 'Test',
-        color_hex: '#000',
-        vto_asset_id: publishedAssetId,
-        status: 'ACTIVE',
+        id: 'var-g4-published', product_id: testProductId, slug: 'g4-published', name: 'G4 Published',
+        sku: 'G4-PUB', color_name: 'Test', color_hex: '#000', vto_asset_id: publishedAssetId, status: 'ACTIVE',
       },
       {
-        id: 'var-g4-uncalib',
-        product_id: testProductId,
-        slug: 'g4-uncalib',
-        name: 'G4 Uncalibrated',
-        sku: 'G4-UNC',
-        color_name: 'Test2',
-        color_hex: '#111',
-        vto_asset_id: uncalibratedAssetId,
-        status: 'ACTIVE',
+        id: 'var-g4-uncalib', product_id: testProductId, slug: 'g4-uncalib', name: 'G4 Uncalibrated',
+        sku: 'G4-UNC', color_name: 'Test2', color_hex: '#111', vto_asset_id: uncalibratedAssetId, status: 'ACTIVE',
       },
       {
-        id: 'var-g4-no-vto',
-        product_id: testProductId,
-        slug: 'g4-no-vto',
-        name: 'G4 No VTO',
-        sku: 'G4-NO',
-        color_name: 'Test3',
-        color_hex: '#222',
-        vto_asset_id: null,
-        glb_path: '/models/fake-legacy-fallback.glb', // Should be ignored
-        status: 'ACTIVE',
-      }
-    ]).select();
-
-    if (varError) throw new Error(`Failed to insert variants: ${varError.message}`);
+        id: 'var-g4-no-vto', product_id: testProductId, slug: 'g4-no-vto', name: 'G4 No VTO',
+        sku: 'G4-NO', color_name: 'Test3', color_hex: '#222', vto_asset_id: null,
+        glb_path: '/models/fake-legacy-fallback.glb', status: 'ACTIVE',
+      },
+    ]);
+    if (varError) throw new Error(`Failed to insert test variants: ${varError.message}`);
   });
 
   it('correctly maps a PUBLISHED VTO asset to the variant glbPath', async () => {
@@ -119,13 +99,12 @@ describe('Gate 4 End-to-End VTO Integration', () => {
     const product = await commerceRepository.getProductById(testProductId);
     const noVtoVariant = product!.variants.find(v => v.slug === 'g4-no-vto');
     expect(noVtoVariant).toBeDefined();
-    // It should completely ignore '/models/fake-legacy-fallback.glb'
     expect(noVtoVariant?.glbPath).toBeUndefined();
   });
 
   afterAll(async () => {
     await supabase.from('product_variants').delete().in('id', ['var-g4-published', 'var-g4-uncalib', 'var-g4-no-vto']);
-    await supabase.from('vto_asset_calibrations').delete().in('asset_id', ['vto-g4-published', 'vto-g4-uncalib']);
+    await supabase.from('vto_asset_calibrations').delete().in('asset_id', [publishedAssetId, uncalibratedAssetId]);
     await supabase.from('products').delete().eq('id', testProductId);
   });
 });
