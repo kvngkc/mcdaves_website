@@ -27,7 +27,7 @@ export async function getLiveStorefrontProducts(): Promise<StorefrontProduct[]> 
 
     const { data: rawVariants, error: varErr } = await supabase
       .from('product_variants')
-      .select('*')
+      .select('*, vto_asset_calibrations(asset_id, vto_glb_url, status)')
       .eq('status', 'ACTIVE')
       .order('sort_order', { ascending: true });
 
@@ -52,20 +52,24 @@ export async function getLiveStorefrontProducts(): Promise<StorefrontProduct[]> 
           0,
         );
 
-        const colors = variants.map((v) => ({
-          name: v.color_name,
-          hex: v.color_hex,
-          imageSuffix: v.slug,
-          inStock: v.in_stock && (v.units_in_stock === undefined || v.units_in_stock > 0),
-          unitsInStock: v.units_in_stock ?? (v.in_stock ? 10 : 0),
-          glbPath: v.glb_path,
-        }));
+        const colors = variants.map((v) => {
+          let glbPath: string | undefined = undefined;
+          const vto = v.vto_asset_calibrations;
+          if (vto && vto.status === 'PUBLISHED' && vto.vto_glb_url && vto.vto_glb_url.trim() !== '') {
+            glbPath = vto.vto_glb_url;
+          }
+          
+          return {
+            name: v.color_name,
+            hex: v.color_hex,
+            imageSuffix: v.slug,
+            inStock: v.in_stock && (v.units_in_stock === undefined || v.units_in_stock > 0),
+            unitsInStock: v.units_in_stock ?? (v.in_stock ? 10 : 0),
+            glbPath,
+          };
+        });
 
-        const primaryGlb =
-          variants.find((v) => v.glb_path)?.glb_path ||
-          (p.slug === 'ikoyi-cat-eye'
-            ? '/models/Meshy_AI_Purple_Cat_Eye_Glasse_0810153235_texture.glb'
-            : undefined);
+        const primaryGlb = colors.find((c) => c.glbPath)?.glbPath;
 
         const productMedia = (rawMedia || [])
           .filter((m) => m.product_id === p.id)
@@ -140,7 +144,7 @@ export async function getLiveResolvedProductBySlug(slug: string): Promise<any | 
 
     const { data: rawVariants } = await supabase
       .from('product_variants')
-      .select('*')
+      .select('*, vto_asset_calibrations(asset_id, vto_glb_url, status)')
       .eq('product_id', p.id)
       .order('sort_order', { ascending: true });
 
@@ -161,7 +165,14 @@ export async function getLiveResolvedProductBySlug(slug: string): Promise<any | 
       sortOrder: m.sort_order || idx,
     }));
 
-    const variants = (rawVariants || []).map((v: Record<string, unknown>, idx: number) => ({
+    const variants = (rawVariants || []).map((v: Record<string, unknown>, idx: number) => {
+      let glbPath: string | undefined = undefined;
+      const vto = v.vto_asset_calibrations as any;
+      if (vto && vto.status === 'PUBLISHED' && vto.vto_glb_url && typeof vto.vto_glb_url === 'string' && vto.vto_glb_url.trim() !== '') {
+        glbPath = vto.vto_glb_url;
+      }
+
+      return {
       id: v.id,
       productId: v.product_id,
       slug: v.slug,
@@ -175,7 +186,7 @@ export async function getLiveResolvedProductBySlug(slug: string): Promise<any | 
       weightOverride: v.weight_override || undefined,
       specificationsOverride: v.specifications_override || undefined,
       descriptionOverride: v.description_override || undefined,
-      glbPath: v.glb_path || undefined,
+      glbPath,
       inStock: v.in_stock && (v.units_in_stock === undefined || (v.units_in_stock as number) > 0),
       stockLevel: !v.in_stock || (v.units_in_stock !== undefined && v.units_in_stock === 0) ? 'out' : ((v.units_in_stock as number) ?? 10) <= 3 ? 'low' : 'high',
       unitsInStock: v.units_in_stock ?? 10,

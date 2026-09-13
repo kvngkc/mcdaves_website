@@ -123,10 +123,10 @@ export interface AssetValidationReport {
 }
 
 export const OpticalDimensionsSchema = z.object({
-  frameWidthMm: z.number().positive().default(124),
-  lensWidthMm: z.number().positive().optional().default(52),
-  bridgeWidthMm: z.number().positive().optional().default(18),
-  templeLengthMm: z.number().positive().optional().default(140),
+  frameWidthMm: z.number().positive().nullable(),
+  lensWidthMm: z.number().positive().nullable(),
+  bridgeWidthMm: z.number().positive().nullable(),
+  templeLengthMm: z.number().positive().nullable(),
 });
 
 export const TempleProcessingProfileSchema = z.object({
@@ -140,9 +140,9 @@ export const TempleProcessingProfileSchema = z.object({
 });
 
 export const BridgeRegistrationSchema = z.object({
-  x: z.number().default(0),
-  y: z.number().default(0),
-  z: z.number().default(0),
+  x: z.number().nullable(),
+  y: z.number().nullable(),
+  z: z.number().nullable(),
 });
 
 export const AssetCalibrationMetadataSchema = z.object({

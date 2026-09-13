@@ -12,7 +12,7 @@ export async function GET() {
     const { data, error } = await supabase
       .from('vto_asset_calibrations')
       .select('*')
-      .in('status', ['APPROVED', 'PUBLISHED'])
+      .eq('status', 'PUBLISHED')
       .order('created_at', { ascending: false });
 
     if (error) {

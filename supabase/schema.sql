@@ -42,7 +42,8 @@ CREATE TABLE IF NOT EXISTS public.product_variants (
     weight_override TEXT,
     specifications_override JSONB,
     description_override TEXT,
-    glb_path TEXT,
+    vto_asset_id TEXT REFERENCES public.vto_asset_calibrations(asset_id) ON DELETE RESTRICT,
+    glb_path TEXT, -- DEPRECATED: Retained physically but ignored by application logic. Use vto_asset_id.
     in_stock BOOLEAN NOT NULL DEFAULT true,
     stock_level TEXT NOT NULL DEFAULT 'high' CHECK (stock_level IN ('high', 'low', 'out')),
     units_in_stock INTEGER NOT NULL DEFAULT 10,
@@ -156,23 +157,36 @@ CREATE TABLE IF NOT EXISTS public.vto_asset_calibrations (
     id TEXT PRIMARY KEY,
     asset_id TEXT UNIQUE NOT NULL,
     name TEXT NOT NULL,
-    status TEXT NOT NULL DEFAULT 'APPROVED' CHECK (status IN ('UPLOADED', 'INSPECTED', 'CALIBRATED', 'APPROVED', 'PUBLISHED', 'REJECTED')),
-    frame_width_mm NUMERIC NOT NULL DEFAULT 124,
-    lens_width_mm NUMERIC DEFAULT 52,
-    bridge_width_mm NUMERIC DEFAULT 18,
-    temple_length_mm NUMERIC DEFAULT 140,
-    bridge_x NUMERIC NOT NULL DEFAULT 0,
-    bridge_y NUMERIC NOT NULL DEFAULT 0,
-    bridge_z NUMERIC NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'UPLOADED' CHECK (status IN ('UPLOADED', 'PROCESSING', 'VALIDATED', 'CALIBRATED', 'REVIEW_REQUIRED', 'APPROVED', 'PUBLISHED', 'PROCESSING_FAILED', 'VALIDATION_FAILED', 'CALIBRATION_FAILED', 'REJECTED', 'ARCHIVED')),
+    frame_width_mm NUMERIC,
+    lens_width_mm NUMERIC,
+    bridge_width_mm NUMERIC,
+    temple_length_mm NUMERIC,
+    bridge_x NUMERIC,
+    bridge_y NUMERIC,
+    bridge_z NUMERIC,
     measured_native_width NUMERIC NOT NULL DEFAULT 1.0,
     width_multiplier NUMERIC NOT NULL DEFAULT 1.0,
     rotation_offset_euler JSONB DEFAULT '{"x":0,"y":0,"z":0}'::jsonb,
     source_glb_url TEXT NOT NULL,
     vto_glb_url TEXT NOT NULL,
+    storage_bucket TEXT,
+    storage_path TEXT,
     preview_images JSONB DEFAULT '[]'::jsonb,
     metadata_source TEXT DEFAULT 'McDaves VTO Automated Asset Ingestion Engine',
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+    CONSTRAINT vto_asset_calibrations_published_check CHECK (
+      status != 'PUBLISHED' OR (
+        frame_width_mm IS NOT NULL AND 
+        lens_width_mm IS NOT NULL AND 
+        bridge_width_mm IS NOT NULL AND 
+        temple_length_mm IS NOT NULL AND 
+        bridge_x IS NOT NULL AND 
+        bridge_y IS NOT NULL AND 
+        bridge_z IS NOT NULL
+      )
+    )
 );
 
 -- INDEXES FOR HIGH-PERFORMANCE SEARCH & FILTERING
@@ -180,6 +194,7 @@ CREATE INDEX IF NOT EXISTS idx_products_slug ON public.products(slug);
 CREATE INDEX IF NOT EXISTS idx_products_status ON public.products(status);
 CREATE INDEX IF NOT EXISTS idx_variants_product_id ON public.product_variants(product_id);
 CREATE INDEX IF NOT EXISTS idx_variants_sku ON public.product_variants(sku);
+CREATE INDEX IF NOT EXISTS idx_variants_vto_asset_id ON public.product_variants(vto_asset_id);
 CREATE INDEX IF NOT EXISTS idx_order_intents_customer ON public.order_intents(customer_id);
 CREATE INDEX IF NOT EXISTS idx_order_intents_status ON public.order_intents(status);
 CREATE INDEX IF NOT EXISTS idx_orders_payment_ref ON public.orders(payment_reference);

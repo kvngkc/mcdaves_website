@@ -58,15 +58,17 @@ export function AdminPipelineDashboard() {
 
   const rawBufferRef = useRef<ArrayBuffer | null>(null);
   const fileNameRef = useRef<string>('model.glb');
+  const tmpUrlRef = useRef<string | null>(null);
 
   // Process a GLB buffer through the pipeline
   const processBuffer = useCallback(
-    async (buffer: ArrayBuffer, fileName: string, customMeta?: Partial<AssetCalibrationMetadata>) => {
+    async (buffer: ArrayBuffer, fileName: string, tmpUrl?: string, customMeta?: Partial<AssetCalibrationMetadata>) => {
       setIsLoading(true);
       setError(null);
       setIsApproved(false);
       rawBufferRef.current = buffer;
       fileNameRef.current = fileName;
+      if (tmpUrl) tmpUrlRef.current = tmpUrl;
 
       try {
         const loader = new GLTFLoader();
@@ -137,24 +139,91 @@ export function AdminPipelineDashboard() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const buffer = await file.arrayBuffer();
-    setSelectedSample('');
-    await processBuffer(buffer, file.name);
+    setIsLoading(true);
+    try {
+      // 1. Get signed URL
+      const genRes = await fetch('http://localhost:3001/api/upload-model', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'generate-url', filename: file.name }),
+      });
+      if (!genRes.ok) throw new Error('Failed to generate upload URL');
+      const { signedUrl, path } = await genRes.json();
+
+      // 2. Upload to storage
+      await fetch(signedUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'model/gltf-binary' },
+        body: file,
+      });
+
+      // 3. Process via Generator (optimize)
+      const procRes = await fetch('http://localhost:3001/api/upload-model', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'process-model', rawPath: path }),
+      });
+      if (!procRes.ok) throw new Error('Failed to process model on server');
+      const { glbPath } = await procRes.json();
+
+      // 4. Download optimized buffer
+      const optRes = await fetch(glbPath);
+      const buffer = await optRes.arrayBuffer();
+
+      setSelectedSample('');
+      await processBuffer(buffer, file.name, glbPath);
+    } catch (err: any) {
+      setError(err.message || 'Upload failed');
+      setIsLoading(false);
+    }
   };
 
-  // Re-process with updated calibration settings
   const handleReProcess = async () => {
     if (!rawBufferRef.current || !metadata) return;
-    await processBuffer(rawBufferRef.current, fileNameRef.current, metadata);
+    await processBuffer(rawBufferRef.current, fileNameRef.current, tmpUrlRef.current || undefined, metadata);
   };
 
-  // Approve and publish
-  const handleApprove = () => {
-    if (!metadata) return;
-    const approved = globalVTOAssetRegistry.setStatus(metadata.assetId, 'APPROVED');
-    globalVTOAssetRegistry.registerAsset(metadata);
-    setMetadata(approved);
-    setIsApproved(true);
+  // Approve and publish (Register VTO Asset)
+  const handleApprove = async () => {
+    if (!metadata || !rawBufferRef.current) return;
+    setIsLoading(true);
+
+    try {
+      let vtoGlbBuffer: ArrayBuffer | undefined;
+      if (vtoScene) {
+         vtoGlbBuffer = await defaultVTOAssetProcessor.exportToGlb(vtoScene);
+      } else {
+         throw new Error("No VTO Scene available");
+      }
+
+      const formData = new FormData();
+      const blob = new Blob([vtoGlbBuffer], { type: 'model/gltf-binary' });
+      formData.append('file', blob, metadata.paths.vtoGlbUrl.split('/').pop() || 'optimized.glb');
+      formData.append('evidence', JSON.stringify(metadata));
+      formData.append('clientValidationStatus', validation?.overallStatus || 'PASS');
+      if (tmpUrlRef.current) {
+        formData.append('tmpGlbUrl', tmpUrlRef.current);
+      }
+
+      const res = await fetch('http://localhost:3001/api/register-vto-asset', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+         throw new Error(data.error || data.message || `Registration failed: ${res.status}`);
+      }
+
+      const approved = { ...metadata, status: data.status || 'REVIEW_REQUIRED' };
+      setMetadata(approved);
+      setIsApproved(true);
+      setError(null);
+    } catch (err: any) {
+      setError(err.message || 'Approval failed');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -366,7 +435,7 @@ export function AdminPipelineDashboard() {
                 }`}
               >
                 <Check className="w-4 h-4" />
-                {isApproved ? 'Approved & Registered' : 'Approve & Publish'}
+                {isApproved ? 'Submitted for Review' : 'Submit for Review'}
               </button>
             </div>
           </div>

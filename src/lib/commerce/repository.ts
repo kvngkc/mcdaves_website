@@ -380,7 +380,7 @@ const SEED_MEDIA: ProductMedia[] = [
 // ─── Commerce Repository Class ────────────────────────────────────────────────
 // ─── Commerce Repository Class ────────────────────────────────────────────────
 
-class CommerceRepository {
+export class CommerceRepository {
   constructor() {
     // No longer seeding or syncing to memory. Supabase is the primary source of truth.
   }
@@ -389,12 +389,12 @@ class CommerceRepository {
 
   public async getAllProducts(includeAllStatuses = false): Promise<ResolvedProduct[]> {
     if (!supabase) throw new Error("Supabase client missing");
-    
+
     let query = supabase.from('products').select('*');
     if (!includeAllStatuses) {
       query = query.eq('status', 'ACTIVE');
     }
-    
+
     const { data: prods, error } = await query;
     if (error) {
       throw new Error(`Error fetching products: ${error.message}`);
@@ -407,7 +407,7 @@ class CommerceRepository {
 
   public async getProductBySlug(slug: string): Promise<ResolvedProduct | null> {
     if (!supabase) throw new Error("Supabase client missing");
-    
+
     const { data, error } = await supabase
       .from('products')
       .select('*')
@@ -425,7 +425,7 @@ class CommerceRepository {
 
   public async getProductById(id: string): Promise<ResolvedProduct | null> {
     if (!supabase) throw new Error("Supabase client missing");
-    
+
     const { data, error } = await supabase
       .from('products')
       .select('*')
@@ -455,13 +455,17 @@ class CommerceRepository {
 
     const { data: variantData, error: variantError } = await supabase
       .from('product_variants')
-      .select('*')
+      .select('*, vto_asset_calibrations(asset_id, vto_glb_url, status)')
       .eq('id', variantId)
       .maybeSingle();
 
     if (variantError) throw new Error(`Error fetching variant by id: ${variantError.message}`);
     if (!variantData) return null;
-    const variant = mapRowToVariant(variantData);
+
+    // Inject the raw vto_asset_calibrations into the mapped object temporarily 
+    // so resolveVariant can use it for the Gate 3 invariant.
+    const variant = mapRowToVariant(variantData) as ProductVariant & { vto_asset_calibrations?: any };
+    variant.vto_asset_calibrations = variantData.vto_asset_calibrations;
 
     const { data: productData, error: productError } = await supabase
       .from('products')
@@ -484,7 +488,7 @@ class CommerceRepository {
       createdAt: now,
       updatedAt: now,
     };
-    
+
     const { error } = await supabase.from('products').upsert(mapProductToRow(newProduct));
     if (error) throw new Error(error.message);
     return newProduct;
@@ -492,7 +496,7 @@ class CommerceRepository {
 
   public async updateProduct(product: Partial<Product> & { id: string }): Promise<Product> {
     if (!supabase) throw new Error("Supabase client missing");
-    
+
     const existing = await this.getProductById(product.id);
     if (!existing) throw new Error(`Product ${product.id} not found`);
 
@@ -501,7 +505,7 @@ class CommerceRepository {
       ...product,
       updatedAt: new Date().toISOString(),
     };
-    
+
     // Convert ResolvedProduct fields back to raw Product
     delete (updated as any).variants;
     delete (updated as any).defaultVariant;
@@ -536,7 +540,7 @@ class CommerceRepository {
 
   public async updateVariant(variant: Partial<ProductVariant> & { id: string }): Promise<ProductVariant> {
     if (!supabase) throw new Error("Supabase client missing");
-    
+
     const existing = await this.getVariantById(variant.id);
     if (!existing) throw new Error(`Variant ${variant.id} not found`);
 
@@ -545,7 +549,7 @@ class CommerceRepository {
       ...variant,
       updatedAt: new Date().toISOString(),
     };
-    
+
     // Clean up Resolved properties before saving
     delete (updated as any).inStock;
     delete (updated as any).stockLevel;
@@ -578,7 +582,7 @@ class CommerceRepository {
     quantity: number,
   ): Promise<{ success: boolean; remaining: number; message?: string }> {
     if (!supabase) throw new Error("Supabase client missing");
-    
+
     const { data, error } = await supabase.rpc('decrement_variant_stock', {
       p_variant_id: variantId,
       p_quantity: quantity,
@@ -636,9 +640,9 @@ class CommerceRepository {
       .select('*')
       .eq('product_id', parent.id)
       .order('sort_order', { ascending: true });
-      
+
     const allParentMedia = (mediaRows || []).map(mapRowToMedia);
-    
+
     const variantMedia = allParentMedia.filter(
       (m) => m.variantId === variant.id || !m.variantId
     );
@@ -647,12 +651,19 @@ class CommerceRepository {
 
     const inStock = variant.unitsInStock !== undefined ? variant.unitsInStock > 0 : variant.inStock;
     const stockLevel = variant.unitsInStock !== undefined
-        ? variant.unitsInStock === 0
-          ? 'out'
-          : variant.unitsInStock <= 3
+      ? variant.unitsInStock === 0
+        ? 'out'
+        : variant.unitsInStock <= 3
           ? 'low'
           : 'high'
-        : variant.stockLevel;
+      : variant.stockLevel;
+
+    // Gate 3 Invariant
+    let resolvedGlbPath: string | undefined = undefined;
+    const vto = (variant as any).vto_asset_calibrations;
+    if (vto && vto.status === 'PUBLISHED' && vto.vto_glb_url && vto.vto_glb_url.trim() !== '') {
+      resolvedGlbPath = vto.vto_glb_url;
+    }
 
     return {
       ...variant,
@@ -664,6 +675,7 @@ class CommerceRepository {
       effectiveWeight: variant.weightOverride ?? parent.defaultWeight,
       effectiveSpecifications,
       effectiveDescription: variant.descriptionOverride ?? parent.description,
+      glbPath: resolvedGlbPath,
       media,
       hasPriceOverride,
       hasSpecOverride,
@@ -675,11 +687,15 @@ class CommerceRepository {
 
     const { data: variantRows } = await supabase
       .from('product_variants')
-      .select('*')
+      .select('*, vto_asset_calibrations(asset_id, vto_glb_url, status)')
       .eq('product_id', product.id)
       .order('sort_order', { ascending: true });
 
-    let productVariants = (variantRows || []).map(mapRowToVariant).filter((v) => {
+    let productVariants = (variantRows || []).map((row) => {
+      const v = mapRowToVariant(row) as ProductVariant & { vto_asset_calibrations?: any };
+      v.vto_asset_calibrations = row.vto_asset_calibrations;
+      return v;
+    }).filter((v) => {
       if (v.status !== 'ACTIVE') return false;
       if (v.hideWhenOutOfStock && ((v.unitsInStock !== undefined && v.unitsInStock === 0) || !v.inStock)) {
         return false;
@@ -712,7 +728,7 @@ class CommerceRepository {
       .select('*')
       .eq('product_id', product.id)
       .order('sort_order', { ascending: true });
-      
+
     const productMedia = (mediaRows || []).map(mapRowToMedia);
 
     return {
@@ -748,7 +764,7 @@ class CommerceRepository {
         email: params.email || existing.email,
         updatedAt: now,
       };
-      
+
       await supabase.from('customers').upsert(mapCustomerToRow(updated));
       return updated;
     }
@@ -801,7 +817,7 @@ class CommerceRepository {
   }): Promise<{ intent: OrderIntent; customer: Customer; whatsappUrl: string }> {
     const customer = await this.findOrCreateCustomer(params.customer);
     const variant = await this.getVariantById(params.variantId);
-    
+
     if (!variant) {
       throw new Error(`Variant ${params.variantId} not found`);
     }
@@ -908,7 +924,7 @@ class CommerceRepository {
     if (error) {
       throw new Error(`Failed to update order intent status: ${error.message}`);
     }
-    
+
     return updated;
   }
 
@@ -933,7 +949,7 @@ class CommerceRepository {
     if (error) {
       throw new Error(`Failed to update order intent payment link: ${error.message}`);
     }
-    
+
     return updated;
   }
 
@@ -958,7 +974,7 @@ class CommerceRepository {
     if (error) {
       throw new Error(`Failed to persist lens request: ${error.message}`);
     }
-    
+
     return req;
   }
 
@@ -1006,7 +1022,7 @@ class CommerceRepository {
       console.error('[Supabase] Failed to persist payment:', error.message);
       throw new Error(`Failed to persist payment: ${error.message}`);
     }
-    
+
     return payment;
   }
 
@@ -1025,7 +1041,7 @@ class CommerceRepository {
     customerNotes?: string;
   }): Promise<{ order: Order; payment: Payment }> {
     if (!supabase) throw new Error("Supabase client missing");
-    
+
     let payment = await this.getPaymentByReference(params.paymentReference);
     if (!payment) {
       throw new Error(`Payment reference ${params.paymentReference} not found`);
@@ -1076,7 +1092,7 @@ class CommerceRepository {
     if (orderItems.length === 0) {
       const metadata = payment.gatewayResponse || {};
       const metadataItems = metadata.orderItems;
-      
+
       if (Array.isArray(metadataItems) && metadataItems.length > 0) {
         metadataItems.forEach((item: Record<string, unknown>, index: number) => {
           orderItems.push({
@@ -1167,7 +1183,7 @@ class CommerceRepository {
    */
   public async recordSale(orderId: string, items: Array<{ variant_id: string; quantity: number }>): Promise<void> {
     if (!supabase) throw new Error("Supabase client missing");
-    
+
     const { data, error } = await supabase.rpc('record_sale', {
       p_order_id: orderId,
       p_items: items,
@@ -1207,26 +1223,26 @@ class CommerceRepository {
 
   public async getOrdersByCustomerEmail(email: string): Promise<Order[]> {
     if (!supabase) throw new Error("Supabase client missing");
-    
+
     // First find customers with this email
     const { data: customers, error: custError } = await supabase
       .from('customers')
       .select('id')
       .eq('email', email);
-      
+
     if (custError || !customers || customers.length === 0) return [];
-    
+
     const customerIds = customers.map(c => c.id);
-    
+
     // Then find their orders
     const { data: orders, error: orderError } = await supabase
       .from('orders')
       .select('*')
       .in('customer_id', customerIds)
       .order('created_at', { ascending: false });
-      
+
     if (orderError || !orders) return [];
-    
+
     return orders.map(mapRowToOrder);
   }
 
@@ -1245,7 +1261,7 @@ class CommerceRepository {
     totalAmount: number;
   }): Promise<{ success: boolean; orderId?: string; message?: string }> {
     if (!supabase) throw new Error("Supabase client missing");
-    
+
     const { data, error } = await supabase.rpc('process_confirmed_payment', {
       p_payment_ref: params.paymentReference,
       p_order_intent_id: params.orderIntentId || null,

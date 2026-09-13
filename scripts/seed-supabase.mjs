@@ -105,6 +105,7 @@ const SEED_VARIANTS = [
     sku: 'SIG-001-HAV',
     color_name: 'Havana',
     color_hex: '#4A3728',
+    vto_asset_id: 'classic-havana-glasses',
     glb_path: '/models/glasses.glb',
     in_stock: true,
     stock_level: 'high',
@@ -120,6 +121,7 @@ const SEED_VARIANTS = [
     sku: 'SIG-001-BLK',
     color_name: 'Matte Black',
     color_hex: '#1C1C1C',
+    vto_asset_id: 'classic-havana-glasses',
     glb_path: '/models/glasses.glb',
     in_stock: true,
     stock_level: 'high',
@@ -135,6 +137,7 @@ const SEED_VARIANTS = [
     sku: 'SIG-001-HNY',
     color_name: 'Honey Tortoise',
     color_hex: '#8B5A2B',
+    vto_asset_id: 'classic-havana-glasses',
     glb_path: '/models/glasses.glb',
     in_stock: true,
     stock_level: 'low',
@@ -150,6 +153,7 @@ const SEED_VARIANTS = [
     sku: 'SIG-002-GLD',
     color_name: 'Gold',
     color_hex: '#D4AF37',
+    vto_asset_id: 'classic-havana-glasses', // Assuming reuse for seed
     glb_path: '/models/glasses.glb',
     in_stock: true,
     stock_level: 'high',
@@ -165,6 +169,7 @@ const SEED_VARIANTS = [
     sku: 'SIG-002-GUN',
     color_name: 'Gunmetal',
     color_hex: '#4A4A4A',
+    vto_asset_id: 'classic-havana-glasses', // Assuming reuse for seed
     glb_path: '/models/glasses.glb',
     in_stock: true,
     stock_level: 'high',
@@ -180,6 +185,7 @@ const SEED_VARIANTS = [
     sku: 'SIG-003-BLK',
     color_name: 'Noir Black',
     color_hex: '#111111',
+    vto_asset_id: 'meshy-purple-cat-eye',
     glb_path: '/models/Meshy_AI_Purple_Cat_Eye_Glasse_0810153235_texture.glb',
     in_stock: true,
     stock_level: 'high',
@@ -195,6 +201,7 @@ const SEED_VARIANTS = [
     sku: 'SIG-003-TOR',
     color_name: 'Tokyo Tortoise',
     color_hex: '#5C381E',
+    vto_asset_id: 'meshy-purple-cat-eye',
     glb_path: '/models/Meshy_AI_Purple_Cat_Eye_Glasse_0810153235_texture.glb',
     in_stock: true,
     stock_level: 'high',
@@ -210,6 +217,7 @@ const SEED_VARIANTS = [
     sku: 'SIG-003-BUR',
     color_name: 'Deep Burgundy',
     color_hex: '#6B1D2F',
+    vto_asset_id: 'meshy-purple-cat-eye',
     glb_path: '/models/Meshy_AI_Purple_Cat_Eye_Glasse_0810153235_texture.glb',
     in_stock: true,
     stock_level: 'low',
@@ -219,8 +227,50 @@ const SEED_VARIANTS = [
   },
 ];
 
+const SEED_VTO_CALIBRATIONS = [
+  {
+    asset_id: 'classic-havana-glasses',
+    name: 'Classic Havana Baseline',
+    status: 'PUBLISHED',
+    frame_width_mm: 140,
+    lens_width_mm: 52,
+    bridge_width_mm: 18,
+    temple_length_mm: 140,
+    bridge_x: 0,
+    bridge_y: 1.2,
+    bridge_z: -0.8,
+    measured_native_width: 1.0,
+    width_multiplier: 140.0,
+    source_glb_url: '/models/glasses.glb',
+    vto_glb_url: '/models/glasses.glb',
+    metadata_source: 'Initial Seed',
+  },
+  {
+    asset_id: 'meshy-purple-cat-eye',
+    name: 'Meshy Cat Eye Generated',
+    status: 'PUBLISHED',
+    frame_width_mm: 138,
+    lens_width_mm: 54,
+    bridge_width_mm: 16,
+    temple_length_mm: 140,
+    bridge_x: 0,
+    bridge_y: 2.1,
+    bridge_z: -0.5,
+    measured_native_width: 0.12,
+    width_multiplier: 1.15,
+    source_glb_url: '/models/Meshy_AI_Purple_Cat_Eye_Glasse_0810153235_texture.glb',
+    vto_glb_url: '/models/Meshy_AI_Purple_Cat_Eye_Glasse_0810153235_texture.glb',
+    metadata_source: 'Initial Seed',
+  }
+];
+
 async function seed() {
-  console.log('Seeding initial products into Supabase...');
+  console.log('Seeding initial data into Supabase...');
+
+  const { error: cErr } = await supabase.from('vto_asset_calibrations').upsert(SEED_VTO_CALIBRATIONS);
+  if (cErr) console.error('VTO Calibrations seed error:', cErr);
+  else console.log(`✓ Inserted ${SEED_VTO_CALIBRATIONS.length} VTO calibrations`);
+
   const { error: pErr } = await supabase.from('products').upsert(SEED_PRODUCTS);
   if (pErr) console.error('Product seed error:', pErr);
   else console.log(`✓ Inserted ${SEED_PRODUCTS.length} products`);

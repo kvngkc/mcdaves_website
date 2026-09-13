@@ -49,6 +49,10 @@ export function VTOControls({
   const handleGlbChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const nextPath = e.target.value;
     const metadata = globalVTOAssetRegistry.getAsset(nextPath);
+    if (!metadata) {
+      console.warn(`[VTOControls] Asset not found for path: ${nextPath}`);
+      return;
+    }
     const dims = metadata.physicalDimensions;
     const frameSizeStr = `${dims.lensWidthMm || 52}□${dims.bridgeWidthMm || 18}-${dims.templeLengthMm || 140}`;
 

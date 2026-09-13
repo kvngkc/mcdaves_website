@@ -102,45 +102,4 @@ export const DEFAULT_VTO_ASSETS: Record<string, AssetCalibrationMetadata> = {
   },
 };
 
-export const FALLBACK_VTO_METADATA: AssetCalibrationMetadata = {
-  assetId: 'fallback-asset',
-  name: 'Standard Eyewear Frame',
-  status: 'CALIBRATED',
-  physicalDimensions: {
-    frameWidthMm: 122,
-    lensWidthMm: 52,
-    bridgeWidthMm: 18,
-    templeLengthMm: 140,
-  },
-  registration: {
-    bridge: { x: 0, y: 0, z: 0 },
-    measuredNativeWidth: 1.0,
-    widthMultiplier: 1.0,
-    rotationOffsetEuler: { x: 0, y: 0, z: 0 },
-  },
-  orientation: {
-    forward: '+Z',
-    up: '+Y',
-    handedness: 'right-handed',
-  },
-  templeProcessing: {
-    mode: 'auto',
-    strategy: 'preserve-visible-temple',
-    cutRatio: 0.70,
-    preserveFrontRims: true,
-    preserveHinges: true,
-  },
-  versioning: {
-    processorVersion: '1.0.0',
-    sourceVersion: 1,
-    vtoVersion: 1,
-    calibrationVersion: 1,
-  },
-  paths: {
-    sourceGlbUrl: '',
-    vtoGlbUrl: '',
-    previewImages: [],
-  },
-  metadataSource: 'Generic fallback asset profile. Assumes model origin is centered at the bridge.',
-  updatedAt: new Date().toISOString(),
-};
+

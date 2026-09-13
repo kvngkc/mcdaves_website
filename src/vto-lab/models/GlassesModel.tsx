@@ -34,7 +34,28 @@ export interface GlassesModelProps {
 
 const preparedModelCache = new Map<string, any>();
 
-export function GlassesModel({
+export function GlassesModel(props: GlassesModelProps) {
+  const calibration = useMemo(() => getCalibrationForGlb(props.glbPath), [props.glbPath]);
+
+  const isValid = useMemo(() => {
+    if (!calibration) return false;
+    let nativeW = calibration.measuredNativeWidth;
+    const activeFrameSize = props.frameSize || calibration.defaultFrameSize;
+    if (!nativeW || nativeW <= 0 || !activeFrameSize) {
+      return false;
+    }
+    return true;
+  }, [calibration, props.frameSize]);
+
+  if (!isValid) {
+    console.warn("[VTO] Refusing to render: Asset lacks required calibration evidence.");
+    return null;
+  }
+
+  return <GlassesModelInner {...props} calibration={calibration!} />;
+}
+
+function GlassesModelInner({
   glbPath,
   frameSize,
   detectionRef,
@@ -45,7 +66,8 @@ export function GlassesModel({
   clipTemples,
   templeDepthCutoff = 2.5,
   onModelMeasured,
-}: GlassesModelProps) {
+  calibration,
+}: GlassesModelProps & { calibration: any }) {
   const rootRef = useRef<Group>(null);
   const filterRef = useRef(new PoseFilter(45.0, 50.0, 40.0));
 
@@ -63,9 +85,6 @@ export function GlassesModel({
   }, [glbPath]);
 
   const { scene } = useGLTF(optimizedGlbPath);
-
-  const calibration = useMemo(() => getCalibrationForGlb(glbPath), [glbPath]);
-
   const [prepared, setPrepared] = useState<any>(null);
 
   useEffect(() => {
@@ -103,19 +122,15 @@ export function GlassesModel({
     // This allows instant re-renders when toggling the same frame.
   }, [scene, calibration, clipTemples, templeDepthCutoff, glbPath]);
 
-  const { scale } = useMemo(() => {
+  const scale = useMemo(() => {
     let nativeW = prepared?.measurements.nativeWidth;
-    if (calibration.measuredNativeWidth && calibration.measuredNativeWidth !== 1.0) {
+    if (calibration.measuredNativeWidth && calibration.measuredNativeWidth > 0) {
       nativeW = calibration.measuredNativeWidth;
-    } else if (!nativeW) {
-      nativeW = 1.0;
     }
+    const activeFrameSize = frameSize || calibration.defaultFrameSize;
+    if (!nativeW || !activeFrameSize) return 1.0;
     
-    return calculateModelScale(
-      frameSize || calibration.defaultFrameSize,
-      nativeW,
-      calibration,
-    );
+    return calculateModelScale(activeFrameSize, nativeW, calibration);
   }, [frameSize, calibration, prepared]);
 
   useEffect(() => {
@@ -129,7 +144,7 @@ export function GlassesModel({
     if (!root) return;
 
     const matrix = detectionRef?.current?.faceMatrix ?? faceMatrix ?? null;
-    if (!matrix) {
+    if (!matrix || !calibration) {
       filterRef.current.reset();
       root.visible = false;
       return;

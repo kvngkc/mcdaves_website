@@ -31,6 +31,7 @@ import {
   Payment,
   LensRequest,
   VTOAssetCalibration,
+  RawVTOAssetCalibration,
 } from '../commerce/types';
 
 /**
@@ -120,6 +121,7 @@ export function mapRowToVariant(row: any): ProductVariant {
     specificationsOverride: row.specifications_override || undefined,
     descriptionOverride: row.description_override || undefined,
     glbPath: row.glb_path || undefined,
+    vtoAssetId: row.vto_asset_id || undefined,
     inStock: row.in_stock ?? true,
     stockLevel: row.stock_level || 'high',
     unitsInStock: row.units_in_stock ?? 10,
@@ -150,6 +152,7 @@ export function mapVariantToRow(variant: ProductVariant): any {
     specifications_override: variant.specificationsOverride,
     description_override: variant.descriptionOverride,
     glb_path: variant.glbPath,
+    vto_asset_id: variant.vtoAssetId,
     in_stock: variant.inStock,
     stock_level: variant.stockLevel,
     units_in_stock: variant.unitsInStock,
@@ -403,25 +406,25 @@ export function mapLensRequestToRow(lensReq: LensRequest): any {
 }
 
 /**
- * Maps database row to VTOAssetCalibration
+ * Maps database row to RawVTOAssetCalibration
  */
-export function mapRowToVtoCalibration(row: any): VTOAssetCalibration {
+export function mapRowToVtoCalibration(row: any): RawVTOAssetCalibration {
   return {
     id: row.id,
     assetId: row.asset_id,
     name: row.name,
-    status: row.status || 'APPROVED',
-    frameWidthMm: Number(row.frame_width_mm) || 124,
-    lensWidthMm: row.lens_width_mm ? Number(row.lens_width_mm) : undefined,
-    bridgeWidthMm: row.bridge_width_mm ? Number(row.bridge_width_mm) : undefined,
-    templeLengthMm: row.temple_length_mm ? Number(row.temple_length_mm) : undefined,
+    status: row.status || undefined,
+    frameWidthMm: row.frame_width_mm != null ? Number(row.frame_width_mm) : undefined,
+    lensWidthMm: row.lens_width_mm != null ? Number(row.lens_width_mm) : undefined,
+    bridgeWidthMm: row.bridge_width_mm != null ? Number(row.bridge_width_mm) : undefined,
+    templeLengthMm: row.temple_length_mm != null ? Number(row.temple_length_mm) : undefined,
     bridge: {
-      x: Number(row.bridge_x) || 0,
-      y: Number(row.bridge_y) || 0,
-      z: Number(row.bridge_z) || 0,
+      x: row.bridge_x != null ? Number(row.bridge_x) : undefined,
+      y: row.bridge_y != null ? Number(row.bridge_y) : undefined,
+      z: row.bridge_z != null ? Number(row.bridge_z) : undefined,
     },
-    measuredNativeWidth: Number(row.measured_native_width) || 1.0,
-    widthMultiplier: Number(row.width_multiplier) || 1.0,
+    measuredNativeWidth: row.measured_native_width != null ? Number(row.measured_native_width) : undefined,
+    widthMultiplier: row.width_multiplier != null ? Number(row.width_multiplier) : undefined,
     rotationOffsetEuler: row.rotation_offset_euler || { x: 0, y: 0, z: 0 },
     sourceGlbUrl: row.source_glb_url,
     vtoGlbUrl: row.vto_glb_url,
@@ -433,23 +436,23 @@ export function mapRowToVtoCalibration(row: any): VTOAssetCalibration {
 }
 
 /**
- * Maps VTOAssetCalibration to database row
+ * Maps RawVTOAssetCalibration to database row
  */
-export function mapVtoCalibrationToRow(calib: VTOAssetCalibration): any {
+export function mapVtoCalibrationToRow(calib: RawVTOAssetCalibration): any {
   return {
     id: calib.id,
     asset_id: calib.assetId,
     name: calib.name,
     status: calib.status,
-    frame_width_mm: calib.frameWidthMm,
-    lens_width_mm: calib.lensWidthMm || null,
-    bridge_width_mm: calib.bridgeWidthMm || null,
-    temple_length_mm: calib.templeLengthMm || null,
-    bridge_x: calib.bridge.x,
-    bridge_y: calib.bridge.y,
-    bridge_z: calib.bridge.z,
-    measured_native_width: calib.measuredNativeWidth,
-    width_multiplier: calib.widthMultiplier,
+    frame_width_mm: calib.frameWidthMm ?? null,
+    lens_width_mm: calib.lensWidthMm ?? null,
+    bridge_width_mm: calib.bridgeWidthMm ?? null,
+    temple_length_mm: calib.templeLengthMm ?? null,
+    bridge_x: calib.bridge.x ?? null,
+    bridge_y: calib.bridge.y ?? null,
+    bridge_z: calib.bridge.z ?? null,
+    measured_native_width: calib.measuredNativeWidth ?? null,
+    width_multiplier: calib.widthMultiplier ?? null,
     rotation_offset_euler: calib.rotationOffsetEuler || { x: 0, y: 0, z: 0 },
     source_glb_url: calib.sourceGlbUrl,
     vto_glb_url: calib.vtoGlbUrl,

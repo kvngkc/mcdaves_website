@@ -2,8 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { globalVTOAssetRegistry } from '@/vto-pipeline/registry/VTOAssetRegistry';
-import { FALLBACK_VTO_METADATA } from '@/vto-pipeline/registry/defaultAssets';
 import type { AssetCalibrationMetadata } from '@/vto-pipeline/types/AssetTypes';
+
+const DEFAULT_ORIENTATION = { forward: '+Z', up: '+Y', handedness: 'right-handed' } as const;
+const DEFAULT_TEMPLE_PROCESSING = { mode: 'auto', strategy: 'preserve-visible-temple', cutRatio: 0.70, preserveFrontRims: true, preserveHinges: true } as const;
+const DEFAULT_VERSIONING = { processorVersion: '1.0.0', sourceVersion: 1, vtoVersion: 1, calibrationVersion: 1 };
 
 let fetchPromise: Promise<void> | null = null;
 let isFetched = false;
@@ -33,24 +36,24 @@ export function useVTOAssets() {
                 name: row.name,
                 status: row.status as any,
                 physicalDimensions: {
-                  frameWidthMm: Number(row.frame_width_mm) || 124,
-                  lensWidthMm: Number(row.lens_width_mm) || 52,
-                  bridgeWidthMm: Number(row.bridge_width_mm) || 18,
-                  templeLengthMm: Number(row.temple_length_mm) || 140,
+                  frameWidthMm: row.frame_width_mm != null ? Number(row.frame_width_mm) : null,
+                  lensWidthMm: row.lens_width_mm != null ? Number(row.lens_width_mm) : null,
+                  bridgeWidthMm: row.bridge_width_mm != null ? Number(row.bridge_width_mm) : null,
+                  templeLengthMm: row.temple_length_mm != null ? Number(row.temple_length_mm) : null,
                 },
                 registration: {
                   bridge: {
-                    x: Number(row.bridge_x) || 0,
-                    y: Number(row.bridge_y) || 0,
-                    z: Number(row.bridge_z) || 0,
+                    x: row.bridge_x != null ? Number(row.bridge_x) : null,
+                    y: row.bridge_y != null ? Number(row.bridge_y) : null,
+                    z: row.bridge_z != null ? Number(row.bridge_z) : null,
                   },
                   measuredNativeWidth: Number(row.measured_native_width) || 1.0,
                   widthMultiplier: Number(row.width_multiplier) || 1.0,
                   rotationOffsetEuler: row.rotation_offset_euler || { x: 0, y: 0, z: 0 },
                 },
-                orientation: FALLBACK_VTO_METADATA.orientation,
-                templeProcessing: FALLBACK_VTO_METADATA.templeProcessing,
-                versioning: FALLBACK_VTO_METADATA.versioning,
+                orientation: DEFAULT_ORIENTATION,
+                templeProcessing: DEFAULT_TEMPLE_PROCESSING,
+                versioning: DEFAULT_VERSIONING,
                 paths: {
                   sourceGlbUrl: row.source_glb_url,
                   vtoGlbUrl: row.vto_glb_url,

@@ -11,7 +11,7 @@ export interface CalibrationEntry {
   modelId: string;
   glbPath: string;
   name: string;
-  defaultFrameSize: string;
+  defaultFrameSize?: string;
   /**
    * Exact physical bridge contact point in the model's native coordinate system.
    * Model is translated by -bridge once during initialization.
@@ -27,10 +27,15 @@ export interface CalibrationEntry {
   rotationOffsetEuler: { x: number; y: number; z: number };
 }
 
-export function getCalibrationForGlb(glbPath: string): CalibrationEntry {
+export function getCalibrationForGlb(glbPath: string): CalibrationEntry | null {
   const metadata = globalVTOAssetRegistry.getAsset(glbPath);
+  if (!metadata) return null;
   const dims = metadata.physicalDimensions;
-  const frameSizeStr = `${dims.lensWidthMm || 52}□${dims.bridgeWidthMm || 18}-${dims.templeLengthMm || 140}`;
+  
+  // Do not fabricate a default 52□18-140 frame size. If it's missing, it should remain undefined.
+  const frameSizeStr = dims.lensWidthMm && dims.bridgeWidthMm && dims.templeLengthMm 
+    ? `${dims.lensWidthMm}□${dims.bridgeWidthMm}-${dims.templeLengthMm}` 
+    : undefined;
 
   return {
     modelId: metadata.assetId,
@@ -57,23 +62,12 @@ export function getCalibrationForGlb(glbPath: string): CalibrationEntry {
 
 export const CALIBRATION_REGISTRY: Record<string, CalibrationEntry> = {
   get '/models/glasses.glb'() {
-    return getCalibrationForGlb('/models/glasses.glb');
+    return getCalibrationForGlb('/models/glasses.glb')!;
   },
   get '/models/Meshy_AI_Purple_Cat_Eye_Glasse_0810153235_texture.glb'() {
-    return getCalibrationForGlb('/models/Meshy_AI_Purple_Cat_Eye_Glasse_0810153235_texture.glb');
+    return getCalibrationForGlb('/models/Meshy_AI_Purple_Cat_Eye_Glasse_0810153235_texture.glb')!;
   },
 };
 
-export const DEFAULT_CALIBRATION: CalibrationEntry = {
-  modelId: 'default',
-  glbPath: '',
-  name: 'Default Frame',
-  defaultFrameSize: '52□18-140',
-  bridge: { x: 0, y: 0, z: 0 },
-  measuredNativeWidth: 1.0,
-  widthMultiplier: 1.0,
-  source: 'Fallback entry. Assumes model origin is centered at the nose bridge.',
-  pantoscopicTilt: -12,
-  useMaterialClipping: false,
-  rotationOffsetEuler: { x: 0, y: 0, z: 0 },
-};
+// Exported for tests only, but no longer used internally
+export const DEFAULT_CALIBRATION: any = undefined;

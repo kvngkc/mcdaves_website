@@ -5,7 +5,7 @@
  */
 
 import { AssetCalibrationMetadata } from '../types/AssetTypes';
-import { DEFAULT_VTO_ASSETS, FALLBACK_VTO_METADATA } from './defaultAssets';
+import { DEFAULT_VTO_ASSETS } from './defaultAssets';
 
 export class VTOAssetRegistry {
   private assets: Map<string, AssetCalibrationMetadata>;
@@ -24,8 +24,8 @@ export class VTOAssetRegistry {
   /**
    * Retrieves asset calibration metadata by assetId or GLB file URL.
    */
-  public getAsset(identifier: string): AssetCalibrationMetadata {
-    if (!identifier) return FALLBACK_VTO_METADATA;
+  public getAsset(identifier: string): AssetCalibrationMetadata | null {
+    if (!identifier) return null;
 
     // Direct ID match
     if (this.assets.has(identifier)) {
@@ -46,15 +46,7 @@ export class VTOAssetRegistry {
       }
     }
 
-    return {
-      ...FALLBACK_VTO_METADATA,
-      assetId: `dynamic-${Date.now()}`,
-      paths: {
-        sourceGlbUrl: cleanUrl,
-        vtoGlbUrl: cleanUrl,
-        previewImages: [],
-      },
-    };
+    return null;
   }
 
   /**
