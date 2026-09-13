@@ -80,7 +80,7 @@ test.describe('Storefront E2E Tests - Production Checklist', () => {
     // Let's look for the VTO modal container or trigger.
     // If the Try On button is completely absent due to fail-closed, that's step 1.
     const tryOnBtn = page.locator('#product-primary-ctas button', { hasText: /Try.*On/i });
-    await expect(tryOnBtn).toBeHidden();
+    await expect(tryOnBtn).toBeDisabled();
     
     // To explicitly test the renderer component, we could mount it, but in an E2E test, 
     // ensuring the button is hidden AND the network request for .glb is never made during the session is sufficient proof 

@@ -1,8 +1,13 @@
 // scripts/seed-supabase.mjs
 import { createClient } from '@supabase/supabase-js';
 
-const url = 'https://uijncyzhguftcdonkcdg.supabase.co';
-const serviceKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVpam5jeXpoZ3VmdGNkb25rY2RnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4Njg5Mjk1MCwiZXhwIjoyMTAyNDY4OTUwfQ.bv5rsyaGjDY-9USdigtCP8NGeLrrp_iU9RhoFTkRB3E';
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!url || !serviceKey) {
+  console.error("Missing SUPABASE credentials in process.env");
+  process.exit(1);
+}
 
 const supabase = createClient(url, serviceKey);
 
@@ -229,6 +234,7 @@ const SEED_VARIANTS = [
 
 const SEED_VTO_CALIBRATIONS = [
   {
+    id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
     asset_id: 'classic-havana-glasses',
     name: 'Classic Havana Baseline',
     status: 'PUBLISHED',
@@ -246,6 +252,7 @@ const SEED_VTO_CALIBRATIONS = [
     metadata_source: 'Initial Seed',
   },
   {
+    id: 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22',
     asset_id: 'meshy-purple-cat-eye',
     name: 'Meshy Cat Eye Generated',
     status: 'PUBLISHED',
