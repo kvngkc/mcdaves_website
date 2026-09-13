@@ -98,6 +98,7 @@ const SEED_PRODUCTS = [
     prescription_required: true,
     try_on_available: true,
     status: 'ACTIVE',
+  },
   {
     id: 'prod-sightly-004',
     slug: 'no-vto-glasses',
