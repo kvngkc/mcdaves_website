@@ -128,7 +128,7 @@ describe('Gates 1 & 2 Remediation Tests', () => {
         templeProcessing: { useMaterialClipping: false, depthCutoffMm: 20 },
         versioning: { revision: 1, isLatest: true },
         paths: { sourceGlbUrl: '/test.glb', vtoGlbUrl: '/test.glb' }
-      });
+      } as any);
 
       const calibration = getCalibrationForGlb('/test.glb');
       expect(calibration).not.toBeNull();

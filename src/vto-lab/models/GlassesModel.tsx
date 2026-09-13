@@ -130,7 +130,7 @@ function GlassesModelInner({
     const activeFrameSize = frameSize || calibration.defaultFrameSize;
     if (!nativeW || !activeFrameSize) return 1.0;
     
-    return calculateModelScale(activeFrameSize, nativeW, calibration);
+    return calculateModelScale(activeFrameSize, nativeW, calibration).scale;
   }, [frameSize, calibration, prepared]);
 
   useEffect(() => {

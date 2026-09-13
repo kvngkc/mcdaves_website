@@ -211,7 +211,8 @@ export async function getLiveResolvedProductBySlug(slug: string): Promise<any | 
       hasSpecOverride: v.specifications_override !== undefined,
       createdAt: v.created_at || new Date().toISOString(),
       updatedAt: v.updated_at || new Date().toISOString(),
-    }));
+    };
+  });
 
     const defaultVariant = variants.find(v => v.glbPath) || variants[0] || {
       id: `default-${p.id}`,
