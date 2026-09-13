@@ -1,5 +1,5 @@
 // src/lib/commerce/storefront-catalog.ts
-import { supabase } from '@/lib/supabase/service';
+import { supabaseClient } from '@/lib/supabase/client';
 import { Product as StorefrontProduct } from '@/lib/types';
 import { products as fallbackSeedProducts } from '@/data/products';
 
@@ -7,11 +7,11 @@ export const dynamic = 'force-dynamic';
 
 export async function getLiveStorefrontProducts(): Promise<StorefrontProduct[]> {
   try {
-    if (!supabase) {
+    if (!supabaseClient) {
       return fallbackSeedProducts;
     }
 
-    const { data: rawProducts, error: prodErr } = await supabase
+    const { data: rawProducts, error: prodErr } = await supabaseClient
       .from('products')
       .select('*')
       .eq('status', 'ACTIVE')
@@ -25,7 +25,7 @@ export async function getLiveStorefrontProducts(): Promise<StorefrontProduct[]> 
       return [];
     }
 
-    const { data: rawVariants, error: varErr } = await supabase
+    const { data: rawVariants, error: varErr } = await supabaseClient
       .from('product_variants')
       .select('*, vto_asset_calibrations(asset_id, vto_glb_url, status)')
       .eq('status', 'ACTIVE')
@@ -35,7 +35,7 @@ export async function getLiveStorefrontProducts(): Promise<StorefrontProduct[]> 
       console.warn('[Storefront] Variant query notice:', varErr);
     }
 
-    const { data: rawMedia } = await supabase
+    const { data: rawMedia } = await supabaseClient
       .from('product_media')
       .select('*')
       .order('sort_order', { ascending: true });
@@ -115,7 +115,6 @@ export async function getLiveStorefrontProducts(): Promise<StorefrontProduct[]> 
           faceShape: Array.isArray(p.face_shape) ? p.face_shape : ['round', 'oval'],
         };
       })
-      // If product has 0 available stock and hideWhenOutOfStock is true, remove it from the live catalog
       .filter((p) => {
         if (!p.inStock && p.hideWhenOutOfStock) {
           return false;
@@ -132,9 +131,9 @@ export async function getLiveStorefrontProducts(): Promise<StorefrontProduct[]> 
 
 export async function getLiveResolvedProductBySlug(slug: string): Promise<any | null> {
   try {
-    if (!supabase) return null;
+    if (!supabaseClient) return null;
 
-    const { data: p, error: prodErr } = await supabase
+    const { data: p, error: prodErr } = await supabaseClient
       .from('products')
       .select('*')
       .eq('slug', slug)
@@ -142,13 +141,13 @@ export async function getLiveResolvedProductBySlug(slug: string): Promise<any | 
 
     if (prodErr || !p) return null;
 
-    const { data: rawVariants } = await supabase
+    const { data: rawVariants } = await supabaseClient
       .from('product_variants')
       .select('*, vto_asset_calibrations(asset_id, vto_glb_url, status)')
       .eq('product_id', p.id)
       .order('sort_order', { ascending: true });
 
-    const { data: rawMedia } = await supabase
+    const { data: rawMedia } = await supabaseClient
       .from('product_media')
       .select('*')
       .eq('product_id', p.id)
@@ -173,46 +172,46 @@ export async function getLiveResolvedProductBySlug(slug: string): Promise<any | 
       }
 
       return {
-      id: v.id,
-      productId: v.product_id,
-      slug: v.slug,
-      name: v.name,
-      sku: v.sku,
-      colorName: v.color_name,
-      colorHex: v.color_hex,
-      priceOverride: v.price_override ? Number(v.price_override) : undefined,
-      originalPriceOverride: v.original_price_override ? Number(v.original_price_override) : undefined,
-      materialOverride: v.material_override || undefined,
-      weightOverride: v.weight_override || undefined,
-      specificationsOverride: v.specifications_override || undefined,
-      descriptionOverride: v.description_override || undefined,
-      glbPath,
-      inStock: v.in_stock && (v.units_in_stock === undefined || (v.units_in_stock as number) > 0),
-      stockLevel: !v.in_stock || (v.units_in_stock !== undefined && v.units_in_stock === 0) ? 'out' : ((v.units_in_stock as number) ?? 10) <= 3 ? 'low' : 'high',
-      unitsInStock: v.units_in_stock ?? 10,
-      hideWhenOutOfStock: v.hide_when_out_of_stock ?? false,
-      sortOrder: v.sort_order ?? idx,
-      status: v.status || 'ACTIVE',
-      effectivePrice: v.price_override ? Number(v.price_override) : Number(p.default_price),
-      effectiveOriginalPrice: v.original_price_override ? Number(v.original_price_override) : p.default_original_price ? Number(p.default_original_price) : undefined,
-      effectiveMaterial: v.material_override || p.default_material || 'Acetate',
-      effectiveWeight: v.weight_override || p.default_weight || '22g',
-      effectiveSpecifications: {
-        frameWidthMm: Number(p.frame_width_mm) || 140,
-        lensWidthMm: Number(p.lens_width_mm) || 52,
-        bridgeWidthMm: Number(p.bridge_width_mm) || 18,
-        templeLengthMm: Number(p.temple_length_mm) || 140,
-        frameSize: p.frame_size || '52□18-140',
-        ...(v.specifications_override as Record<string, any> || {}),
-      },
-      effectiveDescription: v.description_override || p.description || '',
-      media: [],
-      hasPriceOverride: v.price_override !== undefined,
-      hasSpecOverride: v.specifications_override !== undefined,
-      createdAt: v.created_at || new Date().toISOString(),
-      updatedAt: v.updated_at || new Date().toISOString(),
-    };
-  });
+        id: v.id,
+        productId: v.product_id,
+        slug: v.slug,
+        name: v.name,
+        sku: v.sku,
+        colorName: v.color_name,
+        colorHex: v.color_hex,
+        priceOverride: v.price_override ? Number(v.price_override) : undefined,
+        originalPriceOverride: v.original_price_override ? Number(v.original_price_override) : undefined,
+        materialOverride: v.material_override || undefined,
+        weightOverride: v.weight_override || undefined,
+        specificationsOverride: v.specifications_override || undefined,
+        descriptionOverride: v.description_override || undefined,
+        glbPath,
+        inStock: v.in_stock && (v.units_in_stock === undefined || (v.units_in_stock as number) > 0),
+        stockLevel: !v.in_stock || (v.units_in_stock !== undefined && v.units_in_stock === 0) ? 'out' : ((v.units_in_stock as number) ?? 10) <= 3 ? 'low' : 'high',
+        unitsInStock: v.units_in_stock ?? 10,
+        hideWhenOutOfStock: v.hide_when_out_of_stock ?? false,
+        sortOrder: v.sort_order ?? idx,
+        status: v.status || 'ACTIVE',
+        effectivePrice: v.price_override ? Number(v.price_override) : Number(p.default_price),
+        effectiveOriginalPrice: v.original_price_override ? Number(v.original_price_override) : p.default_original_price ? Number(p.default_original_price) : undefined,
+        effectiveMaterial: v.material_override || p.default_material || 'Acetate',
+        effectiveWeight: v.weight_override || p.default_weight || '22g',
+        effectiveSpecifications: {
+          frameWidthMm: Number(p.frame_width_mm) || 140,
+          lensWidthMm: Number(p.lens_width_mm) || 52,
+          bridgeWidthMm: Number(p.bridge_width_mm) || 18,
+          templeLengthMm: Number(p.temple_length_mm) || 140,
+          frameSize: p.frame_size || '52□18-140',
+          ...(v.specifications_override as Record<string, any> || {}),
+        },
+        effectiveDescription: v.description_override || p.description || '',
+        media: [],
+        hasPriceOverride: v.price_override !== undefined,
+        hasSpecOverride: v.specifications_override !== undefined,
+        createdAt: v.created_at || new Date().toISOString(),
+        updatedAt: v.updated_at || new Date().toISOString(),
+      };
+    });
 
     const defaultVariant = variants.find(v => v.glbPath) || variants[0] || {
       id: `default-${p.id}`,
