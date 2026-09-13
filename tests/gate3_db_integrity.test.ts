@@ -1,18 +1,14 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { createClient } from '@supabase/supabase-js';
+import { getTestSupabaseClient } from './supabase-test-client';
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://uijncyzhguftcdonkcdg.supabase.co';
-const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'sb_secret_DmqQyZ1FUv_mY5uTPq8-7Q_HX7mAIvy';
-
-const supabase = createClient(url, serviceKey);
+const supabase = getTestSupabaseClient();
 
 describe('Gate 3 Database Integrity', () => {
-  let testAssetId = 'test-asset-gate3';
-  let testVariantId = 'test-variant-gate3';
-  let testProductId = 'prod-sightly-001'; // Assuming this exists from seed
+  const testAssetId = 'test-asset-gate3';
+  const testVariantId = 'test-variant-gate3';
+  const testProductId = 'test-prod-gate3';
 
   beforeAll(async () => {
-    // Insert a dummy product to satisfy foreign key constraints
     const { error: prodError } = await supabase.from('products').insert({
       id: testProductId,
       name: 'Gate 3 Test Product',
@@ -22,9 +18,8 @@ describe('Gate 3 Database Integrity', () => {
       status: 'ACTIVE',
       category: 'unisex',
     });
-    if (prodError) console.error("Failed to insert dummy product", prodError);
+    if (prodError) throw new Error(`Failed to insert test product: ${prodError.message}`);
 
-    // Insert a dummy asset
     const { error: assetError } = await supabase.from('vto_asset_calibrations').insert({
       id: '11111111-2222-3333-4444-555555555555',
       asset_id: testAssetId,
@@ -43,11 +38,10 @@ describe('Gate 3 Database Integrity', () => {
       vto_glb_url: '/models/test.glb',
       metadata_source: 'Test',
     });
-    if (assetError) console.error("Failed to insert dummy asset", assetError);
+    if (assetError) throw new Error(`Failed to insert test asset: ${assetError.message}`);
   });
 
   afterAll(async () => {
-    // Cleanup
     await supabase.from('product_variants').delete().eq('id', testVariantId);
     await supabase.from('vto_asset_calibrations').delete().eq('asset_id', testAssetId);
     await supabase.from('products').delete().eq('id', testProductId);
@@ -66,7 +60,7 @@ describe('Gate 3 Database Integrity', () => {
     });
 
     expect(error).not.toBeNull();
-    expect(error?.code).toBe('23503'); // foreign_key_violation
+    expect(error?.code).toBe('23503');
   });
 
   it('allows INSERT with valid vto_asset_id', async () => {
@@ -87,6 +81,6 @@ describe('Gate 3 Database Integrity', () => {
   it('rejects DELETE of vto_asset_calibrations when referenced by a variant (RESTRICT)', async () => {
     const { error } = await supabase.from('vto_asset_calibrations').delete().eq('asset_id', testAssetId);
     expect(error).not.toBeNull();
-    expect(error?.code).toBe('23503'); // foreign_key_violation
+    expect(error?.code).toBe('23503');
   });
 });
