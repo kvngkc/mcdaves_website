@@ -37,6 +37,10 @@ describe('Gate 3 Database Integrity', () => {
       source_glb_url: '/models/test.glb',
       vto_glb_url: '/models/test.glb',
       metadata_source: 'Test',
+      derived_storage_path: 'fixtures/gate3.glb',
+      derived_content_hash: 'gate3-fixture-hash',
+      derived_size_bytes: 100,
+      output_size_status: 'PASS',
     });
     if (assetError) throw new Error(`Failed to insert test asset: ${assetError.message}`);
   });
@@ -58,7 +62,6 @@ describe('Gate 3 Database Integrity', () => {
       color_hex: '#000000',
       vto_asset_id: 'non-existent-asset-id',
     });
-
     expect(error).not.toBeNull();
     expect(error?.code).toBe('23503');
   });
@@ -74,7 +77,6 @@ describe('Gate 3 Database Integrity', () => {
       color_hex: '#000000',
       vto_asset_id: testAssetId,
     });
-
     expect(error).toBeNull();
   });
 
