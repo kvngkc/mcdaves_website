@@ -4,7 +4,7 @@
 import React from 'react';
 import dynamic from 'next/dynamic';
 import type { VTOModalProps } from '@/components/try-on/VTOModal';
-import { Product } from '@/data/products';
+import type { Product } from '@/lib/types';
 
 const DynamicVTOModal = dynamic(
   () => import('@/components/try-on/VTOModal').then((mod) => mod.VTOModal),
@@ -36,7 +36,7 @@ export function TryOnModal({
       variantName={product.colors?.[0]?.name || 'Standard'}
       variantSlug={product.colors?.[0]?.imageSuffix || 'default'}
       price={product.price}
-      glbPath={product.glbModel}
+      glbPath={product.glbModel || ''}
       frameSize={product.frameSize || product.sizes || '52□18-140'}
       onOrderIntent={onOrderIntent}
     />
