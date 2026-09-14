@@ -9,7 +9,6 @@ import { createAuthBrowserClient } from '@/lib/supabase/auth-client';
 
 export default function CustomerLoginPage() {
   const router = useRouter();
-  const supabase = createAuthBrowserClient();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -22,26 +21,33 @@ export default function CustomerLoginPage() {
     setLoading(true);
     setError(null);
 
-    const { error: signInError } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/api/auth/callback?next=/account/orders`,
-      },
-    });
+    try {
+      // Create the browser client only in response to a user action.
+      // This prevents Next.js build-time prerendering from requiring
+      // public Supabase environment variables.
+      const supabase = createAuthBrowserClient();
+      const { error: signInError } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/api/auth/callback?next=/account/orders`,
+        },
+      });
 
-    if (signInError) {
-      setError(signInError.message);
-    } else {
-      setSuccess(true);
+      if (signInError) {
+        setError(signInError.message);
+      } else {
+        setSuccess(true);
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Unable to start secure sign-in.');
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (
     <div className="min-h-screen bg-neutral-50 flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full bg-white rounded-3xl shadow-xl border border-neutral-100 overflow-hidden">
-        {/* Header */}
         <div className="bg-neutral-900 px-6 py-8 text-center">
           <Link href="/" className="inline-block text-2xl font-black text-white tracking-tight mb-2">
             McDaves
@@ -52,7 +58,6 @@ export default function CustomerLoginPage() {
           </p>
         </div>
 
-        {/* Body */}
         <div className="p-6 sm:p-8">
           {success ? (
             <div className="text-center space-y-4 py-4">
@@ -117,7 +122,6 @@ export default function CustomerLoginPage() {
           )}
         </div>
 
-        {/* Footer */}
         <div className="bg-neutral-50 px-6 py-4 border-t border-neutral-100 flex items-center justify-center gap-2 text-xs text-neutral-500">
           <ShieldCheck className="w-4 h-4 text-green-600" />
           <span>Secure passwordless authentication</span>
