@@ -45,6 +45,7 @@ describe('Gate 3 Repository Resolution (resolveVariant)', () => {
       inStock: true,
       unitsInStock: 10,
       stockLevel: 'high',
+      vtoAssetId: vtoData?.asset_id,
       glbPath: legacyGlbPath,
       vto_asset_calibrations: vtoData,
     };
