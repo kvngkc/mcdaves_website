@@ -7,7 +7,7 @@
 
 import * as THREE from 'three';
 import { GLTFExporter, GLTFLoader } from 'three-stdlib';
-import { mergeVertices } from 'three-stdlib/utils/BufferGeometryUtils';
+import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { AssetInspector } from '../inspector/AssetInspector';
 import { AssetValidator } from '../validator/AssetValidator';
 import { TempleProcessor } from './TempleProcessor';
@@ -20,11 +20,7 @@ import {
   TempleProcessingProfile,
 } from '../types/AssetTypes';
 
-export const VTO_OUTPUT_SIZE_LIMITS = {
-  passBytes: 2 * 1024 * 1024,
-  reviewBytes: 3 * 1024 * 1024,
-} as const;
-
+export const VTO_OUTPUT_SIZE_LIMITS = { passBytes: 2 * 1024 * 1024, reviewBytes: 3 * 1024 * 1024 } as const;
 export type VTOOutputSizeStatus = 'PASS' | 'REVIEW_REQUIRED' | 'FAIL';
 
 export function classifyVTOOutputSize(sizeBytes: number): VTOOutputSizeStatus {
@@ -37,7 +33,6 @@ export function classifyVTOOutputSize(sizeBytes: number): VTOOutputSizeStatus {
 export interface VTOProcessingOptions {
   assetId?: string;
   name?: string;
-  /** Physical dimensions must come from authoritative product/variant data. */
   physicalDimensions?: Partial<OpticalDimensions>;
   customBridge?: Partial<BridgeRegistration>;
   templeProcessing?: Partial<TempleProcessingProfile>;
@@ -67,7 +62,6 @@ function requirePhysicalDimensions(dimensions: Partial<OpticalDimensions> | unde
   return values;
 }
 
-/** Conservative geometry optimization. It only merges equivalent vertex attributes. */
 function optimizeGeometry(scene: THREE.Object3D): { sourceVertices: number; outputVertices: number } {
   let sourceVertices = 0;
   let outputVertices = 0;
@@ -125,7 +119,6 @@ export class VTOAssetProcessor {
       y: options.customBridge?.y ?? detectedBridge.center.y,
       z: options.customBridge?.z ?? detectedBridge.innerContactZ,
     };
-
     const templeProfile: TempleProcessingProfile = {
       mode: options.templeProcessing?.mode ?? (inspection.detectedFeatures.temples.hasSevereRearOverhang ? 'auto' : 'full'),
       strategy: options.templeProcessing?.strategy ?? 'preserve-visible-temple',
@@ -142,7 +135,6 @@ export class VTOAssetProcessor {
     vtoRoot.add(templeResult.processedScene);
     vtoRoot.scale.setScalar(scaleFactor);
     vtoRoot.updateMatrixWorld(true);
-
     const geometryOptimization = optimizeGeometry(vtoRoot);
     vtoRoot.updateMatrixWorld(true);
 
@@ -151,20 +143,11 @@ export class VTOAssetProcessor {
       name,
       status: validation.overallStatus === 'PASS' ? 'CALIBRATED' : 'REVIEW_REQUIRED',
       physicalDimensions,
-      registration: {
-        bridge: bridgeRegistration,
-        measuredNativeWidth: nativeWidth,
-        widthMultiplier: 1.0,
-        rotationOffsetEuler: { x: 0, y: 0, z: 0 },
-      },
+      registration: { bridge: bridgeRegistration, measuredNativeWidth: nativeWidth, widthMultiplier: 1.0, rotationOffsetEuler: { x: 0, y: 0, z: 0 } },
       orientation: { forward: inspection.inferredOrientation.forward, up: inspection.inferredOrientation.up, handedness: 'right-handed' },
       templeProcessing: templeProfile,
       versioning: { processorVersion: '1.2.0', sourceVersion: options.sourceVersion ?? 1, vtoVersion: options.vtoVersion ?? 1, calibrationVersion: 1 },
-      paths: {
-        sourceGlbUrl: `/assets/eyewear/${assetId}/source/${inspection.fileName}`,
-        vtoGlbUrl: `/assets/eyewear/${assetId}/vto/optimized.glb`,
-        previewImages: [],
-      },
+      paths: { sourceGlbUrl: `/assets/eyewear/${assetId}/source/${inspection.fileName}`, vtoGlbUrl: `/assets/eyewear/${assetId}/vto/optimized.glb`, previewImages: [] },
       metadataSource: `McDaves VTO Automated Asset Pipeline (Temple mode: ${templeResult.modeApplied}; geometry vertices ${geometryOptimization.sourceVertices}→${geometryOptimization.outputVertices})`,
       updatedAt: new Date().toISOString(),
     };
