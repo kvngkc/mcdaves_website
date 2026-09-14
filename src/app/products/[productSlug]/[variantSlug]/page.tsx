@@ -9,7 +9,6 @@ import React from 'react';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { commerceRepository } from '@/lib/commerce/repository';
-import { products as legacyProducts } from '@/data/products';
 import ProductDetailClient from '@/app/shop/[slug]/ProductDetailClient';
 
 interface PageProps {
@@ -81,42 +80,10 @@ export default async function ExactVariantPage({ params }: PageProps) {
   const { product, variant } = match;
 
   const allProducts = await commerceRepository.getAllProducts();
-  const relatedResolved = allProducts
+  const relatedProducts = allProducts
     .filter((p) => p.id !== product.id && p.collection === product.collection)
     .slice(0, 3);
 
-  const relatedLegacy = relatedResolved.map((p) => {
-    const legacy = legacyProducts.find((lp) => lp.slug === p.slug);
-    if (legacy) return legacy;
-    return {
-      id: p.id,
-      slug: p.slug,
-      name: p.name,
-      collection: p.collection,
-      category: p.category,
-      price: p.defaultPrice,
-      originalPrice: p.defaultOriginalPrice,
-      colors: p.variants.map((v) => ({
-        name: v.colorName,
-        hex: v.colorHex,
-        imageSuffix: v.slug,
-      })),
-      sizes: p.defaultSpecifications.frameSize,
-      material: p.defaultMaterial,
-      description: p.description,
-      features: p.features,
-      images: p.media.map((m) => m.url),
-      inStock: true,
-      stockLevel: 'high' as const,
-      prescriptionRequired: p.prescriptionRequired,
-      tryOnAvailable: p.tryOnAvailable,
-      frameSize: p.defaultSpecifications.frameSize,
-      weight: p.defaultWeight,
-      faceShape: p.faceShape,
-    };
-  });
-
-  // Schema.org Product JSON-LD for exact variant
   const jsonLd = {
     '@context': 'https://schema.org/',
     '@type': 'Product',
@@ -152,7 +119,7 @@ export default async function ExactVariantPage({ params }: PageProps) {
       <ProductDetailClient
         product={product as any}
         initialVariantSlug={variantSlug}
-        relatedProducts={relatedLegacy as any}
+        relatedProducts={relatedProducts as any}
       />
     </>
   );
