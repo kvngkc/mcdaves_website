@@ -14,6 +14,8 @@ jobs:
           ref: fix/p0-vto-asset-identity
           fetch-depth: 0
       - name: Fix resolver legacy leakage
+        env:
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           python - <<'PY'
@@ -26,7 +28,23 @@ jobs:
               raise SystemExit('resolver return anchor not found')
           p.write_text(s.replace(old, new, 1))
           PY
-          git add src/lib/commerce/repository.ts
-          git diff --cached --check
-          git commit -m "fix(vto): strip legacy glb path from resolved variant"
-          git push origin HEAD:fix/p0-vto-asset-identity
+          CONTENT=$(base64 -w0 src/lib/commerce/repository.ts)
+          SHA=$(gh api repos/kvngkc/mcdaves_website/contents/src/lib/commerce/repository.ts?ref=fix/p0-vto-asset-identity --jq .sha)
+          gh api repos/kvngkc/mcdaves_website/contents/src/lib/commerce/repository.ts \
+            -X PUT \
+            -f message='fix(vto): strip legacy glb path from resolved variant' \
+            -f content="$CONTENT" \
+            -f sha="$SHA" \
+            -f branch='fix/p0-vto-asset-identity'
+          TRIGGER_SHA=$(gh api repos/kvngkc/mcdaves_website/contents/.github/issue2-resolver-trigger.txt?ref=fix/p0-vto-asset-identity --jq .sha)
+          gh api repos/kvngkc/mcdaves_website/contents/.github/issue2-resolver-trigger.txt \
+            -X DELETE \
+            -f message='chore: remove Issue 2 resolver trigger' \
+            -f sha="$TRIGGER_SHA" \
+            -f branch='fix/p0-vto-asset-identity'
+          WORKFLOW_SHA=$(gh api repos/kvngkc/mcdaves_website/contents/.github/workflows/p0-issue2-final-fix.yml?ref=fix/p0-vto-asset-identity --jq .sha)
+          gh api repos/kvngkc/mcdaves_website/contents/.github/workflows/p0-issue2-final-fix.yml \
+            -X DELETE \
+            -f message='chore: remove temporary Issue 2 fix workflow' \
+            -f sha="$WORKFLOW_SHA" \
+            -f branch='fix/p0-vto-asset-identity'
