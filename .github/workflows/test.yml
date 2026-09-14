@@ -6,44 +6,39 @@ on:
   pull_request:
     branches: [ main ]
 
+# The E2E project is intentionally fixed to the isolated mcdaves-test Supabase project.
+# Its publishable key is public by design. The privileged Vitest key remains a secret.
+env:
+  TEST_PROJECT_REF: lwhufocjhcvrbimerhjq
+  TEST_SUPABASE_URL: https://lwhufocjhcvrbimerhjq.supabase.co
+  TEST_SUPABASE_PUBLISHABLE_KEY: sb_publishable_dPt1vDkr0G60-L3XwqZVXQ_uFhCMyMW
+
 jobs:
   test:
     name: Run Storefront Tests
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
-
       - name: Install Dependencies
         run: npm ci
-
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
-
       - name: Validate E2E Database Configuration
         run: |
-          if [ -z "$E2E_SUPABASE_URL" ] || [ -z "$E2E_SUPABASE_ANON_KEY" ]; then
-            echo "E2E_SUPABASE_URL and E2E_SUPABASE_ANON_KEY must be configured for a non-production/staging Supabase project."
-            exit 1
-          fi
-        env:
-          E2E_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
-          E2E_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
-
+          test "$TEST_SUPABASE_URL" = "https://$TEST_PROJECT_REF.supabase.co"
+          test -n "$TEST_SUPABASE_PUBLISHABLE_KEY"
       - name: Run Playwright Tests
         run: npx playwright test ./e2e
         env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ env.TEST_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ env.TEST_SUPABASE_PUBLISHABLE_KEY }}
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
-
       - name: Upload Playwright Report
         if: always()
         uses: actions/upload-artifact@v4
@@ -58,28 +53,29 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
-
       - name: Install Dependencies
         run: npm ci
-
       - name: Validate Test Database Configuration
         run: |
-          if [ -z "$TEST_SUPABASE_URL" ] || [ -z "$TEST_SUPABASE_SERVICE_ROLE_KEY" ]; then
-            echo "TEST_SUPABASE_URL and TEST_SUPABASE_SERVICE_ROLE_KEY must be configured as GitHub Actions repository secrets."
-            exit 1
-          fi
+          test -n "$TEST_SUPABASE_SERVICE_ROLE_KEY"
+          node - <<'NODE'
+          const key = process.env.TEST_SUPABASE_SERVICE_ROLE_KEY;
+          const expected = process.env.TEST_PROJECT_REF;
+          const parts = key.split('.');
+          if (parts.length !== 3) throw new Error('TEST_SUPABASE_SERVICE_ROLE_KEY is not the expected legacy JWT service key.');
+          const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
+          if (payload.ref !== expected) throw new Error('TEST_SUPABASE_SERVICE_ROLE_KEY belongs to a different Supabase project.');
+          if (payload.role !== 'service_role') throw new Error('TEST_SUPABASE_SERVICE_ROLE_KEY does not identify the service_role.');
+          NODE
         env:
-          TEST_SUPABASE_URL: ${{ secrets.TEST_SUPABASE_URL }}
           TEST_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TEST_SUPABASE_SERVICE_ROLE_KEY }}
-
       - name: Run Vitest Tests
         run: npx vitest run
         env:
-          TEST_SUPABASE_URL: ${{ secrets.TEST_SUPABASE_URL }}
+          TEST_SUPABASE_URL: ${{ env.TEST_SUPABASE_URL }}
           TEST_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TEST_SUPABASE_SERVICE_ROLE_KEY }}
