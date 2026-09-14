@@ -2,24 +2,16 @@
 'use client';
 
 import React, { createContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { CartItem } from '@/lib/types';
+import { CartItem, Product as StorefrontProduct } from '@/lib/types';
 import { ResolvedProduct } from '@/lib/commerce/types';
 import { deliveryConfig } from '@/config/services';
 
-type CartProduct = ResolvedProduct;
+type CartProduct = ResolvedProduct | StorefrontProduct;
 
 export interface CartContextType {
   items: CartItem[];
   isOpen: boolean;
-  addItem: (
-    product: CartProduct,
-    variantId: string,
-    variantSku: string,
-    quantity?: number,
-    color?: string,
-    priceOverride?: number,
-    unitsInStock?: number,
-  ) => void;
+  addItem: (product: CartProduct, variantId: string, variantSku: string, quantity?: number, color?: string, priceOverride?: number, unitsInStock?: number) => void;
   removeItem: (variantId: string) => void;
   updateQuantity: (variantId: string, quantity: number) => void;
   clearCart: () => void;
@@ -69,56 +61,52 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const openDrawer = useCallback(() => setIsOpen(true), []);
   const closeDrawer = useCallback(() => setIsOpen(false), []);
 
-  const addItem = useCallback(
-    (product: CartProduct, variantId: string, variantSku: string, quantity = 1, color?: string, priceOverride?: number, unitsInStock?: number) => {
-      setItems((prevItems) => {
-        const basePrice = product.defaultPrice;
-        const effectivePrice = priceOverride ?? basePrice;
-        const existingIndex = prevItems.findIndex((item) => item.variantId === variantId);
+  const addItem = useCallback((product: CartProduct, variantId: string, variantSku: string, quantity = 1, color?: string, priceOverride?: number, unitsInStock?: number) => {
+    setItems((prevItems) => {
+      const isResolvedProduct = 'defaultPrice' in product;
+      const basePrice = isResolvedProduct ? product.defaultPrice : product.price;
+      const effectivePrice = priceOverride ?? basePrice;
+      const existingIndex = prevItems.findIndex((item) => item.variantId === variantId);
 
-        if (existingIndex > -1) {
-          const updated = [...prevItems];
-          const existing = updated[existingIndex];
-          const newQuantity = existing.quantity + quantity;
-          if (unitsInStock !== undefined && newQuantity > unitsInStock) {
-            alert(`Cannot add more than ${unitsInStock} units to cart.`);
-            return prevItems;
-          }
-          updated[existingIndex] = { ...existing, quantity: newQuantity, price: effectivePrice };
-          return updated;
-        }
-
-        const rawBaseImage = product.media?.[0]?.url || '/images/products/sightly/classic-havana/front.webp';
-        const image = typeof rawBaseImage === 'string' && rawBaseImage.trim() !== '' ? rawBaseImage : '/images/products/placeholder.webp';
-
-        if (unitsInStock !== undefined && quantity > unitsInStock) {
+      if (existingIndex > -1) {
+        const updated = [...prevItems];
+        const existing = updated[existingIndex];
+        const newQuantity = existing.quantity + quantity;
+        if (unitsInStock !== undefined && newQuantity > unitsInStock) {
           alert(`Cannot add more than ${unitsInStock} units to cart.`);
           return prevItems;
         }
+        updated[existingIndex] = { ...existing, quantity: newQuantity, price: effectivePrice };
+        return updated;
+      }
 
-        const newItem: CartItem = {
-          productId: product.id,
-          variantId,
-          variantSku,
-          slug: product.slug,
-          name: product.name,
-          price: effectivePrice,
-          color,
-          image,
-          quantity,
-          prescriptionRequired: product.prescriptionRequired ?? false,
-          unitsInStock,
-        };
-        return [...prevItems, newItem];
-      });
-      setIsOpen(true);
-    },
-    [],
-  );
+      const rawBaseImage = isResolvedProduct ? (product.media?.[0]?.url || '/images/products/sightly/classic-havana/front.webp') : (product.images?.[0] || '/images/products/sightly/classic-havana/front.webp');
+      const image = typeof rawBaseImage === 'string' && rawBaseImage.trim() !== '' ? rawBaseImage : '/images/products/placeholder.webp';
 
-  const removeItem = useCallback((variantId: string) => {
-    setItems((prevItems) => prevItems.filter((item) => item.variantId !== variantId));
+      if (unitsInStock !== undefined && quantity > unitsInStock) {
+        alert(`Cannot add more than ${unitsInStock} units to cart.`);
+        return prevItems;
+      }
+
+      const newItem: CartItem = {
+        productId: product.id,
+        variantId,
+        variantSku,
+        slug: product.slug,
+        name: product.name,
+        price: effectivePrice,
+        color,
+        image,
+        quantity,
+        prescriptionRequired: product.prescriptionRequired ?? false,
+        unitsInStock,
+      };
+      return [...prevItems, newItem];
+    });
+    setIsOpen(true);
   }, []);
+
+  const removeItem = useCallback((variantId: string) => setItems((prevItems) => prevItems.filter((item) => item.variantId !== variantId)), []);
 
   const updateQuantity = useCallback((variantId: string, quantity: number) => {
     if (quantity <= 0) {
@@ -142,8 +130,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const delivery = useMemo(() => items.length === 0 || subtotal >= deliveryConfig.freeThreshold ? 0 : deliveryConfig.standardFee, [items.length, subtotal]);
   const total = useMemo(() => subtotal + delivery, [subtotal, delivery]);
   const itemCount = useMemo(() => items.reduce((sum, item) => sum + item.quantity, 0), [items]);
-
   const value = useMemo(() => ({ items, isOpen, addItem, removeItem, updateQuantity, clearCart, toggleDrawer, openDrawer, closeDrawer, subtotal, delivery, total, itemCount }), [items, isOpen, addItem, removeItem, updateQuantity, clearCart, toggleDrawer, openDrawer, closeDrawer, subtotal, delivery, total, itemCount]);
+
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
 
