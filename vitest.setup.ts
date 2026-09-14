@@ -1,4 +1,3 @@
-import { config } from 'dotenv';
-import path from 'path';
-
-config({ path: path.resolve(process.cwd(), '.env.local') });
+// Vitest setup intentionally does not load .env.local.
+// Integration tests must use the explicit TEST_SUPABASE_* environment boundary
+// supplied by CI or the local test runner.
