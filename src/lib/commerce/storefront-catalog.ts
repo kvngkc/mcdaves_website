@@ -1,15 +1,12 @@
 // src/lib/commerce/storefront-catalog.ts
 import { supabaseClient } from '@/lib/supabase/client';
 import { Product as StorefrontProduct } from '@/lib/types';
-import { products as fallbackSeedProducts } from '@/data/products';
 
 export const dynamic = 'force-dynamic';
 
 export async function getLiveStorefrontProducts(): Promise<StorefrontProduct[]> {
   try {
-    if (!supabaseClient) {
-      return fallbackSeedProducts;
-    }
+    if (!supabaseClient) return [];
 
     const { data: rawProducts, error: prodErr } = await supabaseClient
       .from('products')
@@ -18,12 +15,11 @@ export async function getLiveStorefrontProducts(): Promise<StorefrontProduct[]> 
       .order('created_at', { ascending: false });
 
     if (prodErr || !rawProducts) {
-      return fallbackSeedProducts;
-    }
-
-    if (rawProducts.length === 0) {
+      console.error('[Storefront] Failed to load products from Supabase:', prodErr);
       return [];
     }
+
+    if (rawProducts.length === 0) return [];
 
     const { data: rawVariants, error: varErr } = await supabaseClient
       .from('product_variants')
@@ -32,13 +28,19 @@ export async function getLiveStorefrontProducts(): Promise<StorefrontProduct[]> 
       .order('sort_order', { ascending: true });
 
     if (varErr) {
-      console.warn('[Storefront] Variant query notice:', varErr);
+      console.error('[Storefront] Failed to load variants from Supabase:', varErr);
+      return [];
     }
 
-    const { data: rawMedia } = await supabaseClient
+    const { data: rawMedia, error: mediaErr } = await supabaseClient
       .from('product_media')
       .select('*')
       .order('sort_order', { ascending: true });
+
+    if (mediaErr) {
+      console.error('[Storefront] Failed to load media from Supabase:', mediaErr);
+      return [];
+    }
 
     const liveProducts: StorefrontProduct[] = rawProducts
       .map((p) => {
@@ -48,23 +50,23 @@ export async function getLiveStorefrontProducts(): Promise<StorefrontProduct[]> 
         );
 
         const totalUnits = variants.reduce(
-          (sum, v) => sum + (v.units_in_stock ?? (v.in_stock ? 10 : 0)),
+          (sum, v) => sum + (v.units_in_stock ?? (v.in_stock ? 0 : 0)),
           0,
         );
 
         const colors = variants.map((v) => {
-          let glbPath: string | undefined = undefined;
+          let glbPath: string | undefined;
           const vto = v.vto_asset_calibrations;
-          if (vto && vto.status === 'PUBLISHED' && vto.vto_glb_url && vto.vto_glb_url.trim() !== '') {
+          if (vto && vto.status === 'PUBLISHED' && typeof vto.vto_glb_url === 'string' && vto.vto_glb_url.trim() !== '') {
             glbPath = vto.vto_glb_url;
           }
-          
+
           return {
             name: v.color_name,
             hex: v.color_hex,
             imageSuffix: v.slug,
             inStock: v.in_stock && (v.units_in_stock === undefined || v.units_in_stock > 0),
-            unitsInStock: v.units_in_stock ?? (v.in_stock ? 10 : 0),
+            unitsInStock: v.units_in_stock ?? 0,
             glbPath,
           };
         });
@@ -75,14 +77,7 @@ export async function getLiveStorefrontProducts(): Promise<StorefrontProduct[]> 
           .filter((m) => m.product_id === p.id)
           .map((m) => m.url);
 
-        const images =
-          productMedia.length > 0
-            ? productMedia
-            : [
-                `/images/products/sightly/${p.slug}/front.webp`,
-                `/images/products/sightly/${p.slug}/side.webp`,
-                `/images/products/sightly/${p.slug}/lifestyle.webp`,
-              ];
+        const images = productMedia;
 
         const isAvailable = availableVariants.length > 0 && totalUnits > 0;
         const stockLevel: 'out' | 'low' | 'high' =
@@ -96,11 +91,11 @@ export async function getLiveStorefrontProducts(): Promise<StorefrontProduct[]> 
           name: p.name,
           collection: 'sightly' as const,
           category: (p.category || 'unisex') as 'men' | 'women' | 'unisex' | 'sunglasses',
-          price: Number(p.default_price) || 35000,
+          price: Number(p.default_price) || 0,
           originalPrice: p.default_original_price ? Number(p.default_original_price) : undefined,
-          colors: colors.length > 0 ? colors : [{ name: 'Standard', hex: '#000000', imageSuffix: 'default', inStock: true, unitsInStock: 10 }],
-          sizes: p.frame_size || '52□18-140',
-          material: p.default_material || 'Acetate',
+          colors,
+          sizes: p.frame_size || '',
+          material: p.default_material || '',
           description: p.description || '',
           features: Array.isArray(p.features) ? p.features : [],
           images,
@@ -108,24 +103,19 @@ export async function getLiveStorefrontProducts(): Promise<StorefrontProduct[]> 
           stockLevel,
           hideWhenOutOfStock,
           prescriptionRequired: p.prescription_required ?? true,
-          tryOnAvailable: p.try_on_available ?? true,
+          tryOnAvailable: p.try_on_available === true && Boolean(primaryGlb),
           glbModel: primaryGlb,
-          frameSize: p.frame_size || '52□18-140',
-          weight: p.default_weight || '22g',
-          faceShape: Array.isArray(p.face_shape) ? p.face_shape : ['round', 'oval'],
+          frameSize: p.frame_size || '',
+          weight: p.default_weight || '',
+          faceShape: Array.isArray(p.face_shape) ? p.face_shape : [],
         };
       })
-      .filter((p) => {
-        if (!p.inStock && p.hideWhenOutOfStock) {
-          return false;
-        }
-        return true;
-      });
+      .filter((p) => p.inStock || !p.hideWhenOutOfStock);
 
-    return liveProducts.length > 0 ? liveProducts : fallbackSeedProducts;
+    return liveProducts;
   } catch (err) {
     console.error('[Storefront] Error loading live catalog from Supabase:', err);
-    return fallbackSeedProducts;
+    return [];
   }
 }
 
@@ -137,21 +127,27 @@ export async function getLiveResolvedProductBySlug(slug: string): Promise<any | 
       .from('products')
       .select('*')
       .eq('slug', slug)
+      .eq('status', 'ACTIVE')
       .single();
 
     if (prodErr || !p) return null;
 
-    const { data: rawVariants } = await supabaseClient
+    const { data: rawVariants, error: varErr } = await supabaseClient
       .from('product_variants')
       .select('*, vto_asset_calibrations(asset_id, vto_glb_url, status)')
       .eq('product_id', p.id)
+      .eq('status', 'ACTIVE')
       .order('sort_order', { ascending: true });
 
-    const { data: rawMedia } = await supabaseClient
+    if (varErr) return null;
+
+    const { data: rawMedia, error: mediaErr } = await supabaseClient
       .from('product_media')
       .select('*')
       .eq('product_id', p.id)
       .order('sort_order', { ascending: true });
+
+    if (mediaErr) return null;
 
     const media = (rawMedia || []).map((m: Record<string, unknown>, idx: number) => ({
       id: m.id,
@@ -165,11 +161,14 @@ export async function getLiveResolvedProductBySlug(slug: string): Promise<any | 
     }));
 
     const variants = (rawVariants || []).map((v: Record<string, unknown>, idx: number) => {
-      let glbPath: string | undefined = undefined;
+      let glbPath: string | undefined;
       const vto = v.vto_asset_calibrations as any;
-      if (vto && vto.status === 'PUBLISHED' && vto.vto_glb_url && typeof vto.vto_glb_url === 'string' && vto.vto_glb_url.trim() !== '') {
+      if (vto && vto.status === 'PUBLISHED' && typeof vto.vto_glb_url === 'string' && vto.vto_glb_url.trim() !== '') {
         glbPath = vto.vto_glb_url;
       }
+
+      const unitsInStock = typeof v.units_in_stock === 'number' ? v.units_in_stock : 0;
+      const inStock = v.in_stock === true && unitsInStock > 0;
 
       return {
         id: v.id,
@@ -186,92 +185,61 @@ export async function getLiveResolvedProductBySlug(slug: string): Promise<any | 
         specificationsOverride: v.specifications_override || undefined,
         descriptionOverride: v.description_override || undefined,
         glbPath,
-        inStock: v.in_stock && (v.units_in_stock === undefined || (v.units_in_stock as number) > 0),
-        stockLevel: !v.in_stock || (v.units_in_stock !== undefined && v.units_in_stock === 0) ? 'out' : ((v.units_in_stock as number) ?? 10) <= 3 ? 'low' : 'high',
-        unitsInStock: v.units_in_stock ?? 10,
+        inStock,
+        stockLevel: !inStock ? 'out' : unitsInStock <= 3 ? 'low' : 'high',
+        unitsInStock,
         hideWhenOutOfStock: v.hide_when_out_of_stock ?? false,
         sortOrder: v.sort_order ?? idx,
         status: v.status || 'ACTIVE',
         effectivePrice: v.price_override ? Number(v.price_override) : Number(p.default_price),
         effectiveOriginalPrice: v.original_price_override ? Number(v.original_price_override) : p.default_original_price ? Number(p.default_original_price) : undefined,
-        effectiveMaterial: v.material_override || p.default_material || 'Acetate',
-        effectiveWeight: v.weight_override || p.default_weight || '22g',
+        effectiveMaterial: v.material_override || p.default_material || '',
+        effectiveWeight: v.weight_override || p.default_weight || '',
         effectiveSpecifications: {
-          frameWidthMm: Number(p.frame_width_mm) || 140,
-          lensWidthMm: Number(p.lens_width_mm) || 52,
-          bridgeWidthMm: Number(p.bridge_width_mm) || 18,
-          templeLengthMm: Number(p.temple_length_mm) || 140,
-          frameSize: p.frame_size || '52□18-140',
+          frameWidthMm: Number(p.frame_width_mm) || 0,
+          lensWidthMm: Number(p.lens_width_mm) || 0,
+          bridgeWidthMm: Number(p.bridge_width_mm) || 0,
+          templeLengthMm: Number(p.temple_length_mm) || 0,
+          frameSize: p.frame_size || '',
           ...(v.specifications_override as Record<string, any> || {}),
         },
         effectiveDescription: v.description_override || p.description || '',
         media: [],
         hasPriceOverride: v.price_override !== undefined,
         hasSpecOverride: v.specifications_override !== undefined,
-        createdAt: v.created_at || new Date().toISOString(),
-        updatedAt: v.updated_at || new Date().toISOString(),
+        createdAt: v.created_at,
+        updatedAt: v.updated_at,
       };
     });
 
-    const defaultVariant = variants.find(v => v.glbPath) || variants[0] || {
-      id: `default-${p.id}`,
-      productId: p.id,
-      slug: 'default',
-      name: 'Default',
-      sku: `${p.id}-DEF`,
-      colorName: 'Standard',
-      colorHex: '#000000',
-      inStock: true,
-      stockLevel: 'high',
-      unitsInStock: 20,
-      hideWhenOutOfStock: false,
-      sortOrder: 0,
-      status: 'ACTIVE',
-      effectivePrice: Number(p.default_price) || 35000,
-      effectiveOriginalPrice: p.default_original_price ? Number(p.default_original_price) : undefined,
-      effectiveMaterial: p.default_material || 'Acetate',
-      effectiveWeight: p.default_weight || '22g',
-      effectiveSpecifications: {
-        frameWidthMm: Number(p.frame_width_mm) || 140,
-        lensWidthMm: Number(p.lens_width_mm) || 52,
-        bridgeWidthMm: Number(p.bridge_width_mm) || 18,
-        templeLengthMm: Number(p.temple_length_mm) || 140,
-        frameSize: p.frame_size || '52□18-140',
-      },
-      effectiveDescription: p.description || '',
-      media,
-      hasPriceOverride: false,
-      hasSpecOverride: false,
-      createdAt: p.created_at || new Date().toISOString(),
-      updatedAt: p.updated_at || new Date().toISOString(),
-    };
+    const defaultVariant = variants[0] || null;
 
     return {
       id: p.id,
       slug: p.slug,
       name: p.name,
-      collection: (p.collection || 'sightly') as "sightly",
+      collection: (p.collection || 'sightly') as 'sightly',
       category: p.category || 'unisex',
       description: p.description || '',
       features: Array.isArray(p.features) ? p.features : [],
-      faceShape: Array.isArray(p.face_shape) ? p.face_shape : ['round', 'oval'],
-      defaultPrice: Number(p.default_price) || 35000,
+      faceShape: Array.isArray(p.face_shape) ? p.face_shape : [],
+      defaultPrice: Number(p.default_price) || 0,
       defaultOriginalPrice: p.default_original_price ? Number(p.default_original_price) : undefined,
-      defaultMaterial: p.default_material || 'Acetate',
-      defaultWeight: p.default_weight || '22g',
+      defaultMaterial: p.default_material || '',
+      defaultWeight: p.default_weight || '',
       defaultSpecifications: {
-        frameWidthMm: Number(p.frame_width_mm) || 140,
-        lensWidthMm: Number(p.lens_width_mm) || 52,
-        bridgeWidthMm: Number(p.bridge_width_mm) || 18,
-        templeLengthMm: Number(p.temple_length_mm) || 140,
-        frameSize: p.frame_size || '52□18-140',
+        frameWidthMm: Number(p.frame_width_mm) || 0,
+        lensWidthMm: Number(p.lens_width_mm) || 0,
+        bridgeWidthMm: Number(p.bridge_width_mm) || 0,
+        templeLengthMm: Number(p.temple_length_mm) || 0,
+        frameSize: p.frame_size || '',
       },
       prescriptionRequired: p.prescription_required ?? true,
-      tryOnAvailable: p.try_on_available ?? true,
+      tryOnAvailable: p.try_on_available === true && variants.some((v) => Boolean(v.glbPath)),
       hideWhenOutOfStock: p.hide_when_out_of_stock ?? false,
-      status: p.status || 'ACTIVE',
-      createdAt: p.created_at || new Date().toISOString(),
-      updatedAt: p.updated_at || new Date().toISOString(),
+      status: p.status,
+      createdAt: p.created_at,
+      updatedAt: p.updated_at,
       variants,
       defaultVariant,
       media,
