@@ -7,7 +7,7 @@
 
 import * as THREE from 'three';
 import { GLTFExporter, GLTFLoader } from 'three-stdlib';
-import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
+import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { AssetInspector } from '../inspector/AssetInspector';
 import { AssetValidator } from '../validator/AssetValidator';
 import { TempleProcessor } from './TempleProcessor';
