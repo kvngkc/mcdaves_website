@@ -6,6 +6,7 @@ if (/^https?:\/\/(www\.)?mcdaves\.com\.ng/i.test(baseURL)) {
 }
 
 const useLocalServer = /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/i.test(baseURL);
+const chromiumArgs = ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'];
 
 export default defineConfig({
   testDir: './e2e',
@@ -18,11 +19,12 @@ export default defineConfig({
   use: {
     baseURL,
     trace: 'on-first-retry',
+    permissions: ['camera'],
   },
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: { ...devices['Desktop Chrome'], launchOptions: { args: chromiumArgs } },
     },
   ],
   ...(useLocalServer
