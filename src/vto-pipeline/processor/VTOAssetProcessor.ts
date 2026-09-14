@@ -6,7 +6,8 @@
  */
 
 import * as THREE from 'three';
-import { BufferGeometryUtils, GLTFExporter, GLTFLoader } from 'three-stdlib';
+import { GLTFExporter, GLTFLoader } from 'three-stdlib';
+import { mergeVertices } from 'three-stdlib/utils/BufferGeometryUtils';
 import { AssetInspector } from '../inspector/AssetInspector';
 import { AssetValidator } from '../validator/AssetValidator';
 import { TempleProcessor } from './TempleProcessor';
@@ -66,30 +67,21 @@ function requirePhysicalDimensions(dimensions: Partial<OpticalDimensions> | unde
   return values;
 }
 
-/**
- * Conservative geometry optimization. It only merges truly equivalent vertices,
- * preserving normals/UVs/colors when the attributes differ. Texture transcoding
- * is intentionally not performed here until a production-safe KTX2/Draco toolchain
- * is installed and verified.
- */
+/** Conservative geometry optimization. It only merges equivalent vertex attributes. */
 function optimizeGeometry(scene: THREE.Object3D): { sourceVertices: number; outputVertices: number } {
   let sourceVertices = 0;
   let outputVertices = 0;
-
   scene.traverse((object) => {
     if (!(object instanceof THREE.Mesh) || !object.geometry) return;
-    const geometry = object.geometry;
-    const position = geometry.getAttribute('position');
+    const position = object.geometry.getAttribute('position');
     if (!position) return;
-
     sourceVertices += position.count;
-    const optimized = BufferGeometryUtils.mergeVertices(geometry, 1e-4);
+    const optimized = mergeVertices(object.geometry, 1e-4);
     optimized.computeBoundingBox();
     optimized.computeBoundingSphere();
     object.geometry = optimized;
     outputVertices += optimized.getAttribute('position')?.count ?? position.count;
   });
-
   return { sourceVertices, outputVertices };
 }
 
@@ -110,9 +102,7 @@ export class VTOAssetProcessor {
     const assetId = options.assetId || fileName.replace(/\.[^/.]+$/, '').toLowerCase().replace(/[^a-z0-9-_]/g, '-');
     const inspectionReport = await this.inspector.inspectBuffer(sourceBuffer, fileName, assetId);
     const validationReport = this.validator.validate(inspectionReport);
-    if (validationReport.overallStatus === 'FAIL') {
-      throw new Error(`Asset validation failed: ${validationReport.checks.filter((c) => c.status === 'FAIL').map((c) => c.message).join('; ')}`);
-    }
+    if (validationReport.overallStatus === 'FAIL') throw new Error(`Asset validation failed: ${validationReport.checks.filter((c) => c.status === 'FAIL').map((c) => c.message).join('; ')}`);
 
     const sourceScene = await new Promise<THREE.Group>((resolve, reject) => {
       this.loader.parse(sourceBuffer, '', (gltf) => resolve(gltf.scene as THREE.Group), (err) => reject(new Error(`Failed to parse source GLB: ${err}`)));
@@ -167,18 +157,9 @@ export class VTOAssetProcessor {
         widthMultiplier: 1.0,
         rotationOffsetEuler: { x: 0, y: 0, z: 0 },
       },
-      orientation: {
-        forward: inspection.inferredOrientation.forward,
-        up: inspection.inferredOrientation.up,
-        handedness: 'right-handed',
-      },
+      orientation: { forward: inspection.inferredOrientation.forward, up: inspection.inferredOrientation.up, handedness: 'right-handed' },
       templeProcessing: templeProfile,
-      versioning: {
-        processorVersion: '1.2.0',
-        sourceVersion: options.sourceVersion ?? 1,
-        vtoVersion: options.vtoVersion ?? 1,
-        calibrationVersion: 1,
-      },
+      versioning: { processorVersion: '1.2.0', sourceVersion: options.sourceVersion ?? 1, vtoVersion: options.vtoVersion ?? 1, calibrationVersion: 1 },
       paths: {
         sourceGlbUrl: `/assets/eyewear/${assetId}/source/${inspection.fileName}`,
         vtoGlbUrl: `/assets/eyewear/${assetId}/vto/optimized.glb`,
