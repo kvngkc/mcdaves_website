@@ -84,26 +84,27 @@ describe('Gate 4 End-to-End VTO Integration', () => {
     if (varError) throw new Error(`Failed to insert test variants: ${varError.message}`);
   });
 
-  it('correctly maps a PUBLISHED VTO asset to the variant glbPath', async () => {
+  it('correctly maps a PUBLISHED VTO asset to the variant vtoAssetId', async () => {
     const product = await commerceRepository.getProductById(testProductId);
     expect(product).not.toBeNull();
     const publishedVariant = product!.variants.find(v => v.slug === 'g4-published');
     expect(publishedVariant).toBeDefined();
-    expect(publishedVariant?.glbPath).toBe('/models/gate4-published.glb');
+    expect(publishedVariant?.vtoAssetId).toBe(publishedAssetId);
   });
 
   it('refuses to map an UNCALIBRATED/UPLOADED VTO asset, preventing Try-On', async () => {
     const product = await commerceRepository.getProductById(testProductId);
     const uncalibVariant = product!.variants.find(v => v.slug === 'g4-uncalib');
     expect(uncalibVariant).toBeDefined();
-    expect(uncalibVariant?.glbPath).toBeUndefined();
+    expect(uncalibVariant?.vtoAssetId).toBeUndefined();
   });
 
   it('refuses to use legacy glb_path fallback if vto_asset_id is missing', async () => {
     const product = await commerceRepository.getProductById(testProductId);
     const noVtoVariant = product!.variants.find(v => v.slug === 'g4-no-vto');
     expect(noVtoVariant).toBeDefined();
-    expect(noVtoVariant?.glbPath).toBeUndefined();
+    expect(noVtoVariant?.vtoAssetId).toBeUndefined();
+    expect((noVtoVariant as any)?.glbPath).toBeUndefined();
   });
 
   afterAll(async () => {
