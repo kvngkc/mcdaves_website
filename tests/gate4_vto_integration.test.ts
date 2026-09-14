@@ -47,6 +47,10 @@ describe('Gate 4 End-to-End VTO Integration', () => {
         source_glb_url: '/models/gate4-published.glb',
         vto_glb_url: '/models/gate4-published.glb',
         metadata_source: 'Gate 4 Test',
+        derived_storage_path: 'fixtures/gate4-published.glb',
+        derived_content_hash: 'gate4-fixture-hash',
+        derived_size_bytes: 100,
+        output_size_status: 'PASS',
       },
       {
         id: '99999999-1111-2222-3333-444444444442',
