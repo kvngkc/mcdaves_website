@@ -27,11 +27,22 @@ jobs:
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
 
+      - name: Validate E2E Database Configuration
+        run: |
+          if [ -z "$E2E_SUPABASE_URL" ] || [ -z "$E2E_SUPABASE_ANON_KEY" ]; then
+            echo "E2E_SUPABASE_URL and E2E_SUPABASE_ANON_KEY must be configured for a non-production/staging Supabase project."
+            exit 1
+          fi
+        env:
+          E2E_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+          E2E_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+
       - name: Run Playwright Tests
         run: npx playwright test ./e2e
         env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
 
       - name: Upload Playwright Report
         if: always()
