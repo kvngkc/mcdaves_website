@@ -3,7 +3,6 @@ import React from 'react';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getLiveResolvedProductBySlug, getLiveStorefrontProducts } from '@/lib/commerce/storefront-catalog';
-import { products as legacyProducts } from '@/data/products';
 import ProductDetailClient from './ProductDetailClient';
 
 export const dynamic = 'force-dynamic';
@@ -63,56 +62,43 @@ export default async function ProductDetailPage({ params }: PageProps) {
   }
 
   const allProducts = await getLiveStorefrontProducts();
-  const relatedResolved = allProducts
+  const relatedLegacy = allProducts
     .filter((p) => p.id !== product.id && p.collection === product.collection)
-    .slice(0, 3);
-
-  const relatedLegacy = relatedResolved.map((p) => {
-    const legacy = legacyProducts.find((lp) => lp.slug === p.slug);
-    if (legacy) return legacy;
-    return {
+    .slice(0, 3)
+    .map((p) => ({
       id: p.id,
       slug: p.slug,
       name: p.name,
       collection: p.collection,
       category: p.category,
-      price: p.price,
-      originalPrice: p.originalPrice,
-      colors: p.colors,
-      sizes: p.sizes,
-      material: p.material,
+      price: p.defaultPrice,
+      originalPrice: p.defaultOriginalPrice,
+      colors: p.variants.map((v) => ({
+        name: v.colorName,
+        hex: v.colorHex,
+        imageSuffix: v.slug,
+      })),
+      sizes: p.defaultSpecifications.frameSize,
+      material: p.defaultMaterial,
       description: p.description,
       features: p.features,
-      images: p.images,
-      inStock: p.inStock,
-      stockLevel: p.stockLevel,
+      images: p.media.map((m) => m.url),
+      inStock: p.variants.some((v) => v.inStock),
+      stockLevel: p.variants.some((v) => v.stockLevel === 'high') ? 'high' : p.variants.some((v) => v.inStock) ? 'low' : 'out',
       prescriptionRequired: p.prescriptionRequired,
       tryOnAvailable: p.tryOnAvailable,
-      frameSize: p.frameSize,
-      weight: p.weight,
+      frameSize: p.defaultSpecifications.frameSize,
+      weight: p.defaultWeight,
       faceShape: p.faceShape,
-    };
-  });
+    }));
 
   const jsonLd = {
     '@context': 'https://schema.org/',
     '@type': 'Product',
     name: product.name,
-    image: 'images' in product ? (product as any).images : ('media' in product ? (product as any).media.map((m: any) => m.url) : []),
     description: product.description,
-    sku: 'defaultVariant' in product ? (product as any).defaultVariant.sku : product.id,
-    brand: {
-      '@type': 'Brand',
-      name: 'Sightly by McDaves',
-    },
-    offers: {
-      '@type': 'Offer',
-      url: `https://mcdaves.com.ng/shop/${product.slug}`,
-      priceCurrency: 'NGN',
-      price: 'defaultPrice' in product ? (product as any).defaultPrice : product.price,
-      itemCondition: 'https://schema.org/NewCondition',
-      availability: 'https://schema.org/InStock',
-    },
+    image: product.media.map((m) => m.url),
+    brand: { '@type': 'Brand', name: 'Sightly by McDaves' },
   };
 
   return (
@@ -123,7 +109,6 @@ export default async function ProductDetailPage({ params }: PageProps) {
           __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c'),
         }}
       />
-
       <ProductDetailClient
         product={product as any}
         relatedProducts={relatedLegacy as any}
