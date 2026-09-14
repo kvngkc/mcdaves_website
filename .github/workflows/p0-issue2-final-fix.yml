@@ -1,6 +1,8 @@
 name: Apply Issue 2 Final Fix
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - fix/p0-vto-asset-identity
 permissions:
   contents: write
 jobs:
