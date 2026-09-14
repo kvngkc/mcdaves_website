@@ -6,7 +6,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { commerceRepository } from '@/lib/commerce/repository';
 import { requireAdminSession } from '@/lib/auth/admin-auth';
 import { checkRateLimit, getClientIp } from '@/lib/security/rate-limiter';
 import { verifyTurnstileToken } from '@/lib/security/turnstile';
@@ -21,9 +20,7 @@ const CreateIntentSchema = z.object({
   }),
   variantId: z.string().min(1, 'Variant ID is required'),
   quantity: z.number().int().positive().default(1),
-  source: z
-    .enum(['whatsapp_cta', 'vto_cta', 'direct', 'cart'])
-    .default('whatsapp_cta'),
+  source: z.enum(['whatsapp_cta', 'vto_cta', 'direct', 'cart']).default('whatsapp_cta'),
   notes: z.string().optional(),
   lensRequest: z
     .object({
@@ -43,13 +40,12 @@ const CreateIntentSchema = z.object({
     })
     .optional(),
   vtoSessionRef: z.string().optional(),
-  /** Cloudflare Turnstile token for bot protection */
   turnstileToken: z.string().optional(),
 });
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    // 1. Check Rate Limit (max 10 submissions per minute per IP)
+    const { commerceRepository } = await import('@/lib/commerce/repository');
     const clientIp = getClientIp(request);
     const rateLimit = checkRateLimit(`order-intent:${clientIp}`, {
       maxRequests: 10,
@@ -57,35 +53,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
 
     if (!rateLimit.allowed) {
-      return NextResponse.json(
-        { error: 'Too many requests. Please wait a minute before submitting again.' },
-        { status: 429 },
-      );
+      return NextResponse.json({ error: 'Too many requests. Please wait a minute before submitting again.' }, { status: 429 });
     }
 
     const json = await request.json();
     const parsed = CreateIntentSchema.safeParse(json);
-
     if (!parsed.success) {
-      return NextResponse.json(
-        {
-          error: 'Validation failed',
-          details: parsed.error.flatten().fieldErrors,
-        },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: 'Validation failed', details: parsed.error.flatten().fieldErrors }, { status: 400 });
     }
 
-    const { customer, variantId, quantity, source, notes, lensRequest, vtoSessionRef } =
-      parsed.data;
-
-    // 2. Verify Turnstile CAPTCHA token (bot protection)
+    const { customer, variantId, quantity, source, notes, lensRequest, vtoSessionRef } = parsed.data;
     const isValidToken = await verifyTurnstileToken(parsed.data.turnstileToken ?? null);
     if (!isValidToken) {
-      return NextResponse.json(
-        { error: 'Security check failed. Please refresh and try again.' },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: 'Security check failed. Please refresh and try again.' }, { status: 400 });
     }
 
     const result = await commerceRepository.createOrderIntent({
@@ -119,6 +99,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
+    const { commerceRepository } = await import('@/lib/commerce/repository');
     const auth = requireAdminSession(request);
     if (!auth.authorized) {
       return NextResponse.json({ error: auth.error || 'Unauthorized' }, { status: 401 });
@@ -127,13 +108,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const search = searchParams.get('search')?.toLowerCase();
-
     let intents = await commerceRepository.getAllOrderIntents();
 
-    if (status && status !== 'ALL') {
-      intents = intents.filter((i) => i.status === status);
-    }
-
+    if (status && status !== 'ALL') intents = intents.filter((i) => i.status === status);
     if (search) {
       intents = intents.filter(
         (i) =>

@@ -44,7 +44,7 @@ export async function getLiveStorefrontProducts(): Promise<StorefrontProduct[]> 
       return [];
     }
 
-    const liveProducts: StorefrontProduct[] = rawProducts
+    const liveProducts = rawProducts
       .map((p) => {
         const price = Number(p.default_price);
         const category = typeof p.category === 'string' ? p.category : '';
@@ -117,10 +117,10 @@ export async function getLiveStorefrontProducts(): Promise<StorefrontProduct[]> 
           faceShape: Array.isArray(p.face_shape) ? p.face_shape : [],
         };
       })
-      .filter((p): p is StorefrontProduct => p !== null)
+      .filter((p) => p !== null)
       .filter((p) => p.inStock || !p.hideWhenOutOfStock);
 
-    return liveProducts;
+    return liveProducts as StorefrontProduct[];
   } catch (err) {
     console.error('[Storefront] Error loading live catalog from Supabase:', err);
     return [];

@@ -7,8 +7,14 @@ describe('Gate 3 Database Integrity', () => {
   const testAssetId = 'test-asset-gate3';
   const testVariantId = 'test-variant-gate3';
   const testProductId = 'test-prod-gate3';
+  const testAssetUuid = '11111111-2222-3333-4444-555555555555';
 
   beforeAll(async () => {
+    // Make the fixture idempotent so reruns do not collide with leftovers from a failed run.
+    await supabase.from('product_variants').delete().eq('id', testVariantId);
+    await supabase.from('vto_asset_calibrations').delete().eq('asset_id', testAssetId);
+    await supabase.from('products').delete().eq('id', testProductId);
+
     const { error: prodError } = await supabase.from('products').insert({
       id: testProductId,
       name: 'Gate 3 Test Product',
@@ -20,8 +26,17 @@ describe('Gate 3 Database Integrity', () => {
     });
     if (prodError) throw new Error(`Failed to insert test product: ${prodError.message}`);
 
+    const { data: productCheck, error: productCheckError } = await supabase
+      .from('products')
+      .select('id')
+      .eq('id', testProductId)
+      .maybeSingle();
+    if (productCheckError || !productCheck) {
+      throw new Error(`Test product was not persisted: ${productCheckError?.message ?? 'not found'}`);
+    }
+
     const { error: assetError } = await supabase.from('vto_asset_calibrations').insert({
-      id: '11111111-2222-3333-4444-555555555555',
+      id: testAssetUuid,
       asset_id: testAssetId,
       name: 'Gate 3 Test Asset',
       status: 'PUBLISHED',
@@ -36,6 +51,10 @@ describe('Gate 3 Database Integrity', () => {
       width_multiplier: 1,
       source_glb_url: '/models/test.glb',
       vto_glb_url: '/models/test.glb',
+      derived_storage_path: '/models/test.glb',
+      derived_content_hash: 'gate3-test-hash',
+      derived_size_bytes: 1024,
+      output_size_status: 'PASS',
       metadata_source: 'Test',
     });
     if (assetError) throw new Error(`Failed to insert test asset: ${assetError.message}`);
@@ -58,7 +77,6 @@ describe('Gate 3 Database Integrity', () => {
       color_hex: '#000000',
       vto_asset_id: 'non-existent-asset-id',
     });
-
     expect(error).not.toBeNull();
     expect(error?.code).toBe('23503');
   });
@@ -74,7 +92,6 @@ describe('Gate 3 Database Integrity', () => {
       color_hex: '#000000',
       vto_asset_id: testAssetId,
     });
-
     expect(error).toBeNull();
   });
 

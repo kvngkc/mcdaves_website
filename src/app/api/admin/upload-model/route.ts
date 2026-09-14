@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 import { requireAdminSession } from '@/lib/auth/admin-auth';
-import { supabase } from '@/lib/supabase/service';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,6 +14,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (!auth.authorized) {
       return NextResponse.json({ error: auth.error || 'Unauthorized' }, { status: 401 });
     }
+
+    // Keep the server-only Supabase client out of module evaluation so Vercel
+    // can collect route configuration without requiring preview-time secrets.
+    const { supabase } = await import('@/lib/supabase/service');
 
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
@@ -38,7 +41,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // Sanitize filename
     const baseClean = originalName
       .toLowerCase()
       .replace(/\.glb$/i, '')
@@ -48,7 +50,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const sanitizedFilename = `${baseClean}_${Date.now().toString().slice(-4)}.glb`;
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    // Validate GLB binary magic header: "glTF" (0x46546C67)
     if (buffer.length < 12) {
       return NextResponse.json(
         { error: 'Invalid file: File is too small to be a valid 3D GLB model.' },
@@ -57,7 +58,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     const magic = buffer.readUInt32LE(0);
-    const GLB_MAGIC = 0x46546c67; // 'glTF' in ASCII
+    const GLB_MAGIC = 0x46546c67;
     if (magic !== GLB_MAGIC) {
       return NextResponse.json(
         { error: 'Invalid 3D asset: The uploaded file does not contain a valid binary glTF (GLB) header.' },
@@ -65,7 +66,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // 1. Write to public/models directory if filesystem is writable
     const relativeGlbPath = `/models/${sanitizedFilename}`;
     try {
       const modelsDir = path.join(process.cwd(), 'public', 'models');
@@ -78,13 +78,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       console.warn('[Upload Model] Filesystem write notice (read-only environment):', fsErr);
     }
 
-    // 2. If Supabase Storage is configured, also upload to 'vto-models' bucket
     if (supabase) {
       try {
-        await supabase.storage.from('vto-models').upload(sanitizedFilename, buffer, {
+        const { error: storageError } = await supabase.storage.from('vto-models').upload(sanitizedFilename, buffer, {
           contentType: 'model/gltf-binary',
           upsert: true,
         });
+        if (storageError) {
+          console.warn('[Supabase Storage] Notice: upload to vto-models bucket failed:', storageError);
+        }
       } catch (storageErr) {
         console.warn('[Supabase Storage] Notice: upload to vto-models bucket skipped:', storageErr);
       }
