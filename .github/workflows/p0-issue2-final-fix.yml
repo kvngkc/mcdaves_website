@@ -1,0 +1,43 @@
+name: Apply Issue 2 Final Fix
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/p0-vto-asset-identity
+          fetch-depth: 0
+      - name: Fix resolver and Gate 3 fixture
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/lib/commerce/repository.ts')
+          s = p.read_text()
+          old = """    return {\n      ...variant,\n      inStock,"""
+          new = """    const { glbPath: _legacyGlbPath, ...variantWithoutLegacyGlbPath } = variant as ProductVariant & { glbPath?: string };\n\n    return {\n      ...variantWithoutLegacyGlbPath,\n      inStock,"""
+          if old not in s:
+              raise SystemExit('resolver return anchor not found')
+          s = s.replace(old, new, 1)
+          p.write_text(s)
+
+          p = Path('tests/gate3_repository.test.ts')
+          s = p.read_text()
+          old = """      unitsInStock: 10,\n      stockLevel: 'high',\n      glbPath: legacyGlbPath,\n      vto_asset_calibrations: vtoData,"""
+          new = """      unitsInStock: 10,\n      stockLevel: 'high',\n      vtoAssetId: vtoData?.asset_id,\n      glbPath: legacyGlbPath,\n      vto_asset_calibrations: vtoData,"""
+          if old not in s:
+              raise SystemExit('Gate 3 fixture anchor not found')
+          s = s.replace(old, new, 1)
+          p.write_text(s)
+          PY
+          git add src/lib/commerce/repository.ts tests/gate3_repository.test.ts
+          git diff --cached --check
+          git commit -m "fix(vto): enforce resolver asset identity contract"
+          git push origin HEAD:fix/p0-vto-asset-identity
+          git rm .github/workflows/p0-issue2-final-fix.yml
+          git commit -m "chore: remove temporary Issue 2 fix workflow"
+          git push origin HEAD:fix/p0-vto-asset-identity
