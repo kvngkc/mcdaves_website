@@ -2,12 +2,11 @@
 'use client';
 
 import React, { createContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { CartItem } from '@/lib/types';
+import { CartItem, Product as StorefrontProduct } from '@/lib/types';
 import { ResolvedProduct } from '@/lib/commerce/types';
-import { Product as LegacyProduct } from '@/data/products';
 import { deliveryConfig } from '@/config/services';
 
-type CartProduct = ResolvedProduct | LegacyProduct;
+type CartProduct = ResolvedProduct | StorefrontProduct;
 
 export interface CartContextType {
   items: CartItem[];
@@ -42,7 +41,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
 
-  // Load from localStorage on mount
   useEffect(() => {
     try {
       const savedCart = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -54,7 +52,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.error('Failed to load cart from localStorage:', error);
-      // Remove the corrupt cart data so it doesn't cause repeated failures
       localStorage.removeItem(LOCAL_STORAGE_KEY);
       throw new Error('Cart data was corrupted and has been cleared.');
     } finally {
@@ -62,7 +59,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Save to localStorage when items change (only after initial hydration)
   useEffect(() => {
     if (!isHydrated) return;
     try {
@@ -95,9 +91,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       unitsInStock?: number,
     ) => {
       setItems((prevItems) => {
-        // Resolve price and image depending on whether it's a ResolvedProduct or LegacyProduct
         const isResolvedProduct = 'defaultPrice' in product;
-        const basePrice = isResolvedProduct ? product.defaultPrice : (product as LegacyProduct).price;
+        const basePrice = isResolvedProduct ? product.defaultPrice : product.price;
         const effectivePrice = priceOverride ?? basePrice;
 
         const existingIndex = prevItems.findIndex((item) => item.variantId === variantId);
@@ -121,9 +116,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
         const rawBaseImage = isResolvedProduct
           ? (product.media?.[0]?.url || '/images/products/sightly/classic-havana/front.webp')
-          : ((product as LegacyProduct).images?.[0] || '/images/products/sightly/classic-havana/front.webp');
-        
-        const image = (typeof rawBaseImage === 'string' && rawBaseImage.trim() !== '') ? rawBaseImage : '/images/products/placeholder.webp';
+          : (product.images?.[0] || '/images/products/sightly/classic-havana/front.webp');
+
+        const image = typeof rawBaseImage === 'string' && rawBaseImage.trim() !== ''
+          ? rawBaseImage
+          : '/images/products/placeholder.webp';
 
         if (unitsInStock !== undefined && quantity > unitsInStock) {
           alert(`Cannot add more than ${unitsInStock} units to cart.`);
@@ -182,12 +179,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setItems([]);
   }, []);
 
-  // Calculated values
   const subtotal = useMemo(() => {
     return items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   }, [items]);
 
-  // Canonical SSOT Delivery rules: free if subtotal >= freeThreshold or if cart is empty
   const delivery = useMemo(() => {
     if (items.length === 0 || subtotal >= deliveryConfig.freeThreshold) return 0;
     return deliveryConfig.standardFee;
