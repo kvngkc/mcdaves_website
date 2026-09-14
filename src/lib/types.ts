@@ -1,6 +1,38 @@
 // src/lib/types.ts
 // Global TypeScript types and interfaces
-export type { Product } from '@/data/products';
+
+export interface Product {
+  id: string;
+  slug: string;
+  name: string;
+  collection: 'sightly';
+  category: 'men' | 'women' | 'unisex' | 'sunglasses';
+  price: number;
+  originalPrice?: number;
+  colors: {
+    name: string;
+    hex: string;
+    imageSuffix: string;
+    inStock?: boolean;
+    unitsInStock?: number;
+    glbPath?: string;
+  }[];
+  sizes: string;
+  material: string;
+  description: string;
+  features: string[];
+  images: string[];
+  inStock: boolean;
+  stockLevel: 'high' | 'low' | 'out';
+  hideWhenOutOfStock?: boolean;
+  prescriptionRequired: boolean;
+  tryOnAvailable: boolean;
+  overlayImage?: string;
+  glbModel?: string;
+  frameSize?: string;
+  weight?: string;
+  faceShape?: ('round' | 'oval' | 'square' | 'heart' | 'diamond')[];
+}
 
 export interface CartItem {
   productId: string;
