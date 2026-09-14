@@ -16,9 +16,15 @@ describe('Gate 4 End-to-End VTO Integration', () => {
   const testProductId = 'test-prod-gate4';
   const publishedAssetId = 'vto-g4-published';
   const uncalibratedAssetId = 'vto-g4-uncalib';
+  const variantIds = ['var-g4-published', 'var-g4-uncalib', 'var-g4-no-vto'];
 
   beforeAll(async () => {
-    const { error: prodError } = await supabase.from('products').upsert({
+    // Clean up every fixture from previous failed runs before recreating it.
+    await supabase.from('product_variants').delete().in('id', variantIds);
+    await supabase.from('vto_asset_calibrations').delete().in('asset_id', [publishedAssetId, uncalibratedAssetId]);
+    await supabase.from('products').delete().eq('id', testProductId);
+
+    const { error: prodError } = await supabase.from('products').insert({
       id: testProductId,
       name: 'Gate 4 Test Product',
       slug: 'gate4-test-product',
@@ -29,7 +35,16 @@ describe('Gate 4 End-to-End VTO Integration', () => {
     });
     if (prodError) throw new Error(`Failed to insert test product: ${prodError.message}`);
 
-    const { error: assetError } = await supabase.from('vto_asset_calibrations').upsert([
+    const { data: productCheck, error: productCheckError } = await supabase
+      .from('products')
+      .select('id')
+      .eq('id', testProductId)
+      .maybeSingle();
+    if (productCheckError || !productCheck) {
+      throw new Error(`Test product was not persisted: ${productCheckError?.message ?? 'not found'}`);
+    }
+
+    const { error: assetError } = await supabase.from('vto_asset_calibrations').insert([
       {
         id: '99999999-1111-2222-3333-444444444441',
         asset_id: publishedAssetId,
@@ -66,7 +81,7 @@ describe('Gate 4 End-to-End VTO Integration', () => {
     ]);
     if (assetError) throw new Error(`Failed to insert test assets: ${assetError.message}`);
 
-    const { error: varError } = await supabase.from('product_variants').upsert([
+    const { error: varError } = await supabase.from('product_variants').insert([
       {
         id: 'var-g4-published', product_id: testProductId, slug: 'g4-published', name: 'G4 Published',
         sku: 'G4-PUB', color_name: 'Test', color_hex: '#000', vto_asset_id: publishedAssetId, status: 'ACTIVE',
@@ -107,7 +122,7 @@ describe('Gate 4 End-to-End VTO Integration', () => {
   });
 
   afterAll(async () => {
-    await supabase.from('product_variants').delete().in('id', ['var-g4-published', 'var-g4-uncalib', 'var-g4-no-vto']);
+    await supabase.from('product_variants').delete().in('id', variantIds);
     await supabase.from('vto_asset_calibrations').delete().in('asset_id', [publishedAssetId, uncalibratedAssetId]);
     await supabase.from('products').delete().eq('id', testProductId);
   });
