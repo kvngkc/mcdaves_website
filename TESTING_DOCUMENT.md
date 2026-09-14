@@ -1,183 +1,138 @@
-# 👓 McDaves Platform — Your Hands-On Testing Guide
+# McDaves Platform Testing Guide
 
-Welcome! This document is designed specifically for **you** to test the entire McDaves platform from start to finish like a real customer and store owner.
+This guide reflects the current production architecture. The storefront catalogue is sourced from Supabase. Do not create or rely on dummy catalogue records, local GLB fallbacks, or fabricated product values.
 
----
+## 1. Test environments
 
-## ⚡ Quick Start — Where to Open
-Make sure both apps are running in your browser:
-* 🛍️ **Customer Storefront:** [`http://localhost:3000`](http://localhost:3000) (or your live Vercel link)
-* 🔐 **Admin Operations Panel:** [`http://localhost:3001`](http://localhost:3001) *(Passcode: `mcdaves2026`)*
+### Storefront
+- Local: `http://localhost:3000`
+- Production: the current Vercel storefront URL
 
----
+### Admin
+- Local: `http://localhost:3001`
+- Use the current configured admin authentication. Do not put real credentials in this document.
 
-## 🧭 TEST JOURNEY 1: You as the Admin (Create a Product & 3D VTO)
+### Database boundaries
+- **Playwright/browser testing:** uses the public Supabase URL and anon key. It must not receive a service-role key.
+- **Vitest integration testing:** uses `TEST_SUPABASE_URL` and `TEST_SUPABASE_SERVICE_ROLE_KEY` and must point to a dedicated non-production Supabase project.
+- Tests fail closed when the dedicated test database is not configured.
+- Never configure `TEST_SUPABASE_URL` to the production project.
 
-**Goal:** Create a brand new eyewear frame from scratch, upload a real photo, convert it into 3D, and assign inventory.
+## 2. Real product fixture for storefront/VTO testing
 
-### Steps to Follow:
-1. Open [`http://localhost:3001`](http://localhost:3001) and enter passkey `mcdaves2026`.
-2. Click the **Products & Catalog** tab.
-3. Click **+ New Product** and fill in this sample data:
-   * **Product Name:** `Lekki Sovereign`
-   * **Slug:** `lekki-sovereign` *(or let it auto-fill)*
-   * **Category:** `Unisex`
-   * **Collection:** `Sightly`
-   * **Price:** `₦45,000`
-   * **Material:** `Handcrafted Italian Acetate`
-   * **Frame Dimensions:** `54□18-140`
-4. **Upload a Photo:**
-   * In **Product Media**, click **Upload Image** and choose any photo of glasses from your computer.
-   * ✅ *Check:* Does the image thumbnail preview immediately?
-5. **Generate 3D Model for Virtual Try-On:**
-   * In the **3D Virtual Try-On Asset** section, click **Generate 3D from Photo** *(or Upload .glb if you have a 3D file)*.
-   * ✅ *Check:* Does it generate a 3D model and show an interactive 3D box where you can spin the glasses with your mouse?
-6. **Add a Color Variant:**
-   * Click **+ Add Variant**.
-   * Name: `Tortoise Gold`, Color: `Tortoise`, Color Hex: `#8B4513`, Stock: `15 units`, SKU: `LEK-TOR-01`.
-7. Click **Save Product**.
+For manual Playwright and end-to-end validation, create **one real McDaves product** through the normal product-management workflow.
 
-#### 🎯 What You Should Verify:
-- [ ] Product saves without any red error popup.
-- [ ] `Lekki Sovereign` appears at the top of your Admin product list with its image and stock count.
-- [ ] **Hard Refresh (`Ctrl + F5`):** The product and image are still there in Admin.
+The fixture should contain:
+- Active product with a unique slug
+- Real product name, category, collection and price
+- Real product images uploaded through product media
+- At least one active variant
+- Real SKU, colour and inventory quantity
+- Actual frame specifications where required by the storefront
+- A real VTO asset attached through `vto_asset_id`
+- VTO calibration completed with the required measurements
+- VTO asset status set to `PUBLISHED`
+- A valid `vto_glb_url`
 
----
+Do not add a fake product merely to make an automated test pass.
 
-## 🧭 TEST JOURNEY 2: You as a Customer (Shop & Product Details)
+## 3. Storefront checks
 
-**Goal:** Verify that your newly created product appears immediately on the public website with zero 404 errors.
+1. Open `/shop`.
+2. Confirm the uploaded active product appears when it has sellable inventory.
+3. Confirm the displayed price matches Supabase.
+4. Confirm uploaded media loads.
+5. Open `/shop/<slug>`.
+6. Hard-refresh the page.
+7. Open the same URL in a private/incognito window.
+8. Confirm an inactive or nonexistent slug does not resolve to another product.
+9. Confirm products with incomplete required data are not presented as valid sellable catalogue items.
 
-### Steps to Follow:
-1. Open [`http://localhost:3000/shop`](http://localhost:3000/shop).
-2. Look at the product grid.
-   * ✅ *Check:* Do you see your new `Lekki Sovereign` card with its uploaded photo and `₦45,000` price tag?
-3. Click the filter buttons at the top (**Men**, **Women**, **Unisex**).
-   * ✅ *Check:* Does clicking `Unisex` filter the grid correctly?
-4. Click on `Lekki Sovereign` to open its Product Detail Page (`/shop/lekki-sovereign`).
-5. **The 404 & Hard Refresh Test:**
-   * ✅ *Check:* Does the product page load with the large photo gallery, description, and specs?
-   * Press **`Ctrl + F5`** (or `Cmd + Shift + R` on Mac) to force refresh the page.
-   * ✅ *Check:* Does the page reload cleanly with **200 OK** (and NOT a 404 page)?
-6. Open a new **Incognito / Private tab**, paste `http://localhost:3000/shop/lekki-sovereign`, and hit Enter.
-   * ✅ *Check:* Does it load perfectly without needing any login?
+## 4. VTO checks
 
----
+VTO availability is fail-closed. A product should expose Try-On only when the selected variant has a published VTO calibration with a valid GLB URL.
 
-## 🧭 TEST JOURNEY 3: You in the 3D Virtual Try-On (VTO)
+Verify:
+- Try-On is unavailable when no published VTO exists.
+- Try-On becomes available after a real variant is correctly published.
+- Camera permission handling works.
+- The camera stream stops when the modal closes.
+- Head movement maintains frame alignment.
+- Left/right rotation does not produce obvious clipping or drift.
+- Switching variants selects the correct published asset.
+- No `/models/*.glb` local fallback is used.
 
-**Goal:** Test your webcam, face tracking, 3D glasses fit, head movement, and ear clipping.
+## 5. Inventory and cart checks
 
-### Steps to Follow:
-1. On the product page (or at [`http://localhost:3000/try-on`](http://localhost:3000/try-on)), click the **Virtual Try-On** (Camera) button.
-2. Click **Allow** when your browser asks for Camera permissions.
-3. Look directly into your webcam.
+- Only active variants are presented.
+- Missing inventory quantities are not converted into fabricated stock.
+- A variant with zero available units cannot be purchased.
+- Cart price matches the resolved variant price.
+- Quantity changes respect available stock.
+- Cart state survives navigation and refresh as designed.
 
-#### 🎯 Test These Motions on Your Camera:
-- [ ] **Snap & Fit:** Do the glasses automatically lock onto the bridge of your nose and align with your eyes?
-- [ ] **Turn Left & Right (Yaw):** Slowly turn your head left and right. Do the glasses stay firmly on your face without shaking or flying off?
-- [ ] **Tilt Up & Down (Pitch):** Look up at the ceiling, then down. Do the frames tilt naturally with your nose angle?
-- [ ] **Ear Clipping Test (Crucial!):** Turn your head $45^\circ$ to the side. Do the temple arms end cleanly at your ears without poking through the back of your head?
-- [ ] **Switch Colors:** Click different color circles at the bottom. Does the 3D frame change color live on your face?
-- [ ] **Express Order Button:** Click the **Buy This Frame** / **Express Order** button inside the camera screen. Does the quick order drawer slide up?
+## 6. Checkout/payment checks
 
----
+Use test payment credentials and test customer data only.
 
-## 🧭 TEST JOURNEY 4: You Buying Glasses (Cart, Pricing & Checkout)
+Verify:
+- Checkout receives the selected variant and actual price.
+- Delivery fee rules are correct.
+- Paystack is initialized with the expected amount.
+- WhatsApp order intent contains the actual product/variant information.
+- Payment verification uses the gateway response rather than trusting client-supplied success state.
+- Confirmed payment creates the expected order exactly once.
 
-**Goal:** Test cart persistence, delivery fee calculations (₦2,500 vs Free over ₦50k), and Paystack / WhatsApp checkout.
+## 7. Vitest integration tests
 
-### Steps to Follow:
-1. Go to any product page and click **Add to Cart**.
-2. The Cart Drawer slides out from the right:
-   * Click **`+`** to increase quantity to 2 $\to$ verify subtotal doubles.
-   * Click **`-`** to decrease quantity back to 1.
-3. **Cart Memory Test:**
-   * Close the cart, navigate to [`/about`](http://localhost:3000/about), and refresh the page.
-   * Click the Cart icon in the top header $\to$ your items should still be in the cart!
-4. Open Cart and click **Proceed to Checkout** (`/checkout`).
-5. **Test the Nigerian Delivery Fee Rules:**
-   * If your cart is **under ₦50,000**:
-     * Select **Lagos Standard Delivery** $\to$ Delivery Fee should be **₦2,500**.
-     * Select **Pickup at Lagos Island Practice** $\to$ Delivery Fee should be **₦0 (Free)**.
-   * If your cart is **₦50,000 or above**:
-     * Select **Lagos Standard Delivery** $\to$ Delivery Fee automatically shows **₦0 (Free Delivery)**!
-6. Fill in your test details:
-   * Name: `Test Customer`, Phone: `08012345678`, Address: `15 Victoria Island, Lagos`.
-7. **Test Payment Options:**
-   * **Option A (WhatsApp):** Click **Order via WhatsApp** $\to$ opens WhatsApp with a pre-filled itemized message to `+234 815 234 6649`.
-   * **Option B (Paystack):** Click **Pay via Paystack** $\to$ Paystack modal opens with the exact Naira total.
+Run the integration suites only against the dedicated test database:
 
----
+```bash
+TEST_SUPABASE_URL="<dedicated-test-project>" \
+TEST_SUPABASE_SERVICE_ROLE_KEY="<test-project-service-role-key>" \
+npx vitest run tests/gate3_db_integrity.test.ts tests/gate4_vto_integration.test.ts
+```
 
-## 🧭 TEST JOURNEY 5: You Upgrading Your Lenses (Lens Replacement)
+The test client refuses to run when the required variables are missing or when the test URL matches the configured production URL.
 
-**Goal:** Test the prescription lens replacement service.
+Do not paste credentials into source files, test files, workflow YAML, issues, or documentation.
 
-### Steps to Follow:
-1. In the header or footer, click **Services** or visit [`http://localhost:3000/services/lens-replacement`](http://localhost:3000/services/lens-replacement).
-2. Review the 4 lens tiers:
-   * Single Vision Clear (from ₦15,000)
-   * Blue Cut Screen Protection (from ₦22,000)
-   * Photochromic / Light-Adaptive (from ₦25,000)
-   * Polycarbonate / High-Index (from ₦30,000)
-3. Select **Blue Cut (₦22,000)** and click **Order Lens Replacement**.
-4. Upload a sample prescription photo (or enter values) and submit.
-5. ✅ *Check:* Does it confirm your lens booking?
+## 8. Playwright checks
 
----
+Run:
 
-## 🧭 TEST JOURNEY 6: You as an Optometrist / Clinic (B2B McDaves Pro)
+```bash
+npx playwright test ./e2e
+```
 
-**Goal:** Test the wholesale optical portal.
+The browser suite uses public Supabase credentials only. It does not require a service-role key.
 
-### Steps to Follow:
-1. Click **McDaves Pro** in the header or visit [`http://localhost:3000/pro`](http://localhost:3000/pro).
-2. Click **Request Wholesale Quote** or **Practice Order Portal** (`/pro/order`).
-3. Fill in clinic name (e.g. `Lagos Eye Clinic`), select frame quantities, and submit.
-4. ✅ *Check:* Does the inquiry submit with a confirmation message?
+The current VTO tests require a real active product/variant fixture. If the fixture is absent, treat that as a test-environment/data problem, not as permission to restore dummy catalogue data.
 
----
+## 9. Mobile/manual regression
 
-## 🧭 TEST JOURNEY 7: You Checking the Admin for New Orders
+Test at minimum:
+- `/shop`
+- `/shop/<real-product-slug>`
+- Product gallery
+- Variant selection
+- Add to cart
+- Checkout
+- VTO modal
+- Camera permission flow
+- WhatsApp CTA
 
-**Goal:** Verify that your test orders and leads appeared in the Admin dashboard.
+Use a real phone where possible. Check for horizontal overflow, clipped controls, broken media, and unusable VTO controls.
 
-### Steps to Follow:
-1. Switch back to [`http://localhost:3001`](http://localhost:3001).
-2. Click the **Order Intents (Leads)** tab.
-   * ✅ *Check:* Do you see the customer checkout / lens inquiry you just submitted?
-3. Click the **Orders** tab to inspect completed transactions.
+## 10. Evidence and failure handling
 
----
+For every failure record:
+1. Exact URL or test name
+2. Expected behaviour
+3. Actual behaviour
+4. Browser/device
+5. Console/network error if relevant
+6. Screenshot or Playwright trace when available
+7. Whether the problem is code, database data, environment configuration, or test fixture
 
-## 🧭 TEST JOURNEY 8: Mobile Phone & Tablet Check
-
-**Goal:** Ensure the website looks stunning on smartphones.
-
-### Steps to Follow:
-1. On your desktop browser, press **`F12`** $\to$ click the **Toggle Device Toolbar** icon (or test on your physical phone).
-2. Choose **iPhone 14 Pro** or **Samsung Galaxy**.
-3. **Verify:**
-   * [ ] Hamburger menu (☰) opens smoothly with all navigation links.
-   * [ ] Product cards fit cleanly on mobile screens without horizontal scroll.
-   * [ ] Bottom sticky bar on product pages allows easy 1-tap "Add to Cart" and "Try-On".
-   * [ ] Virtual Try-On camera view fits properly on mobile.
-
----
-
-## 📝 Your Quick Result Checklist
-
-Tick these off as you complete your test:
-
-- [ ] **Admin:** Created a product with image & 3D model
-- [ ] **Storefront:** Found product on `/shop` with photo and price
-- [ ] **Product Page:** Loaded `/shop/[slug]` and refreshed without 404
-- [ ] **VTO Camera:** Glasses tracked face, rotated with head, clipped at ears
-- [ ] **Cart:** Added items, changed quantities, items persisted on refresh
-- [ ] **Checkout:** Delivery fee calculated correctly (₦2,500 vs Free $\ge$ ₦50k)
-- [ ] **WhatsApp/Paystack:** Order routed cleanly
-- [ ] **Lens Replacement:** Visited `/services/lens-replacement`
-- [ ] **B2B Portal:** Visited `/pro` and `/pro/order`
-- [ ] **Admin Sync:** Saw new leads/orders appear in Admin
-- [ ] **Mobile:** Tested site in mobile view
+Do not fix a failing test by weakening the assertion or reintroducing dummy data. Fix the underlying system or fixture.
