@@ -3,6 +3,8 @@ import { requireAdminSession } from '@/lib/auth/admin-auth';
 import { processVTOAsset } from '@/vto-pipeline/backend/VTOPipelineService';
 import { supabaseServer } from '@/lib/supabase/server';
 
+export const maxDuration = 60;
+
 export async function POST(request: NextRequest) {
   const auth = requireAdminSession(request);
   if (!auth.authorized) return NextResponse.json({ error: auth.error }, { status: 401 });
@@ -15,12 +17,13 @@ export async function POST(request: NextRequest) {
 
     const { data: asset, error } = await supabaseServer
       .from('vto_asset_calibrations')
-      .select('asset_id,name,source_storage_path,frame_width_mm,lens_width_mm,bridge_width_mm,temple_length_mm,bridge_x,bridge_y,bridge_z')
+      .select('asset_id,name,source_storage_path,frame_width_mm,lens_width_mm,bridge_width_mm,temple_length_mm,bridge_x,bridge_y,bridge_z,provenance')
       .eq('asset_id', assetId)
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!asset || !asset.source_storage_path) return NextResponse.json({ error: 'Uploaded VTO asset record not found.' }, { status: 404 });
 
+    const provenance = asset.provenance && typeof asset.provenance === 'object' ? asset.provenance as Record<string, unknown> : {};
     const result = await processVTOAsset({
       assetId: asset.asset_id,
       sourceStoragePath: asset.source_storage_path,
@@ -36,10 +39,10 @@ export async function POST(request: NextRequest) {
         y: asset.bridge_y == null ? undefined : Number(asset.bridge_y),
         z: asset.bridge_z == null ? undefined : Number(asset.bridge_z),
       },
+      provenance,
     });
 
-    const statusCode = result.status === 'PROCESSING_FAILED' ? 422 : 200;
-    return NextResponse.json(result, { status: statusCode });
+    return NextResponse.json(result, { status: result.status === 'PROCESSING_FAILED' ? 422 : 200 });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'VTO processing failed.' }, { status: 500 });
   }
