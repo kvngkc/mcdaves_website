@@ -1,11 +1,13 @@
 // src/vto-pipeline/registry/VTOAssetRegistry.ts
 /**
  * Dynamic VTO Eyewear Asset Registry.
- * Fully decouples the VTO tracking engine from asset-specific assumptions.
+ *
+ * The registry is runtime state only. It must never contain hard-coded
+ * production assets because published database calibration is the sole
+ * authority for storefront VTO rendering.
  */
 
 import { AssetCalibrationMetadata } from '../types/AssetTypes';
-import { DEFAULT_VTO_ASSETS } from './defaultAssets';
 
 export class VTOAssetRegistry {
   private assets: Map<string, AssetCalibrationMetadata>;
@@ -14,11 +16,6 @@ export class VTOAssetRegistry {
   constructor() {
     this.assets = new Map();
     this.listeners = new Set();
-
-    // Initialize with defaults
-    Object.entries(DEFAULT_VTO_ASSETS).forEach(([key, metadata]) => {
-      this.assets.set(key, metadata);
-    });
   }
 
   /**
@@ -68,6 +65,10 @@ export class VTOAssetRegistry {
     updates: Partial<AssetCalibrationMetadata['registration']>,
   ): AssetCalibrationMetadata {
     const existing = this.getAsset(assetId);
+    if (!existing) {
+      throw new Error(`Cannot update calibration for unknown VTO asset: ${assetId}`);
+    }
+
     const updated: AssetCalibrationMetadata = {
       ...existing,
       registration: {
@@ -94,6 +95,10 @@ export class VTOAssetRegistry {
     status: AssetCalibrationMetadata['status'],
   ): AssetCalibrationMetadata {
     const existing = this.getAsset(assetId);
+    if (!existing) {
+      throw new Error(`Cannot update status for unknown VTO asset: ${assetId}`);
+    }
+
     const updated: AssetCalibrationMetadata = {
       ...existing,
       status,
