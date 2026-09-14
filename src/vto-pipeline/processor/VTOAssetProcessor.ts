@@ -72,8 +72,11 @@ function requirePhysicalDimensions(
   }
 
   const values = dimensions as OpticalDimensions;
-  if (required.some((key) => !Number.isFinite(values[key]) || values[key] <= 0)) {
-    throw new Error('Physical dimensions must be finite positive millimetre values.');
+  for (const key of required) {
+    const value = values[key];
+    if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+      throw new Error('Physical dimensions must be finite positive millimetre values.');
+    }
   }
 
   return values;
