@@ -658,12 +658,16 @@ export class CommerceRepository {
           : 'high'
       : variant.stockLevel;
 
-    // Gate 3 Invariant
-    let resolvedGlbPath: string | undefined = undefined;
+    // VTO eligibility is determined by the authoritative asset identity and its published record.
     const vto = (variant as any).vto_asset_calibrations;
-    if (vto && vto.status === 'PUBLISHED' && vto.vto_glb_url && vto.vto_glb_url.trim() !== '') {
-      resolvedGlbPath = vto.vto_glb_url;
-    }
+    const hasPublishedVto = Boolean(
+      variant.vtoAssetId &&
+      vto &&
+      vto.asset_id === variant.vtoAssetId &&
+      vto.status === 'PUBLISHED' &&
+      typeof vto.vto_glb_url === 'string' &&
+      vto.vto_glb_url.trim() !== ''
+    );
 
     return {
       ...variant,
@@ -675,7 +679,7 @@ export class CommerceRepository {
       effectiveWeight: variant.weightOverride ?? parent.defaultWeight,
       effectiveSpecifications,
       effectiveDescription: variant.descriptionOverride ?? parent.description,
-      glbPath: resolvedGlbPath,
+      vtoAssetId: hasPublishedVto ? variant.vtoAssetId : undefined,
       media,
       hasPriceOverride,
       hasSpecOverride,
@@ -707,7 +711,7 @@ export class CommerceRepository {
       productVariants.map((v) => this.resolveVariant(product, v))
     );
 
-    const defaultVariant = resolvedVariants.find(v => v.glbPath && v.inStock) || resolvedVariants.find(v => v.glbPath) || resolvedVariants[0] || (await this.resolveVariant(product, {
+    const defaultVariant = resolvedVariants.find(v => v.vtoAssetId && v.inStock) || resolvedVariants.find(v => v.vtoAssetId) || resolvedVariants[0] || (await this.resolveVariant(product, {
       id: `default-${product.id}`,
       productId: product.id,
       slug: 'default',
