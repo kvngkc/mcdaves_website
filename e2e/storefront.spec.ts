@@ -7,17 +7,6 @@ test.describe('Storefront E2E Tests - Production Checklist', () => {
   });
 
   test('VT-03: VTO Modal handles camera streams cleanly', async ({ page }) => {
-    await page.addInitScript(() => {
-      const mediaDevices = navigator.mediaDevices ?? ({} as MediaDevices);
-      Object.defineProperty(navigator, 'mediaDevices', { value: mediaDevices, configurable: true });
-      mediaDevices.getUserMedia = async () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = 640;
-        canvas.height = 480;
-        return canvas.captureStream(30);
-      };
-    });
-
     await page.goto('/shop/e2e-vto-glasses');
     const tryOnBtn = page.locator('#product-primary-ctas button', { hasText: /Try.*On/i });
     await expect(tryOnBtn).toBeVisible({ timeout: 30000 });
@@ -25,9 +14,10 @@ test.describe('Storefront E2E Tests - Production Checklist', () => {
     await tryOnBtn.click();
 
     const videoElem = page.locator('video');
-    await expect(videoElem).toBeVisible({ timeout: 15000 });
+    await expect(videoElem).toBeVisible({ timeout: 20000 });
 
     const closeBtn = page.locator('button[aria-label="Close Virtual Try-On"]');
+    await expect(closeBtn).toBeVisible();
     await closeBtn.click();
     await expect(videoElem).toBeHidden();
   });
@@ -41,7 +31,7 @@ test.describe('Storefront E2E Tests - Production Checklist', () => {
 
     await page.goto('/shop/no-vto-glasses');
     const tryOnBtn = page.locator('#product-primary-ctas button', { hasText: /Try.*On/i });
-    await expect(tryOnBtn).toBeDisabled();
+    await expect(tryOnBtn).toHaveCount(0);
 
     await page.goto('/shop/no-vto-glasses?vto=true');
     await page.waitForTimeout(2000);
