@@ -1,10 +1,7 @@
 // src/app/api/orders/route.ts
-/**
- * GET /api/orders — List confirmed orders for Admin Panel
- */
+/** GET /api/orders — List confirmed orders for Admin Panel */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { commerceRepository } from '@/lib/commerce/repository';
 import { requireAdminSession } from '@/lib/auth/admin-auth';
 
 export const dynamic = 'force-dynamic';
@@ -12,20 +9,15 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     const auth = requireAdminSession(request);
-    if (!auth.authorized) {
-      return NextResponse.json({ error: auth.error || 'Unauthorized' }, { status: 401 });
-    }
+    if (!auth.authorized) return NextResponse.json({ error: auth.error || 'Unauthorized' }, { status: 401 });
 
+    const { commerceRepository } = await import('@/lib/commerce/repository');
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const search = searchParams.get('search')?.toLowerCase();
-
     let orders = await commerceRepository.getAllOrders();
 
-    if (status && status !== 'ALL') {
-      orders = orders.filter((o) => o.status === status);
-    }
-
+    if (status && status !== 'ALL') orders = orders.filter((o) => o.status === status);
     if (search) {
       orders = orders.filter(
         (o) =>
