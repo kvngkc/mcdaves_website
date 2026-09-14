@@ -68,6 +68,11 @@ export async function getLiveStorefrontProducts(): Promise<StorefrontProduct[]> 
           const vto = v.vto_asset_calibrations;
           if (vto && vto.status === 'PUBLISHED' && typeof vto.vto_glb_url === 'string' && vto.vto_glb_url.trim() !== '') {
             glbPath = vto.vto_glb_url;
+          } else if (typeof v.glb_path === 'string' && v.glb_path.trim() !== '') {
+            // A newly uploaded variant can have a valid source GLB before calibration.
+            // Keep it connected so the product CTA can remain visible; calibration/publishing
+            // can replace this path with the approved VTO asset later.
+            glbPath = v.glb_path;
           }
 
           return {
@@ -186,6 +191,9 @@ export async function getLiveResolvedProductBySlug(slug: string): Promise<any | 
       const vto = v.vto_asset_calibrations as any;
       if (vto && vto.status === 'PUBLISHED' && typeof vto.vto_glb_url === 'string' && vto.vto_glb_url.trim() !== '') {
         glbPath = vto.vto_glb_url;
+      } else if (typeof v.glb_path === 'string' && v.glb_path.trim() !== '') {
+        // A newly uploaded variant can have a valid source GLB before calibration.
+        glbPath = v.glb_path;
       }
 
       const unitsInStock = typeof v.units_in_stock === 'number' ? v.units_in_stock : 0;
