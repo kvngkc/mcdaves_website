@@ -25,9 +25,13 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run dev',
+    // E2E must exercise the production React bundle, not Next.js dev/HMR.
+    // The dev server was allowing the page HTML to render while client hydration
+    // could remain stale, which made stateful controls appear clickable without
+    // mounting the VTO modal.
+    command: 'npm run build && npm run start',
     url: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
-    timeout: 120 * 1000,
+    timeout: 180 * 1000,
   },
 });
