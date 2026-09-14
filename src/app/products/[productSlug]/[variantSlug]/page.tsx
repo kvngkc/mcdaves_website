@@ -9,7 +9,6 @@ import React from 'react';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { commerceRepository } from '@/lib/commerce/repository';
-import { products as legacyProducts } from '@/data/products';
 import ProductDetailClient from '@/app/shop/[slug]/ProductDetailClient';
 
 interface PageProps {
@@ -26,10 +25,7 @@ export async function generateStaticParams() {
 
     products.forEach((product) => {
       product.variants.forEach((variant) => {
-        params.push({
-          productSlug: product.slug,
-          variantSlug: variant.slug,
-        });
+        params.push({ productSlug: product.slug, variantSlug: variant.slug });
       });
     });
 
@@ -45,16 +41,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const match = await commerceRepository.getProductVariantBySlug(productSlug, variantSlug);
 
   if (!match) {
-    return {
-      title: 'Variant Not Found | McDaves',
-    };
+    return { title: 'Variant Not Found | McDaves' };
   }
 
   const { product, variant } = match;
-  const image =
-    variant.media?.[0]?.url ||
-    product.media?.[0]?.url ||
-    '/images/products/placeholder.webp';
+  const image = variant.media?.[0]?.url || product.media?.[0]?.url || '/images/products/placeholder.webp';
 
   return {
     title: `${product.name} in ${variant.colorName} | Sightly by McDaves`,
@@ -79,16 +70,11 @@ export default async function ExactVariantPage({ params }: PageProps) {
   }
 
   const { product, variant } = match;
-
   const allProducts = await commerceRepository.getAllProducts();
-  const relatedResolved = allProducts
+  const relatedProducts = allProducts
     .filter((p) => p.id !== product.id && p.collection === product.collection)
-    .slice(0, 3);
-
-  const relatedLegacy = relatedResolved.map((p) => {
-    const legacy = legacyProducts.find((lp) => lp.slug === p.slug);
-    if (legacy) return legacy;
-    return {
+    .slice(0, 3)
+    .map((p) => ({
       id: p.id,
       slug: p.slug,
       name: p.name,
@@ -96,27 +82,21 @@ export default async function ExactVariantPage({ params }: PageProps) {
       category: p.category,
       price: p.defaultPrice,
       originalPrice: p.defaultOriginalPrice,
-      colors: p.variants.map((v) => ({
-        name: v.colorName,
-        hex: v.colorHex,
-        imageSuffix: v.slug,
-      })),
+      colors: p.variants.map((v) => ({ name: v.colorName, hex: v.colorHex, imageSuffix: v.slug })),
       sizes: p.defaultSpecifications.frameSize,
       material: p.defaultMaterial,
       description: p.description,
       features: p.features,
       images: p.media.map((m) => m.url),
-      inStock: true,
-      stockLevel: 'high' as const,
+      inStock: p.variants.some((v) => v.inStock),
+      stockLevel: p.variants.some((v) => v.stockLevel === 'high') ? 'high' : p.variants.some((v) => v.inStock) ? 'low' : 'out',
       prescriptionRequired: p.prescriptionRequired,
       tryOnAvailable: p.tryOnAvailable,
       frameSize: p.defaultSpecifications.frameSize,
       weight: p.defaultWeight,
       faceShape: p.faceShape,
-    };
-  });
+    }));
 
-  // Schema.org Product JSON-LD for exact variant
   const jsonLd = {
     '@context': 'https://schema.org/',
     '@type': 'Product',
@@ -124,19 +104,14 @@ export default async function ExactVariantPage({ params }: PageProps) {
     image: variant.media.map((m) => m.url),
     description: variant.effectiveDescription,
     sku: variant.sku,
-    brand: {
-      '@type': 'Brand',
-      name: 'Sightly by McDaves',
-    },
+    brand: { '@type': 'Brand', name: 'Sightly by McDaves' },
     offers: {
       '@type': 'Offer',
       url: `https://mcdaves.com.ng/products/${product.slug}/${variant.slug}`,
       priceCurrency: 'NGN',
       price: variant.effectivePrice,
       itemCondition: 'https://schema.org/NewCondition',
-      availability: variant.inStock
-        ? 'https://schema.org/InStock'
-        : 'https://schema.org/OutOfStock',
+      availability: variant.inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
     },
   };
 
@@ -144,15 +119,12 @@ export default async function ExactVariantPage({ params }: PageProps) {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c'),
-        }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }}
       />
-
       <ProductDetailClient
         product={product as any}
         initialVariantSlug={variantSlug}
-        relatedProducts={relatedLegacy as any}
+        relatedProducts={relatedProducts as any}
       />
     </>
   );
