@@ -3,7 +3,6 @@ import React from 'react';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getLiveResolvedProductBySlug, getLiveStorefrontProducts } from '@/lib/commerce/storefront-catalog';
-import { products as legacyProducts } from '@/data/products';
 import ProductDetailClient from './ProductDetailClient';
 
 export const dynamic = 'force-dynamic';
@@ -63,36 +62,9 @@ export default async function ProductDetailPage({ params }: PageProps) {
   }
 
   const allProducts = await getLiveStorefrontProducts();
-  const relatedResolved = allProducts
+  const relatedProducts = allProducts
     .filter((p) => p.id !== product.id && p.collection === product.collection)
     .slice(0, 3);
-
-  const relatedLegacy = relatedResolved.map((p) => {
-    const legacy = legacyProducts.find((lp) => lp.slug === p.slug);
-    if (legacy) return legacy;
-    return {
-      id: p.id,
-      slug: p.slug,
-      name: p.name,
-      collection: p.collection,
-      category: p.category,
-      price: p.price,
-      originalPrice: p.originalPrice,
-      colors: p.colors,
-      sizes: p.sizes,
-      material: p.material,
-      description: p.description,
-      features: p.features,
-      images: p.images,
-      inStock: p.inStock,
-      stockLevel: p.stockLevel,
-      prescriptionRequired: p.prescriptionRequired,
-      tryOnAvailable: p.tryOnAvailable,
-      frameSize: p.frameSize,
-      weight: p.weight,
-      faceShape: p.faceShape,
-    };
-  });
 
   const jsonLd = {
     '@context': 'https://schema.org/',
@@ -126,7 +98,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
 
       <ProductDetailClient
         product={product as any}
-        relatedProducts={relatedLegacy as any}
+        relatedProducts={relatedProducts as any}
       />
     </>
   );
