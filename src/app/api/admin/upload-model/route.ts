@@ -1,13 +1,12 @@
 // src/app/api/admin/upload-model/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
 import { requireAdminSession } from '@/lib/auth/admin-auth';
 import { supabase } from '@/lib/supabase/service';
 
 export const dynamic = 'force-dynamic';
 
 const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
+const STORAGE_BUCKET = 'vto-models';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
@@ -16,10 +15,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: auth.error || 'Unauthorized' }, { status: 401 });
     }
 
-    const formData = await request.formData();
-    const file = formData.get('file') as File | null;
+    if (!supabase) {
+      console.error('[Upload Model] Supabase server configuration is missing.');
+      return NextResponse.json(
+        { error: 'Server storage is not configured.' },
+        { status: 503 },
+      );
+    }
 
-    if (!file) {
+    const formData = await request.formData();
+    const file = formData.get('file');
+
+    if (!(file instanceof File)) {
       return NextResponse.json({ error: 'No 3D model file provided' }, { status: 400 });
     }
 
@@ -38,17 +45,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // Sanitize filename
     const baseClean = originalName
       .toLowerCase()
       .replace(/\.glb$/i, '')
       .replace(/[^a-z0-9_-]/g, '_')
-      .replace(/_+/g, '_');
+      .replace(/_+/g, '_')
+      .replace(/^_+|_+$/g, '') || 'model';
 
     const sanitizedFilename = `${baseClean}_${Date.now().toString().slice(-4)}.glb`;
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    // Validate GLB binary magic header: "glTF" (0x46546C67)
+    // Validate GLB binary magic header: "glTF" (0x46546C67).
     if (buffer.length < 12) {
       return NextResponse.json(
         { error: 'Invalid file: File is too small to be a valid 3D GLB model.' },
@@ -65,35 +72,39 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // 1. Write to public/models directory if filesystem is writable
-    const relativeGlbPath = `/models/${sanitizedFilename}`;
-    try {
-      const modelsDir = path.join(process.cwd(), 'public', 'models');
-      if (!fs.existsSync(modelsDir)) {
-        fs.mkdirSync(modelsDir, { recursive: true });
-      }
-      const filePath = path.join(modelsDir, sanitizedFilename);
-      fs.writeFileSync(filePath, buffer);
-    } catch (fsErr) {
-      console.warn('[Upload Model] Filesystem write notice (read-only environment):', fsErr);
+    // Store the canonical asset in Supabase Storage. The VTO pipeline must not
+    // depend on Vercel's ephemeral/read-only filesystem or public/models.
+    const { error: uploadError } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .upload(sanitizedFilename, buffer, {
+        contentType: 'model/gltf-binary',
+        upsert: true,
+      });
+
+    if (uploadError) {
+      console.error('[Upload Model] Supabase Storage upload failed:', uploadError);
+      return NextResponse.json(
+        { error: 'Failed to upload 3D model to server storage.' },
+        { status: 500 },
+      );
     }
 
-    // 2. If Supabase Storage is configured, also upload to 'vto-models' bucket
-    if (supabase) {
-      try {
-        await supabase.storage.from('vto-models').upload(sanitizedFilename, buffer, {
-          contentType: 'model/gltf-binary',
-          upsert: true,
-        });
-      } catch (storageErr) {
-        console.warn('[Supabase Storage] Notice: upload to vto-models bucket skipped:', storageErr);
-      }
+    const { data: publicUrlData } = supabase.storage
+      .from(STORAGE_BUCKET)
+      .getPublicUrl(sanitizedFilename);
+
+    if (!publicUrlData?.publicUrl) {
+      console.error('[Upload Model] Supabase Storage returned no public URL.');
+      return NextResponse.json(
+        { error: '3D model uploaded, but its storage URL could not be resolved.' },
+        { status: 500 },
+      );
     }
 
     return NextResponse.json(
       {
         success: true,
-        glbPath: relativeGlbPath,
+        glbPath: publicUrlData.publicUrl,
         filename: sanitizedFilename,
         sizeBytes: file.size,
         message: '3D GLB model uploaded successfully',
@@ -101,6 +112,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       { status: 201 },
     );
   } catch (err: unknown) {
+    console.error('[Upload Model] Unexpected error:', err);
     const msg = err instanceof Error ? err.message : 'Failed to process 3D model upload';
     return NextResponse.json({ error: msg }, { status: 500 });
   }
