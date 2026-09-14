@@ -14,6 +14,7 @@ export interface VTOPipelineRequest {
   fileName: string;
   physicalDimensions: OpticalDimensions;
   customBridge?: Partial<BridgeRegistration>;
+  provenance?: Record<string, unknown>;
 }
 
 export interface VTOPipelineResult {
@@ -124,6 +125,7 @@ export async function processVTOAsset(request: VTOPipelineRequest): Promise<VTOP
       vto_glb_url: derivedPath,
       processing_completed_at: new Date().toISOString(),
       provenance: {
+        ...(request.provenance ?? {}),
         sourceHash,
         derivedHash,
         sourcePath: request.sourceStoragePath,
@@ -135,7 +137,6 @@ export async function processVTOAsset(request: VTOPipelineRequest): Promise<VTOP
     });
 
     // Do NOT delete the source here. Human approval/publish is the explicit lifecycle gate.
-    // The source is deleted only after the approved asset is linked to its variant and published.
     return {
       assetId: request.assetId,
       status: finalStatus,
@@ -161,7 +162,7 @@ export async function processVTOAsset(request: VTOPipelineRequest): Promise<VTOP
 export async function deleteVTOAssetSourceAfterPublication(assetId: string): Promise<void> {
   assertConfigured();
   const { data: asset, error } = await supabaseServer!.from('vto_asset_calibrations')
-    .select('source_storage_path,source_deleted_at,status,derived_storage_path,derived_content_hash,output_size_status')
+    .select('source_storage_path,source_deleted_at,status,derived_storage_path,derived_content_hash,derived_size_bytes,output_size_status')
     .eq('asset_id', assetId).maybeSingle();
   if (error) throw new Error(error.message);
   if (!asset) throw new Error('VTO asset not found.');
@@ -173,8 +174,9 @@ export async function deleteVTOAssetSourceAfterPublication(assetId: string): Pro
 
   const { data: verifyData, error: verifyError } = await supabaseServer!.storage.from(BUCKET).download(asset.derived_storage_path);
   if (verifyError || !verifyData) throw new Error('Cannot verify the published derived asset before source deletion.');
-  if (sha256(await verifyData.arrayBuffer()) !== asset.derived_content_hash) {
-    throw new Error('Published derived asset hash does not match recorded provenance.');
+  const verifiedBuffer = await verifyData.arrayBuffer();
+  if (sha256(verifiedBuffer) !== asset.derived_content_hash || verifiedBuffer.byteLength !== asset.derived_size_bytes) {
+    throw new Error('Published derived asset provenance does not match recorded hash or size.');
   }
 
   const { error: removeError } = await supabaseServer!.storage.from(BUCKET).remove([asset.source_storage_path]);
