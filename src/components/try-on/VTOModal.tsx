@@ -337,6 +337,7 @@ export function VTOModal({
     <div
       role="dialog"
       aria-modal="true"
+      aria-labelledby="vto-modal-title"
       className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 md:p-6 bg-neutral-950/85 backdrop-blur-md transition-all duration-300 animate-in fade-in"
     >
       <div className="relative w-full max-w-4xl bg-neutral-900 rounded-none sm:rounded-3xl overflow-hidden shadow-2xl border-0 sm:border sm:border-neutral-800 flex flex-col h-[100dvh] sm:h-[min(88dvh,680px)] max-h-[100dvh] sm:max-h-[720px]">
@@ -348,7 +349,8 @@ export function VTOModal({
               <Sparkles className="w-4 h-4" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-sm sm:text-base font-bold text-white tracking-tight truncate">
+              <h2 id="vto-modal-title"
+                className="text-sm sm:text-base font-bold text-white tracking-tight truncate">
                 Virtual Try-On: {productName}
               </h2>
               <p className="text-xs text-neutral-400 truncate">
