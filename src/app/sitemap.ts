@@ -1,7 +1,9 @@
 import type { MetadataRoute } from 'next';
-import { products } from '@/data/products';
+import { getLiveStorefrontProducts } from '@/lib/commerce/storefront-catalog';
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export const dynamic = 'force-dynamic';
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://mcdaves.com.ng';
   const now = new Date();
 
@@ -17,6 +19,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/pro/catalog', priority: 0.85, changeFrequency: 'weekly' as const },
     { path: '/pro/how-it-works', priority: 0.7, changeFrequency: 'monthly' as const },
   ];
+
+  let products: Awaited<ReturnType<typeof getLiveStorefrontProducts>> = [];
+  try {
+    products = await getLiveStorefrontProducts();
+  } catch (error) {
+    console.warn('[Sitemap] Unable to load live product slugs.', error);
+  }
 
   return [
     ...staticRoutes.map((route) => ({
