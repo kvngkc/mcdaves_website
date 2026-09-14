@@ -1,11 +1,10 @@
 // src/vto-pipeline/registry/VTOAssetRegistry.ts
 /**
  * Dynamic VTO Eyewear Asset Registry.
- * Fully decouples the VTO tracking engine from asset-specific assumptions.
+ * Runtime calibration is populated only from the published backend asset API.
  */
 
 import { AssetCalibrationMetadata } from '../types/AssetTypes';
-import { DEFAULT_VTO_ASSETS } from './defaultAssets';
 
 export class VTOAssetRegistry {
   private assets: Map<string, AssetCalibrationMetadata>;
@@ -14,27 +13,22 @@ export class VTOAssetRegistry {
   constructor() {
     this.assets = new Map();
     this.listeners = new Set();
-
-    // Initialize with defaults
-    Object.entries(DEFAULT_VTO_ASSETS).forEach(([key, metadata]) => {
-      this.assets.set(key, metadata);
-    });
   }
 
   /**
    * Retrieves asset calibration metadata by assetId or GLB file URL.
+   * Only assets explicitly registered by the runtime data bridge can resolve.
    */
   public getAsset(identifier: string): AssetCalibrationMetadata | null {
     if (!identifier) return null;
 
-    // Direct ID match
     if (this.assets.has(identifier)) {
       return this.assets.get(identifier)!;
     }
 
-    // Match by GLB URL (source or VTO)
     const isExternal = identifier.startsWith('http://') || identifier.startsWith('https://');
     const cleanUrl = isExternal || identifier.startsWith('/') ? identifier : `/${identifier}`;
+
     for (const metadata of this.assets.values()) {
       if (
         metadata.paths.vtoGlbUrl.endsWith(cleanUrl) ||
@@ -50,7 +44,8 @@ export class VTOAssetRegistry {
   }
 
   /**
-   * Registers a new or updated asset metadata.
+   * Registers published runtime metadata from the backend.
+   * The renderer never invents calibration values locally.
    */
   public registerAsset(metadata: AssetCalibrationMetadata): void {
     this.assets.set(metadata.assetId, {
@@ -60,14 +55,15 @@ export class VTOAssetRegistry {
     this.notify();
   }
 
-  /**
-   * Updates calibration parameters for an existing asset.
-   */
   public updateCalibration(
     assetId: string,
     updates: Partial<AssetCalibrationMetadata['registration']>,
   ): AssetCalibrationMetadata {
-    const existing = this.getAsset(assetId);
+    const existing = this.assets.get(assetId);
+    if (!existing) {
+      throw new Error(`Cannot update calibration for unregistered asset: ${assetId}`);
+    }
+
     const updated: AssetCalibrationMetadata = {
       ...existing,
       registration: {
@@ -86,14 +82,15 @@ export class VTOAssetRegistry {
     return updated;
   }
 
-  /**
-   * Updates lifecycle status (e.g. APPROVED, PUBLISHED).
-   */
   public setStatus(
     assetId: string,
     status: AssetCalibrationMetadata['status'],
   ): AssetCalibrationMetadata {
-    const existing = this.getAsset(assetId);
+    const existing = this.assets.get(assetId);
+    if (!existing) {
+      throw new Error(`Cannot update status for unregistered asset: ${assetId}`);
+    }
+
     const updated: AssetCalibrationMetadata = {
       ...existing,
       status,
@@ -105,16 +102,10 @@ export class VTOAssetRegistry {
     return updated;
   }
 
-  /**
-   * Lists all registered assets.
-   */
   public listAssets(): AssetCalibrationMetadata[] {
     return Array.from(this.assets.values());
   }
 
-  /**
-   * Subscribe to registry changes.
-   */
   public subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
@@ -125,5 +116,4 @@ export class VTOAssetRegistry {
   }
 }
 
-// Global Singleton Instance
 export const globalVTOAssetRegistry = new VTOAssetRegistry();
