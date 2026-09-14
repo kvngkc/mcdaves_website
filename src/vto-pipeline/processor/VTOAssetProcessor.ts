@@ -95,6 +95,9 @@ export class VTOAssetProcessor {
     this.loader = new GLTFLoader();
   }
 
+  /**
+   * Processes a raw GLB ArrayBuffer end-to-end.
+   */
   public async processGlbBuffer(
     sourceBuffer: ArrayBuffer,
     fileName: string,
@@ -102,7 +105,11 @@ export class VTOAssetProcessor {
     exportGlb = false,
   ): Promise<VTOProcessingOutput> {
     const assetId = options.assetId || fileName.replace(/\.[^/.]+$/, '').toLowerCase().replace(/[^a-z0-9-_]/g, '-');
+
+    // 1. Inspect source buffer
     const inspectionReport = await this.inspector.inspectBuffer(sourceBuffer, fileName, assetId);
+
+    // 2. Validate asset
     const validationReport = this.validator.validate(inspectionReport);
 
     if (validationReport.overallStatus === 'FAIL') {
@@ -111,6 +118,7 @@ export class VTOAssetProcessor {
       );
     }
 
+    // 3. Parse into Three.js scene for derivative processing
     const sourceScene = await new Promise<THREE.Group>((resolve, reject) => {
       this.loader.parse(
         sourceBuffer,
@@ -123,6 +131,9 @@ export class VTOAssetProcessor {
     return this.processScene(sourceScene, inspectionReport, validationReport, options, exportGlb);
   }
 
+  /**
+   * Processes a parsed Three.js scene and creates the calibrated VTO derivative.
+   */
   public async processScene(
     sourceScene: THREE.Object3D,
     inspection: AssetInspectionReport,
@@ -132,20 +143,30 @@ export class VTOAssetProcessor {
   ): Promise<VTOProcessingOutput> {
     const assetId = inspection.assetId;
     const name = options.name || inspection.fileName.replace(/\.[^/.]+$/, '');
+
+    // Clone source to ensure original remains untouched
     const vtoSceneClone = sourceScene.clone(true);
     vtoSceneClone.updateMatrixWorld(true);
 
+    // Physical dimensions are authoritative product/variant data. Never fabricate defaults.
     const physicalDimensions = requirePhysicalDimensions(options.physicalDimensions);
+
+    // Calculate scale ratio (cm per model unit)
     const nativeWidth = inspection.nativeBounds.size.x > 0 ? inspection.nativeBounds.size.x : 1.0;
     const scaleFactor = (physicalDimensions.frameWidthMm / 10) / nativeWidth;
 
+    // Determine Bridge Registration Point
+    // Target: exact bridge inner contact surface resting on Landmark 168
     const detectedBridge = inspection.detectedFeatures.bridge;
+    const calculatedBridgeZ = detectedBridge.innerContactZ;
+
     const bridgeRegistration: BridgeRegistration = {
       x: options.customBridge?.x ?? detectedBridge.center.x,
       y: options.customBridge?.y ?? detectedBridge.center.y,
-      z: options.customBridge?.z ?? detectedBridge.innerContactZ,
+      z: options.customBridge?.z ?? calculatedBridgeZ,
     };
 
+    // Temple Processing Profile
     const templeProfile: TempleProcessingProfile = {
       mode: options.templeProcessing?.mode ?? (inspection.detectedFeatures.temples.hasSevereRearOverhang ? 'auto' : 'full'),
       strategy: options.templeProcessing?.strategy ?? 'preserve-visible-temple',
@@ -155,19 +176,29 @@ export class VTOAssetProcessor {
       preserveHinges: true,
     };
 
-    const templeResult = this.templeProcessor.processTemples(vtoSceneClone, inspection, templeProfile);
+    // Apply Temple Processing
+    const templeResult = this.templeProcessor.processTemples(
+      vtoSceneClone,
+      inspection,
+      templeProfile,
+    );
+
+    // Create Root Container and normalize origin to the Bridge Registration point
     const vtoRoot = new THREE.Group();
     vtoRoot.name = `VTO_Asset_${assetId}`;
+
+    // Shift model so that origin (0, 0, 0) is the bridge registration point
     templeResult.processedScene.position.set(
       -bridgeRegistration.x,
       -bridgeRegistration.y,
       -bridgeRegistration.z,
     );
     vtoRoot.add(templeResult.processedScene);
-    // Apply the physical scale to the derived root. Source geometry remains untouched.
+    // Apply physical scale to the derived root. Source geometry remains untouched.
     vtoRoot.scale.setScalar(scaleFactor);
     vtoRoot.updateMatrixWorld(true);
 
+    // Build complete Metadata
     const metadata: AssetCalibrationMetadata = {
       assetId,
       name,
@@ -201,7 +232,9 @@ export class VTOAssetProcessor {
     };
 
     let vtoGlbBuffer: ArrayBuffer | undefined;
-    if (exportGlb) vtoGlbBuffer = await this.exportToGlb(vtoRoot);
+    if (exportGlb) {
+      vtoGlbBuffer = await this.exportToGlb(vtoRoot);
+    }
 
     return {
       assetId,
@@ -213,6 +246,9 @@ export class VTOAssetProcessor {
     };
   }
 
+  /**
+   * Serializes a Three.js scene hierarchy into a binary GLB buffer.
+   */
   public async exportToGlb(scene: THREE.Object3D): Promise<ArrayBuffer> {
     const exporter = new GLTFExporter();
     return new Promise((resolve, reject) => {
