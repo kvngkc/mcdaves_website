@@ -44,8 +44,8 @@ export async function getLiveStorefrontProducts(): Promise<StorefrontProduct[]> 
       return [];
     }
 
-    const liveProducts: StorefrontProduct[] = rawProducts
-      .map((p) => {
+    const liveProducts = rawProducts
+      .map((p): StorefrontProduct | null => {
         const price = Number(p.default_price);
         const category = typeof p.category === 'string' ? p.category : '';
         if (!p.id || !p.slug || !p.name || !Number.isFinite(price) || price <= 0 || !VALID_CATEGORIES.has(category)) {
