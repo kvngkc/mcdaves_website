@@ -669,8 +669,10 @@ export class CommerceRepository {
       vto.vto_glb_url.trim() !== ''
     );
 
+    const { glbPath: _legacyGlbPath, ...variantWithoutLegacyGlbPath } = variant as ProductVariant & { glbPath?: string };
+
     return {
-      ...variant,
+      ...variantWithoutLegacyGlbPath,
       inStock,
       stockLevel,
       effectivePrice: variant.priceOverride ?? parent.defaultPrice,
