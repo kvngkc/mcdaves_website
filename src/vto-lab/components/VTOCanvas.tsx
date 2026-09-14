@@ -3,6 +3,10 @@
  * Three.js Canvas Container for VTO Lab.
  * Aligns precisely with the computed letterbox/pillarbox viewport rectangle of the video.
  * Renders in native 3D space with integrated Head Depth Occlusion.
+ *
+ * The canvas is the shared runtime boundary for every VTO consumer. It waits
+ * for the published backend asset registry to hydrate before mounting the renderer,
+ * so GlassesModel cannot resolve calibration against an empty runtime registry.
  */
 
 'use client';
@@ -16,6 +20,7 @@ import {
   VTOActiveModel,
 } from '../tracking/FaceTrackingTypes';
 import { VTORendererProps } from '../rendering/VTORenderer';
+import { useVTOAssets } from '../hooks/useVTOAssets';
 
 const VTORenderer = dynamic<VTORendererProps>(
   () => import('../rendering/VTORenderer'),
@@ -61,6 +66,12 @@ export function VTOCanvas({
   onModelMeasured,
   onError,
 }: VTOCanvasProps) {
+  const { loading, error } = useVTOAssets();
+
+  if (loading || error) {
+    return null;
+  }
+
   return (
     <div
       className="absolute overflow-hidden pointer-events-none z-10"
