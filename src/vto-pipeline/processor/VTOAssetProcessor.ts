@@ -141,7 +141,7 @@ export class VTOAssetProcessor {
     const metadata: AssetCalibrationMetadata = {
       assetId,
       name,
-      status: validation.overallStatus === 'PASS' ? 'CALIBRATED' : 'REVIEW_REQUIRED',
+      status: 'REVIEW_REQUIRED',
       physicalDimensions,
       registration: { bridge: bridgeRegistration, measuredNativeWidth: nativeWidth, widthMultiplier: 1.0, rotationOffsetEuler: { x: 0, y: 0, z: 0 } },
       orientation: { forward: inspection.inferredOrientation.forward, up: inspection.inferredOrientation.up, handedness: 'right-handed' },
