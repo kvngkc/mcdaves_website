@@ -7,9 +7,9 @@ CREATE TABLE IF NOT EXISTS public.products (
   description TEXT NOT NULL DEFAULT '', features JSONB NOT NULL DEFAULT '[]'::jsonb,
   face_shape JSONB NOT NULL DEFAULT '[]'::jsonb, default_price NUMERIC NOT NULL DEFAULT 35000,
   default_original_price NUMERIC, default_material TEXT NOT NULL DEFAULT 'Acetate',
-  default_weight TEXT NOT NULL DEFAULT '22g', frame_width_mm INTEGER NOT NULL DEFAULT 140,
-  lens_width_mm INTEGER NOT NULL DEFAULT 52, bridge_width_mm INTEGER NOT NULL DEFAULT 18,
-  temple_length_mm INTEGER NOT NULL DEFAULT 140, frame_size TEXT NOT NULL DEFAULT '52□18-140',
+  default_weight TEXT NOT NULL DEFAULT '22g', frame_width_mm INTEGER,
+  lens_width_mm INTEGER, bridge_width_mm INTEGER,
+  temple_length_mm INTEGER, frame_size TEXT,
   prescription_required BOOLEAN NOT NULL DEFAULT true, try_on_available BOOLEAN NOT NULL DEFAULT true,
   status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE','DRAFT','ARCHIVED')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()),
@@ -55,42 +55,8 @@ CREATE TABLE IF NOT EXISTS public.product_media (
   url TEXT NOT NULL, alt_text TEXT NOT NULL DEFAULT '', is_primary BOOLEAN NOT NULL DEFAULT false,
   sort_order INTEGER NOT NULL DEFAULT 0, created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now())
 );
-
-CREATE TABLE IF NOT EXISTS public.customers (
-  id TEXT PRIMARY KEY, phone TEXT UNIQUE NOT NULL, name TEXT NOT NULL, email TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()), updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now())
-);
-CREATE TABLE IF NOT EXISTS public.order_intents (
-  id TEXT PRIMARY KEY, customer_id TEXT NOT NULL REFERENCES public.customers(id), customer_name TEXT NOT NULL,
-  customer_phone TEXT NOT NULL, customer_email TEXT, product_id TEXT NOT NULL, product_name TEXT NOT NULL,
-  variant_id TEXT NOT NULL, variant_name TEXT NOT NULL, variant_sku TEXT NOT NULL, quantity INTEGER NOT NULL DEFAULT 1,
-  price_at_intent NUMERIC NOT NULL, currency TEXT NOT NULL DEFAULT 'NGN', lens_request_id TEXT,
-  vto_session_ref TEXT, status TEXT NOT NULL DEFAULT 'NEW', source TEXT NOT NULL DEFAULT 'whatsapp_cta',
-  notes TEXT, payment_link_url TEXT, whatsapp_reference TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()), updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now())
-);
-CREATE TABLE IF NOT EXISTS public.orders (
-  id TEXT PRIMARY KEY, order_intent_id TEXT, customer_id TEXT NOT NULL REFERENCES public.customers(id), payment_id TEXT,
-  payment_reference TEXT UNIQUE NOT NULL, items JSONB NOT NULL DEFAULT '[]'::jsonb, subtotal NUMERIC NOT NULL,
-  shipping_fee NUMERIC NOT NULL DEFAULT 0, total_amount NUMERIC NOT NULL, currency TEXT NOT NULL DEFAULT 'NGN',
-  status TEXT NOT NULL DEFAULT 'CONFIRMED', shipping_address JSONB, customer_notes TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()), updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now())
-);
-CREATE TABLE IF NOT EXISTS public.payments (
-  id TEXT PRIMARY KEY, reference TEXT UNIQUE NOT NULL, order_intent_id TEXT REFERENCES public.order_intents(id) ON DELETE SET NULL,
-  customer_id TEXT NOT NULL REFERENCES public.customers(id), amount NUMERIC NOT NULL, currency TEXT NOT NULL DEFAULT 'NGN',
-  status TEXT NOT NULL DEFAULT 'PAID' CHECK (status IN ('PENDING','PAID','FAILED','REFUNDED')), channel TEXT, paid_at TIMESTAMPTZ,
-  gateway_response JSONB, created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()), updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now())
-);
-CREATE TABLE IF NOT EXISTS public.lens_requests (
-  id TEXT PRIMARY KEY, customer_id TEXT NOT NULL REFERENCES public.customers(id), option TEXT NOT NULL CHECK (option IN ('plano','upload','whatsapp','values')),
-  prescription_values JSONB, file_url TEXT, verification_state TEXT NOT NULL DEFAULT 'CUSTOMER_SUBMITTED' CHECK (verification_state IN ('CUSTOMER_SUBMITTED','OPTICIAN_VERIFIED','REQUIRES_REVISION','REJECTED')),
-  optician_notes TEXT, customer_notes TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()), updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now())
-);
-
-CREATE INDEX IF NOT EXISTS idx_products_slug ON public.products(slug);
-CREATE INDEX IF NOT EXISTS idx_products_status ON public.products(status);
-CREATE INDEX IF NOT EXISTS idx_variants_product_id ON public.product_variants(product_id);
-CREATE INDEX IF NOT EXISTS idx_variants_vto_asset_id ON public.product_variants(vto_asset_id);
-CREATE INDEX IF NOT EXISTS idx_vto_calibrations_asset ON public.vto_asset_calibrations(asset_id);
-CREATE INDEX IF NOT EXISTS idx_vto_calibrations_status ON public.vto_asset_calibrations(status);
+CREATE TABLE IF NOT EXISTS public.customers (id TEXT PRIMARY KEY, phone TEXT UNIQUE NOT NULL, name TEXT NOT NULL, email TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()), updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()));
+CREATE TABLE IF NOT EXISTS public.order_intents (id TEXT PRIMARY KEY, customer_id TEXT NOT NULL REFERENCES public.customers(id), customer_name TEXT NOT NULL, customer_phone TEXT NOT NULL, customer_email TEXT, product_id TEXT NOT NULL, product_name TEXT NOT NULL, variant_id TEXT NOT NULL, variant_name TEXT NOT NULL, variant_sku TEXT NOT NULL, quantity INTEGER NOT NULL DEFAULT 1, price_at_intent NUMERIC NOT NULL, currency TEXT NOT NULL DEFAULT 'NGN', lens_request_id TEXT, vto_session_ref TEXT, status TEXT NOT NULL DEFAULT 'NEW', source TEXT NOT NULL DEFAULT 'whatsapp_cta', notes TEXT, payment_link_url TEXT, whatsapp_reference TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()), updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()));
+CREATE TABLE IF NOT EXISTS public.orders (id TEXT PRIMARY KEY, order_intent_id TEXT, customer_id TEXT NOT NULL REFERENCES public.customers(id), payment_id TEXT, payment_reference TEXT UNIQUE NOT NULL, items JSONB NOT NULL DEFAULT '[]'::jsonb, subtotal NUMERIC NOT NULL, shipping_fee NUMERIC NOT NULL DEFAULT 0, total_amount NUMERIC NOT NULL, currency TEXT NOT NULL DEFAULT 'NGN', status TEXT NOT NULL DEFAULT 'CONFIRMED', shipping_address JSONB, customer_notes TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()), updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()));
+CREATE TABLE IF NOT EXISTS public.payments (id TEXT PRIMARY KEY, reference TEXT UNIQUE NOT NULL, order_intent_id TEXT REFERENCES public.order_intents(id) ON DELETE SET NULL, customer_id TEXT NOT NULL REFERENCES public.customers(id), amount NUMERIC NOT NULL, currency TEXT NOT NULL DEFAULT 'NGN', status TEXT NOT NULL DEFAULT 'PAID' CHECK (status IN ('PENDING','PAID','FAILED','REFUNDED')), channel TEXT, paid_at TIMESTAMPTZ, gateway_response JSONB, created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()), updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()));
+CREATE TABLE IF NOT EXISTS public.lens_requests (id TEXT PRIMARY KEY, customer_id TEXT NOT NULL REFERENCES public.customers(id), option TEXT NOT NULL CHECK (option IN ('plano','upload','whatsapp','values')), prescription_values JSONB, file_url TEXT, verification_state TEXT NOT NULL DEFAULT 'CUSTOMER_SUBMITTED' CHECK (verification_state IN ('CUSTOMER_SUBMITTED','OPTICIAN_VERIFIED','REQUIRES_REVISION','REJECTED')), optician_notes TEXT, customer_notes TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()), updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()));

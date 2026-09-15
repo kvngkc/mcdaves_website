@@ -6,16 +6,16 @@
 
 import { Point3D } from '../tracking/FaceTrackingTypes';
 import { globalVTOAssetRegistry } from '../../vto-pipeline/registry/VTOAssetRegistry';
+import type { OpticalDimensions } from '../../vto-pipeline/types/AssetTypes';
 
 export interface CalibrationEntry {
   modelId: string;
   glbPath: string;
   name: string;
   defaultFrameSize?: string;
-  /**
-   * Exact physical bridge contact point in the model's native coordinate system.
-   * Model is translated by -bridge once during initialization.
-   */
+  /** Explicit physical dimensions from the authoritative calibration record. */
+  physicalDimensions: OpticalDimensions;
+  /** Exact 3D bridge contact point in the model's native coordinate system. */
   bridge: Point3D;
   /** Verified native outer width of the GLB before scaling. */
   measuredNativeWidth: number;
@@ -31,10 +31,10 @@ export function getCalibrationForGlb(glbPath: string): CalibrationEntry | null {
   const metadata = globalVTOAssetRegistry.getAsset(glbPath);
   if (!metadata) return null;
   const dims = metadata.physicalDimensions;
-  
-  // Do not fabricate a default 52□18-140 frame size. If it's missing, it should remain undefined.
-  const frameSizeStr = dims.lensWidthMm && dims.bridgeWidthMm && dims.templeLengthMm 
-    ? `${dims.lensWidthMm}□${dims.bridgeWidthMm}-${dims.templeLengthMm}` 
+
+  // Do not fabricate a default 52□18-140 frame size. If it is missing, it remains undefined.
+  const frameSizeStr = dims.lensWidthMm && dims.bridgeWidthMm && dims.templeLengthMm
+    ? `${dims.lensWidthMm}□${dims.bridgeWidthMm}-${dims.templeLengthMm}`
     : undefined;
 
   return {
@@ -42,6 +42,7 @@ export function getCalibrationForGlb(glbPath: string): CalibrationEntry | null {
     glbPath: metadata.paths.vtoGlbUrl || glbPath,
     name: metadata.name,
     defaultFrameSize: frameSizeStr,
+    physicalDimensions: dims,
     bridge: {
       x: metadata.registration.bridge.x,
       y: metadata.registration.bridge.y,

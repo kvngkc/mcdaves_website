@@ -2,7 +2,6 @@
 /**
  * 3D Eyewear Model Component for VTO Lab.
  * Anchored to the detected nose bridge landmark in metric 3D camera space.
- * Supports both mutable detectionRef for zero-latency 60 FPS updates and direct faceMatrix prop.
  */
 
 'use client';
@@ -20,7 +19,7 @@ import { FaceDetectionResult, ModelMeasurement } from '../tracking/FaceTrackingT
 
 export interface GlassesModelProps {
   glbPath: string;
-  frameSize: string;
+  frameSize?: string;
   detectionRef?: MutableRefObject<FaceDetectionResult | null>;
   faceMatrix?: Float32Array | null;
   mirrored?: boolean;
@@ -39,16 +38,15 @@ export function GlassesModel(props: GlassesModelProps) {
 
   const isValid = useMemo(() => {
     if (!calibration) return false;
-    let nativeW = calibration.measuredNativeWidth;
-    const activeFrameSize = props.frameSize || calibration.defaultFrameSize;
-    if (!nativeW || nativeW <= 0 || !activeFrameSize) {
-      return false;
-    }
-    return true;
-  }, [calibration, props.frameSize]);
+    return Boolean(
+      calibration.measuredNativeWidth > 0 &&
+      calibration.physicalDimensions.frameWidthMm &&
+      calibration.physicalDimensions.frameWidthMm > 0,
+    );
+  }, [calibration]);
 
   if (!isValid) {
-    console.warn("[VTO] Refusing to render: Asset lacks required calibration evidence.");
+    console.warn('[VTO] Refusing to render: asset lacks required physical calibration evidence.');
     return null;
   }
 
@@ -71,15 +69,14 @@ function GlassesModelInner({
   const rootRef = useRef<Group>(null);
   const filterRef = useRef(new PoseFilter(45.0, 50.0, 40.0));
 
-  // Intercept and rewrite Supabase URLs to leverage Vercel Edge Compression
   const optimizedGlbPath = useMemo(() => {
     try {
       if (glbPath.includes('/storage/v1/object/public/vto-models/')) {
         const url = new URL(glbPath);
         return `/vto-models${url.pathname.split('/vto-models')[1]}`;
       }
-    } catch (e) {
-      // ignore parsing errors
+    } catch {
+      // Preserve the original URL when it cannot be parsed.
     }
     return glbPath;
   }, [glbPath]);
@@ -101,42 +98,28 @@ function GlassesModelInner({
       return;
     }
 
-    // Defer heavy preparation to avoid blocking the main thread
     const prepareAsync = async () => {
       try {
         const newPrepared = await prepareGlassesModel(scene as Group, calibration, activeClipTemples, templeDepthCutoff);
         preparedModelCache.set(cacheKey, newPrepared);
         setPrepared(newPrepared);
       } catch (err) {
-        console.error("prepareGlassesModel error:", err);
+        console.error('prepareGlassesModel error:', err);
       }
     };
 
-    if (typeof requestIdleCallback !== 'undefined') {
-      requestIdleCallback(prepareAsync);
-    } else {
-      setTimeout(prepareAsync, 0);
-    }
-
-    // Note: Materials are no longer disposed on unmount since they are cached globally per session.
-    // This allows instant re-renders when toggling the same frame.
+    if (typeof requestIdleCallback !== 'undefined') requestIdleCallback(prepareAsync);
+    else setTimeout(prepareAsync, 0);
   }, [scene, calibration, clipTemples, templeDepthCutoff, glbPath]);
 
   const scale = useMemo(() => {
-    let nativeW = prepared?.measurements.nativeWidth;
-    if (calibration.measuredNativeWidth && calibration.measuredNativeWidth > 0) {
-      nativeW = calibration.measuredNativeWidth;
-    }
-    const activeFrameSize = frameSize || calibration.defaultFrameSize;
-    if (!nativeW || !activeFrameSize) return 1.0;
-    
-    return calculateModelScale(activeFrameSize, nativeW, calibration).scale;
+    const nativeW = calibration.measuredNativeWidth || prepared?.measurements.nativeWidth;
+    if (!nativeW) return 0;
+    return calculateModelScale(frameSize || '', nativeW, calibration).scale;
   }, [frameSize, calibration, prepared]);
 
   useEffect(() => {
-    if (prepared && onModelMeasured) {
-      onModelMeasured(prepared.measurements, scale);
-    }
+    if (prepared && onModelMeasured) onModelMeasured(prepared.measurements, scale);
   }, [prepared, scale, onModelMeasured]);
 
   useFrame((_, delta) => {
@@ -144,7 +127,7 @@ function GlassesModelInner({
     if (!root) return;
 
     const matrix = detectionRef?.current?.faceMatrix ?? faceMatrix ?? null;
-    if (!matrix || !calibration) {
+    if (!matrix || !calibration || scale <= 0) {
       filterRef.current.reset();
       root.visible = false;
       return;
@@ -152,28 +135,19 @@ function GlassesModelInner({
 
     root.visible = true;
     const { position, quaternion } = getMetricBridgePose(matrix, mirrored, calibration.pantoscopicTilt);
-
     filterRef.current.setTarget(position, quaternion, scale);
     filterRef.current.update(delta);
-
     root.position.copy(filterRef.current.position);
     root.quaternion.copy(filterRef.current.quaternion);
     root.scale.setScalar(filterRef.current.scale);
   });
 
-  if (!prepared) return null;
+  if (!prepared || scale <= 0) return null;
 
   return (
     <group ref={rootRef} name="VTO_GlassesRoot" visible={true}>
       <primitive object={prepared.root} />
-
-      {showFitAnchor && (
-        <mesh position={[0, 0, 0]} renderOrder={1000}>
-          <sphereGeometry args={[0.35, 16, 16]} />
-          <meshBasicMaterial color="#ffaa00" depthTest={false} />
-        </mesh>
-      )}
-
+      {showFitAnchor && <mesh position={[0, 0, 0]} renderOrder={1000}><sphereGeometry args={[0.35, 16, 16]} /><meshBasicMaterial color="#ffaa00" depthTest={false} /></mesh>}
       {showAxes && <axesHelper args={[4]} />}
     </group>
   );
