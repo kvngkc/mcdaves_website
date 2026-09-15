@@ -20,16 +20,6 @@ import {
   TempleProcessingProfile,
 } from '../types/AssetTypes';
 
-export const VTO_OUTPUT_SIZE_LIMITS = { passBytes: 2 * 1024 * 1024, reviewBytes: 3 * 1024 * 1024 } as const;
-export type VTOOutputSizeStatus = 'PASS' | 'REVIEW_REQUIRED' | 'FAIL';
-
-export function classifyVTOOutputSize(sizeBytes: number): VTOOutputSizeStatus {
-  if (!Number.isFinite(sizeBytes) || sizeBytes < 0) throw new Error(`Invalid VTO output size: ${sizeBytes}`);
-  if (sizeBytes < VTO_OUTPUT_SIZE_LIMITS.passBytes) return 'PASS';
-  if (sizeBytes <= VTO_OUTPUT_SIZE_LIMITS.reviewBytes) return 'REVIEW_REQUIRED';
-  return 'FAIL';
-}
-
 export interface VTOProcessingOptions {
   assetId?: string;
   name?: string;
