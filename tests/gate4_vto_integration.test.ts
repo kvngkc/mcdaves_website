@@ -35,13 +35,8 @@ describe('Gate 4 End-to-End VTO Integration', () => {
         asset_id: publishedAssetId,
         name: 'Gate 4 Published Asset',
         status: 'PUBLISHED',
-        frame_width_mm: 140,
-        lens_width_mm: 50,
-        bridge_width_mm: 20,
-        temple_length_mm: 140,
-        bridge_x: 0,
-        bridge_y: 0,
-        bridge_z: 0,
+        // Gate 4 publication is intentionally valid without fabricated physical
+        // dimensions. The database invariant is the verified derived asset.
         measured_native_width: 1.0,
         width_multiplier: 1.0,
         source_glb_url: '/models/gate4-published.glb',
@@ -82,6 +77,28 @@ describe('Gate 4 End-to-End VTO Integration', () => {
       },
     ]);
     if (varError) throw new Error(`Failed to insert test variants: ${varError.message}`);
+  });
+
+  it('accepts a PUBLISHED VTO asset when Gate 4 verification passes without fabricated dimensions', async () => {
+    const { data, error } = await supabase
+      .from('vto_asset_calibrations')
+      .select('status,frame_width_mm,lens_width_mm,bridge_width_mm,temple_length_mm,bridge_x,bridge_y,bridge_z,derived_storage_path,derived_content_hash,derived_size_bytes,output_size_status')
+      .eq('asset_id', publishedAssetId)
+      .single();
+
+    expect(error).toBeNull();
+    expect(data?.status).toBe('PUBLISHED');
+    expect(data?.frame_width_mm).toBeNull();
+    expect(data?.lens_width_mm).toBeNull();
+    expect(data?.bridge_width_mm).toBeNull();
+    expect(data?.temple_length_mm).toBeNull();
+    expect(data?.bridge_x).toBeNull();
+    expect(data?.bridge_y).toBeNull();
+    expect(data?.bridge_z).toBeNull();
+    expect(data?.derived_storage_path).toBe('fixtures/gate4-published.glb');
+    expect(data?.derived_content_hash).toBe('gate4-fixture-hash');
+    expect(data?.derived_size_bytes).toBe(100);
+    expect(data?.output_size_status).toBe('PASS');
   });
 
   it('correctly maps a PUBLISHED VTO asset to the variant glbPath', async () => {
