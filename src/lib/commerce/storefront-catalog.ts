@@ -108,15 +108,20 @@ export async function getLiveResolvedProductBySlug(slug: string): Promise<any | 
     const { data: p, error: prodErr } = await supabaseClient.from('products').select('*').eq('slug', slug).eq('status', 'ACTIVE').single();
     if (prodErr || !p) return null;
 
-    const defaultPrice = Number(p.default_price);
-    const dimensions = {
-      frameWidthMm: Number(p.frame_width_mm),
-      lensWidthMm: Number(p.lens_width_mm),
-      bridgeWidthMm: Number(p.bridge_width_mm),
-      templeLengthMm: Number(p.temple_length_mm),
+    const optionalPositiveNumber = (value: unknown): number | undefined => {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
     };
 
-    if (!Number.isFinite(defaultPrice) || defaultPrice <= 0 || !Object.values(dimensions).every((value) => Number.isFinite(value) && value > 0)) {
+    const dimensions = {
+      frameWidthMm: optionalPositiveNumber(p.frame_width_mm),
+      lensWidthMm: optionalPositiveNumber(p.lens_width_mm),
+      bridgeWidthMm: optionalPositiveNumber(p.bridge_width_mm),
+      templeLengthMm: optionalPositiveNumber(p.temple_length_mm),
+    };
+
+    const defaultPrice = Number(p.default_price);
+    if (!Number.isFinite(defaultPrice) || defaultPrice <= 0) {
       console.warn('[Storefront] Hiding incomplete product detail record:', p.id);
       return null;
     }
