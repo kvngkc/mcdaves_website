@@ -2,7 +2,7 @@ import 'server-only';
 
 import { createHash } from 'node:crypto';
 import { supabaseServer } from '@/lib/supabase/server';
-import { defaultVTOAssetProcessor, classifyVTOOutputSize } from '../processor/VTOAssetProcessor';
+import { defaultVTOAssetProcessor } from '../processor/VTOAssetProcessor';
 import { OpticalDimensions, BridgeRegistration } from '../types/AssetTypes';
 
 const BUCKET = 'vto-models';
@@ -20,7 +20,6 @@ export interface VTOPipelineRequest {
 export interface VTOPipelineResult {
   assetId: string;
   status: 'CALIBRATED' | 'REVIEW_REQUIRED' | 'PROCESSING_FAILED';
-  outputSizeStatus?: 'PASS' | 'REVIEW_REQUIRED' | 'FAIL';
   sourceSizeBytes?: number;
   derivedSizeBytes?: number;
   sourceHash?: string;
@@ -65,19 +64,8 @@ export async function processVTOAsset(request: VTOPipelineRequest): Promise<VTOP
     if (!output.vtoGlbBuffer) throw new Error('VTO processor returned no derived GLB.');
 
     const derivedSizeBytes = output.vtoGlbBuffer.byteLength;
-    const outputSizeStatus = classifyVTOOutputSize(derivedSizeBytes);
     const derivedHash = sha256(output.vtoGlbBuffer);
     const derivedPath = `${request.assetId}/derived/${request.assetId}-${derivedHash.slice(0, 12)}.glb`;
-
-    if (outputSizeStatus === 'FAIL') {
-      const failureReason = `Derived GLB exceeds the 3 MB hard limit (${derivedSizeBytes} bytes).`;
-      await updateAsset(request.assetId, {
-        status: 'PROCESSING_FAILED', derived_size_bytes: derivedSizeBytes, derived_content_hash: derivedHash,
-        output_size_status: outputSizeStatus, processor_version: output.metadata.versioning.processorVersion,
-        calibration_version: output.metadata.versioning.calibrationVersion, processing_failed_at: new Date().toISOString(), failure_reason: failureReason,
-      });
-      return { assetId: request.assetId, status: 'PROCESSING_FAILED', outputSizeStatus, sourceSizeBytes: sourceBuffer.byteLength, derivedSizeBytes, sourceHash, derivedHash, sourceDeleted: false, failureReason };
-    }
 
     const { error: uploadError } = await supabaseServer!.storage.from(BUCKET).upload(derivedPath, Buffer.from(output.vtoGlbBuffer), { contentType: 'model/gltf-binary', upsert: false });
     if (uploadError) throw new Error(`Failed to save derived GLB: ${uploadError.message}`);
@@ -91,13 +79,13 @@ export async function processVTOAsset(request: VTOPipelineRequest): Promise<VTOP
     const finalStatus = 'REVIEW_REQUIRED' as const;
     await updateAsset(request.assetId, {
       status: finalStatus, source_storage_path: request.sourceStoragePath, derived_storage_path: derivedPath,
-      derived_size_bytes: derivedSizeBytes, derived_content_hash: derivedHash, output_size_status: outputSizeStatus,
+      derived_size_bytes: derivedSizeBytes, derived_content_hash: derivedHash,
       processor_version: output.metadata.versioning.processorVersion, calibration_version: output.metadata.versioning.calibrationVersion,
       storage_bucket: BUCKET, storage_path: derivedPath, vto_glb_url: derivedPath, processing_completed_at: new Date().toISOString(),
-      provenance: { ...(request.provenance ?? {}), sourceHash, derivedHash, sourcePath: request.sourceStoragePath, derivedPath, processorVersion: output.metadata.versioning.processorVersion, outputSizeStatus, physicalDimensions: request.physicalDimensions },
+      provenance: { ...(request.provenance ?? {}), sourceHash, derivedHash, sourcePath: request.sourceStoragePath, derivedPath, processorVersion: output.metadata.versioning.processorVersion, physicalDimensions: request.physicalDimensions },
     });
 
-    return { assetId: request.assetId, status: finalStatus, outputSizeStatus, sourceSizeBytes: sourceBuffer.byteLength, derivedSizeBytes, sourceHash, derivedHash, derivedStoragePath: derivedPath, sourceDeleted: false };
+    return { assetId: request.assetId, status: finalStatus, sourceSizeBytes: sourceBuffer.byteLength, derivedSizeBytes, sourceHash, derivedHash, derivedStoragePath: derivedPath, sourceDeleted: false };
   } catch (error) {
     const failureReason = error instanceof Error ? error.message : String(error);
     try { await updateAsset(request.assetId, { status: 'PROCESSING_FAILED', processing_failed_at: new Date().toISOString(), failure_reason: failureReason }); } catch { /* preserve original error */ }
@@ -107,11 +95,11 @@ export async function processVTOAsset(request: VTOPipelineRequest): Promise<VTOP
 
 export async function deleteVTOAssetSourceAfterPublication(assetId: string): Promise<void> {
   assertConfigured();
-  const { data: asset, error } = await supabaseServer!.from('vto_asset_calibrations').select('source_storage_path,source_deleted_at,status,derived_storage_path,derived_content_hash,derived_size_bytes,output_size_status').eq('asset_id', assetId).maybeSingle();
+  const { data: asset, error } = await supabaseServer!.from('vto_asset_calibrations').select('source_storage_path,source_deleted_at,status,derived_storage_path,derived_content_hash,derived_size_bytes').eq('asset_id', assetId).maybeSingle();
   if (error) throw new Error(error.message);
   if (!asset) throw new Error('VTO asset not found.');
   if (asset.status !== 'PUBLISHED') throw new Error('Source deletion requires PUBLISHED status.');
-  if (!asset.derived_storage_path || !asset.derived_content_hash || asset.output_size_status !== 'PASS') throw new Error('Source deletion requires a verified passing derived asset.');
+  if (!asset.derived_storage_path || !asset.derived_content_hash || !asset.derived_size_bytes) throw new Error('Source deletion requires a verified derived asset.');
   if (asset.source_deleted_at || !asset.source_storage_path) return;
 
   const { data: verifyData, error: verifyError } = await supabaseServer!.storage.from(BUCKET).download(asset.derived_storage_path);
