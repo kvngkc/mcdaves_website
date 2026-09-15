@@ -1,4 +1,4 @@
-name: Storefront E2E Tests (Playwright)
+name: Storefront + Admin VTO Tests
 
 on:
   push:
@@ -50,7 +50,7 @@ jobs:
           retention-days: 30
 
   vitest:
-    name: Run Forensic Integration Tests (Vitest)
+    name: Run VTO + Forensic Integration Tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -69,8 +69,14 @@ jobs:
           test -n "$TEST_SUPABASE_SERVICE_ROLE_KEY"
         env:
           TEST_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TEST_SUPABASE_SERVICE_ROLE_KEY }}
-      - name: Run Vitest Tests
-        run: npx vitest run
+      - name: Run Admin VTO Publication Regression
+        run: npx vitest run tests/gate4_vto_integration.test.ts
+        env:
+          TEST_SUPABASE_URL: ${{ env.TEST_SUPABASE_URL }}
+          TEST_SUPABASE_PUBLISHABLE_KEY: ${{ env.TEST_SUPABASE_PUBLISHABLE_KEY }}
+          TEST_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TEST_SUPABASE_SERVICE_ROLE_KEY }}
+      - name: Run Remaining Vitest Tests
+        run: npx vitest run --exclude tests/gate4_vto_integration.test.ts
         env:
           TEST_SUPABASE_URL: ${{ env.TEST_SUPABASE_URL }}
           TEST_SUPABASE_PUBLISHABLE_KEY: ${{ env.TEST_SUPABASE_PUBLISHABLE_KEY }}
