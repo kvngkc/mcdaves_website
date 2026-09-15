@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
 
     const { data: asset, error: assetError } = await supabaseServer
       .from('vto_asset_calibrations')
-      .select('asset_id,status,derived_storage_path,derived_content_hash,derived_size_bytes,output_size_status,provenance,vto_glb_url,storage_path,storage_bucket')
+      .select('asset_id,status,derived_storage_path,derived_content_hash,derived_size_bytes,provenance,vto_glb_url,storage_path,storage_bucket')
       .eq('asset_id', assetId)
       .maybeSingle();
     if (assetError) throw new Error(assetError.message);
@@ -39,25 +39,23 @@ export async function POST(request: NextRequest) {
     let derivedPath = asset.derived_storage_path as string | null;
     let derivedHash = asset.derived_content_hash as string | null;
     let derivedSize = asset.derived_size_bytes as number | null;
-    let outputSizeStatus = asset.output_size_status as string | null;
 
     // Backfill Gate 4 verification for legacy approved assets that already have a stored GLB.
-    if (!derivedPath || !derivedHash || !derivedSize || outputSizeStatus !== 'PASS') {
+    if (!derivedPath || !derivedHash || !derivedSize) {
       const candidatePath = derivedPath || (typeof asset.vto_glb_url === 'string' ? getStoragePathFromPublicUrl(asset.vto_glb_url) : null) || (typeof asset.storage_path === 'string' ? asset.storage_path : null);
       if (!candidatePath) return NextResponse.json({ error: 'Verified derived asset is missing. Re-process the VTO asset before publication.' }, { status: 409 });
       const { data: candidate, error: candidateError } = await supabaseServer.storage.from(BUCKET).download(candidatePath);
       if (candidateError || !candidate) return NextResponse.json({ error: 'Stored VTO GLB could not be verified before publication.' }, { status: 409 });
       const candidateBytes = await candidate.arrayBuffer();
-      if (candidateBytes.byteLength === 0 || candidateBytes.byteLength > 3 * 1024 * 1024) return NextResponse.json({ error: 'Stored VTO GLB exceeds the 3 MB publication limit.' }, { status: 409 });
+      if (candidateBytes.byteLength === 0) return NextResponse.json({ error: 'Stored VTO GLB is empty.' }, { status: 409 });
       derivedPath = candidatePath;
       derivedSize = candidateBytes.byteLength;
       derivedHash = createHash('sha256').update(Buffer.from(candidateBytes)).digest('hex');
-      outputSizeStatus = 'PASS';
       const { data: publicUrl } = supabaseServer.storage.from(BUCKET).getPublicUrl(derivedPath);
       const { error: metadataError } = await supabaseServer.from('vto_asset_calibrations').update({
         derived_storage_path: derivedPath, derived_content_hash: derivedHash, derived_size_bytes: derivedSize,
-        output_size_status: outputSizeStatus, storage_bucket: BUCKET, storage_path: derivedPath,
-        vto_glb_url: publicUrl.publicUrl, provenance: { ...provenance, derivedPath, derivedHash, outputSizeStatus },
+        storage_bucket: BUCKET, storage_path: derivedPath,
+        vto_glb_url: publicUrl.publicUrl, provenance: { ...provenance, derivedPath, derivedHash },
         updated_at: new Date().toISOString(),
       }).eq('asset_id', assetId);
       if (metadataError) throw new Error(`Failed to record VTO verification metadata: ${metadataError.message}`);
@@ -81,7 +79,7 @@ export async function POST(request: NextRequest) {
       const { error: publishError } = await supabaseServer.from('vto_asset_calibrations').update({
         status: 'PUBLISHED', vto_glb_url: finalPublicUrl.publicUrl, storage_bucket: BUCKET, storage_path: derivedPath,
         derived_storage_path: derivedPath, derived_content_hash: derivedHash, derived_size_bytes: derivedSize,
-        output_size_status: 'PASS', updated_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       }).eq('asset_id', assetId).in('status', ['REVIEW_REQUIRED', 'APPROVED']);
       if (publishError) throw new Error(`Failed to publish VTO asset: ${publishError.message}`);
     }
