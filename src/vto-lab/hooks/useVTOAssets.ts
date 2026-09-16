@@ -1,83 +1,81 @@
 'use client';
-
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { globalVTOAssetRegistry } from '@/vto-pipeline/registry/VTOAssetRegistry';
 import type { AssetCalibrationMetadata } from '@/vto-pipeline/types/AssetTypes';
 
 const DEFAULT_ORIENTATION = { forward: '+Z', up: '+Y', handedness: 'right-handed' } as const;
-const DEFAULT_TEMPLE_PROCESSING = { mode: 'auto', strategy: 'preserve-visible-temple', cutRatio: 0.70, preserveFrontRims: true, preserveHinges: true } as const;
-const DEFAULT_VERSIONING = { processorVersion: '1.0.0', sourceVersion: 1, vtoVersion: 1, calibrationVersion: 1 };
+const DEFAULT_TEMPLE_PROCESSING = { mode: 'disabled', strategy: 'manual', cutRatio: 1, preserveFrontRims: true, preserveHinges: true, useMaterialClipping: false } as const;
+const DEFAULT_MANUAL = { position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, scale: 1 } as const;
 
 let fetchPromise: Promise<void> | null = null;
-let isFetched = false;
+
+async function hydrateVTOAssets(): Promise<void> {
+  const res = await fetch('/api/vto/assets', { cache: 'no-store' });
+  if (!res.ok) throw new Error('Failed to fetch VTO assets');
+  const payload = await res.json();
+  const rows = Array.isArray(payload) ? payload : payload?.assets;
+  if (!Array.isArray(rows)) throw new Error('Invalid VTO asset response');
+
+  const metadata = rows.map((row: any): AssetCalibrationMetadata => {
+    const dimensions = row.physical_dimensions ?? {};
+    const registration = row.registration ?? {};
+    const bridge = registration.bridge ?? {};
+    const manual = row.manual_transform ?? DEFAULT_MANUAL;
+    const vtoUrl = row.vto_glb_url || row.storage_path || '';
+    return {
+      assetId: row.asset_id,
+      name: row.name,
+      status: row.status,
+      physicalDimensions: {
+        frameWidthMm: dimensions.frame_width_mm != null ? Number(dimensions.frame_width_mm) : null,
+        lensWidthMm: dimensions.lens_width_mm != null ? Number(dimensions.lens_width_mm) : null,
+        bridgeWidthMm: dimensions.bridge_width_mm != null ? Number(dimensions.bridge_width_mm) : null,
+        templeLengthMm: dimensions.temple_length_mm != null ? Number(dimensions.temple_length_mm) : null,
+      },
+      registration: {
+        bridge: { x: Number(bridge.x) || 0, y: Number(bridge.y) || 0, z: Number(bridge.z) || 0 },
+        measuredNativeWidth: 1,
+        widthMultiplier: 1,
+        rotationOffsetEuler: registration.rotation_offset_euler ?? { x: 0, y: 0, z: 0 },
+      },
+      manualTransform: {
+        position: { x: Number(manual.position?.x) || 0, y: Number(manual.position?.y) || 0, z: Number(manual.position?.z) || 0 },
+        rotation: { x: Number(manual.rotation?.x) || 0, y: Number(manual.rotation?.y) || 0, z: Number(manual.rotation?.z) || 0 },
+        scale: Number(manual.scale) > 0 ? Number(manual.scale) : 1,
+      },
+      orientation: DEFAULT_ORIENTATION,
+      templeProcessing: DEFAULT_TEMPLE_PROCESSING,
+      versioning: { processorVersion: 'manual', sourceVersion: 1, vtoVersion: 1, calibrationVersion: Number(row.calibration_version) || 1 },
+      paths: { sourceGlbUrl: vtoUrl, vtoGlbUrl: vtoUrl, previewImages: [] },
+      metadataSource: row.metadata_source || 'DB',
+      updatedAt: row.updated_at,
+    };
+  });
+  globalVTOAssetRegistry.replaceAssets(metadata);
+}
+
+export function refreshVTOAssets(): Promise<void> {
+  if (!fetchPromise) fetchPromise = hydrateVTOAssets().finally(() => { fetchPromise = null; });
+  return fetchPromise;
+}
 
 export function useVTOAssets() {
-  const [loading, setLoading] = useState(!isFetched);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (isFetched) {
-      setLoading(false);
-      return;
-    }
-
-    if (!fetchPromise) {
-      fetchPromise = (async () => {
-        try {
-          const res = await fetch('/api/vto/assets');
-          if (!res.ok) throw new Error('Failed to fetch VTO assets');
-          
-          const rows = await res.json();
-          
-          if (Array.isArray(rows)) {
-            rows.forEach((row: any) => {
-              const metadata: AssetCalibrationMetadata = {
-                assetId: row.asset_id,
-                name: row.name,
-                status: row.status as any,
-                physicalDimensions: {
-                  frameWidthMm: row.frame_width_mm != null ? Number(row.frame_width_mm) : null,
-                  lensWidthMm: row.lens_width_mm != null ? Number(row.lens_width_mm) : null,
-                  bridgeWidthMm: row.bridge_width_mm != null ? Number(row.bridge_width_mm) : null,
-                  templeLengthMm: row.temple_length_mm != null ? Number(row.temple_length_mm) : null,
-                },
-                registration: {
-                  bridge: {
-                    x: row.bridge_x != null ? Number(row.bridge_x) : null,
-                    y: row.bridge_y != null ? Number(row.bridge_y) : null,
-                    z: row.bridge_z != null ? Number(row.bridge_z) : null,
-                  },
-                  measuredNativeWidth: Number(row.measured_native_width) || 1.0,
-                  widthMultiplier: Number(row.width_multiplier) || 1.0,
-                  rotationOffsetEuler: row.rotation_offset_euler || { x: 0, y: 0, z: 0 },
-                },
-                orientation: DEFAULT_ORIENTATION,
-                templeProcessing: DEFAULT_TEMPLE_PROCESSING,
-                versioning: DEFAULT_VERSIONING,
-                paths: {
-                  sourceGlbUrl: row.source_glb_url,
-                  vtoGlbUrl: row.vto_glb_url,
-                  previewImages: row.preview_images || [],
-                },
-                metadataSource: row.metadata_source || 'DB',
-                updatedAt: row.updated_at,
-              };
-              
-              globalVTOAssetRegistry.registerAsset(metadata);
-            });
-          }
-          isFetched = true;
-        } catch (err: any) {
-          console.error('[useVTOAssets] Error:', err);
-          setError(err.message);
-        } finally {
-          setLoading(false);
-        }
-      })();
-    } else {
-      fetchPromise.then(() => setLoading(false));
-    }
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try { await refreshVTOAssets(); }
+    catch (err: any) { setError(err?.message || 'Failed to fetch VTO assets'); }
+    finally { setLoading(false); }
   }, []);
 
-  return { loading, error };
+  useEffect(() => {
+    void refresh();
+    const onVisible = () => { if (document.visibilityState === 'visible') void refresh(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [refresh]);
+
+  return { loading, error, refresh };
 }

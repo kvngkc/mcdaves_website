@@ -1,6 +1,9 @@
 // src/vto-lab/index.ts
 /**
- * Isolated VTO Lab Module Exports.
+ * Isolated VTO runtime module exports.
+ *
+ * Storefront owns consumption only. Authoring, calibration, approval,
+ * publication, and asset management live in the admin repository.
  */
 
 export * from './tracking/FaceTrackingTypes';
@@ -11,5 +14,3 @@ export * from './pose/CoordinateTransform';
 export * from './models/ModelLoader';
 export * from './models/ModelCalibration';
 export * from './calibration/calibrationRegistry';
-export { VTOApp } from './VTOApp';
-export { default } from './VTOApp';
