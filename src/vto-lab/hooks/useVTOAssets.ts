@@ -50,6 +50,11 @@ export function useVTOAssets() {
                   measuredNativeWidth: Number(row.measured_native_width) || 1.0,
                   widthMultiplier: Number(row.width_multiplier) || 1.0,
                   rotationOffsetEuler: row.rotation_offset_euler || { x: 0, y: 0, z: 0 },
+                  manualTransform: row.manual_transform || {
+                    position: { x: 0, y: 0, z: 0 },
+                    rotation: { x: 0, y: 0, z: 0 },
+                    scale: 1,
+                  },
                 },
                 orientation: DEFAULT_ORIENTATION,
                 templeProcessing: DEFAULT_TEMPLE_PROCESSING,

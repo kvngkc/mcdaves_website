@@ -9,7 +9,7 @@
 import React, { useMemo, useRef, useEffect, MutableRefObject, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
-import { Group } from 'three';
+import { Group, Euler, Quaternion, Vector3 } from 'three';
 import { getCalibrationForGlb } from '../calibration/calibrationRegistry';
 import { calculateModelScale } from './ModelCalibration';
 import { prepareGlassesModel } from './ModelLoader';
@@ -36,21 +36,11 @@ const preparedModelCache = new Map<string, any>();
 export function GlassesModel(props: GlassesModelProps) {
   const calibration = useMemo(() => getCalibrationForGlb(props.glbPath), [props.glbPath]);
 
-  const isValid = useMemo(() => {
-    if (!calibration) return false;
-    return Boolean(
-      calibration.measuredNativeWidth > 0 &&
-      calibration.physicalDimensions.frameWidthMm &&
-      calibration.physicalDimensions.frameWidthMm > 0,
-    );
-  }, [calibration]);
-
-  if (!isValid) {
-    console.warn('[VTO] Refusing to render: asset lacks required physical calibration evidence.');
+  if (!calibration) {
     return null;
   }
 
-  return <GlassesModelInner {...props} calibration={calibration!} />;
+  return <GlassesModelInner {...props} calibration={calibration} />;
 }
 
 function GlassesModelInner({
@@ -112,11 +102,22 @@ function GlassesModelInner({
     else setTimeout(prepareAsync, 0);
   }, [scene, calibration, clipTemples, templeDepthCutoff, glbPath]);
 
+  const manualTransform = useMemo(() => {
+    return calibration?.manualTransform || {
+      position: { x: 0, y: 0, z: 0 },
+      rotation: { x: 0, y: 0, z: 0 },
+      scale: 1,
+    };
+  }, [calibration]);
+
   const scale = useMemo(() => {
-    const nativeW = calibration.measuredNativeWidth || prepared?.measurements.nativeWidth;
-    if (!nativeW) return 0;
+    if (manualTransform.scale && manualTransform.scale > 0) {
+      return manualTransform.scale;
+    }
+    const nativeW = calibration?.measuredNativeWidth || prepared?.measurements?.nativeWidth;
+    if (!nativeW) return 1.0;
     return calculateModelScale(frameSize || '', nativeW, calibration).scale;
-  }, [frameSize, calibration, prepared]);
+  }, [manualTransform, frameSize, calibration, prepared]);
 
   useEffect(() => {
     if (prepared && onModelMeasured) onModelMeasured(prepared.measurements, scale);
@@ -127,15 +128,32 @@ function GlassesModelInner({
     if (!root) return;
 
     const matrix = detectionRef?.current?.faceMatrix ?? faceMatrix ?? null;
-    if (!matrix || !calibration || scale <= 0) {
+    if (!matrix || scale <= 0) {
       filterRef.current.reset();
       root.visible = false;
       return;
     }
 
     root.visible = true;
-    const { position, quaternion } = getMetricBridgePose(matrix, mirrored, calibration.pantoscopicTilt);
-    filterRef.current.setTarget(position, quaternion, scale);
+    const { position, quaternion } = getMetricBridgePose(matrix, mirrored, calibration?.pantoscopicTilt ?? -12);
+
+    const manualRotation = new Quaternion().setFromEuler(
+      new Euler(
+        ((manualTransform.rotation?.x || 0) * Math.PI) / 180,
+        ((manualTransform.rotation?.y || 0) * Math.PI) / 180,
+        ((manualTransform.rotation?.z || 0) * Math.PI) / 180,
+        'YXZ'
+      )
+    );
+
+    const targetPos = new Vector3(
+      position.x + (manualTransform.position?.x || 0),
+      position.y + (manualTransform.position?.y || 0),
+      position.z + (manualTransform.position?.z || 0)
+    );
+    const targetQuat = quaternion.clone().multiply(manualRotation);
+
+    filterRef.current.setTarget(targetPos, targetQuat, scale);
     filterRef.current.update(delta);
     root.position.copy(filterRef.current.position);
     root.quaternion.copy(filterRef.current.quaternion);

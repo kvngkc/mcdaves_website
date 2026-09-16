@@ -25,6 +25,11 @@ export interface CalibrationEntry {
   pantoscopicTilt: number;
   useMaterialClipping: boolean;
   rotationOffsetEuler: { x: number; y: number; z: number };
+  manualTransform?: {
+    position: { x: number; y: number; z: number };
+    rotation: { x: number; y: number; z: number };
+    scale: number;
+  };
 }
 
 export function getCalibrationForGlb(glbPath: string): CalibrationEntry | null {
@@ -57,6 +62,11 @@ export function getCalibrationForGlb(glbPath: string): CalibrationEntry | null {
       x: metadata.registration.rotationOffsetEuler?.x ?? 0,
       y: metadata.registration.rotationOffsetEuler?.y ?? 0,
       z: metadata.registration.rotationOffsetEuler?.z ?? 0,
+    },
+    manualTransform: (metadata.registration as any).manualTransform || {
+      position: { x: 0, y: 0, z: 0 },
+      rotation: { x: 0, y: 0, z: 0 },
+      scale: 1,
     },
   };
 }

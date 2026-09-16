@@ -123,10 +123,10 @@ export interface AssetValidationReport {
 }
 
 export const OpticalDimensionsSchema = z.object({
-  frameWidthMm: z.number().positive().nullable(),
-  lensWidthMm: z.number().positive().nullable(),
-  bridgeWidthMm: z.number().positive().nullable(),
-  templeLengthMm: z.number().positive().nullable(),
+  frameWidthMm: z.number().positive().nullable().optional(),
+  lensWidthMm: z.number().positive().nullable().optional(),
+  bridgeWidthMm: z.number().positive().nullable().optional(),
+  templeLengthMm: z.number().positive().nullable().optional(),
 });
 
 export const TempleProcessingProfileSchema = z.object({
@@ -166,13 +166,18 @@ export const AssetCalibrationMetadataSchema = z.object({
   // Exact 3D model registration
   registration: z.object({
     bridge: BridgeRegistrationSchema,
-    measuredNativeWidth: z.number().positive(),
+    measuredNativeWidth: z.number().positive().default(1.0),
     widthMultiplier: z.number().positive().default(1.0),
     rotationOffsetEuler: z.object({
       x: z.number().default(0),
       y: z.number().default(0),
       z: z.number().default(0),
     }).default({ x: 0, y: 0, z: 0 }),
+    manualTransform: z.object({
+      position: z.object({ x: z.number(), y: z.number(), z: z.number() }).default({ x: 0, y: 0, z: 0 }),
+      rotation: z.object({ x: z.number(), y: z.number(), z: z.number() }).default({ x: 0, y: 0, z: 0 }),
+      scale: z.number().positive().default(1),
+    }).default({ position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, scale: 1 }),
     pantoscopicTilt: z.number().default(-12),
   }),
 
