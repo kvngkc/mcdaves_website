@@ -290,7 +290,8 @@ export default function ProductDetailClient({
 
             {/* PRIMARY CONVERSION CTAs */}
             <div id="product-primary-ctas" className="space-y-3 pt-2">
-              {/* 1. VIRTUAL TRY-ON CTA */}
+              {/* 1. VIRTUAL TRY-ON CTA (Temporarily paused) */}
+              {/*
               {product.tryOnAvailable && (
                 <button
                   type="button"
@@ -306,6 +307,7 @@ export default function ProductDetailClient({
                   <span>{!selectedVariant.glbPath ? 'Try On (Select a 3D color)' : 'Try This Frame On (3D AR)'}</span>
                 </button>
               )}
+              */}
 
               {/* 2. ORDER VIA WHATSAPP (Order Intent) */}
               <button

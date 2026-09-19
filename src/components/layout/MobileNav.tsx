@@ -19,7 +19,6 @@ export interface MobileNavProps {
 
 const NAV_LINKS = [
   { label: 'Shop',           href: '/shop',        desc: 'Browse our consumer eyewear collection' },
-  { label: 'Virtual Try-On', href: '/try-on',      desc: 'Try frames online with your camera' },
   { label: 'Our Story',      href: '/our-story',   desc: 'Optical heritage & precision craftsmanship' },
   { label: 'Contact',        href: '/contact',     desc: 'Get in touch with our Lagos team' },
   { label: 'FAQ',            href: '/faq',         desc: 'Common questions answered' },

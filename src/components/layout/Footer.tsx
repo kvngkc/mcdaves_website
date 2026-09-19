@@ -19,7 +19,6 @@ const LINK_COLUMNS = [
       { label: 'Sightly Collection', href: '/shop' },
       { label: 'Men',                href: '/shop?category=men' },
       { label: 'Women',              href: '/shop?category=women' },
-      { label: 'Virtual Try-On',     href: '/try-on' },
     ],
   },
   {

@@ -1,6 +1,7 @@
 import React from 'react';
-import TryOnClient from './TryOnClient';
+import TryOnComingSoon from './TryOnComingSoon';
+// import TryOnClient from './TryOnClient';
 
 export default function TryOnPage() {
-  return <TryOnClient />;
+  return <TryOnComingSoon />;
 }

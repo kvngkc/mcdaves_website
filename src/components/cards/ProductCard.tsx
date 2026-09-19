@@ -147,6 +147,7 @@ export function ProductCard({
 
       {/* Action Buttons */}
       <div className="pt-3 border-t border-neutral-100 space-y-2">
+        {/* VTO Paused
         {showTryOn && product.tryOnAvailable && !isOutOfStock && (
           <Button
             variant="secondary"
@@ -159,6 +160,7 @@ export function ProductCard({
             {!product.glbModel ? 'Try On (No 3D)' : 'Virtual Try-On'}
           </Button>
         )}
+        */}
 
         <Button
           variant="primary"

@@ -19,7 +19,6 @@ export interface HeaderProps {
 
 const NAV_LINKS = [
   { label: 'Shop',      href: '/shop' },
-  { label: 'Try-On',    href: '/try-on' },
   { label: 'Our Story', href: '/our-story' },
   { label: 'Contact',   href: '/contact' },
 ] as const;
