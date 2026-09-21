@@ -86,7 +86,7 @@ export const businessIdentity = {
 
   // Social Media Channels
   social: {
-    instagram: 'https://instagram.com/mcdavesoptical',
+    instagram: 'https://www.instagram.com/glasses_by_mcdaves/',
     facebook: 'https://facebook.com/mcdavesoptical',
     whatsapp: 'https://wa.me/2348152346649',
   },
