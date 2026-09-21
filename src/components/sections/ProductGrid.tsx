@@ -154,7 +154,7 @@ export function ProductGrid({
           )
         ) : (
           <div className="text-center py-16 bg-white rounded-xl border border-neutral-200">
-            <p className="text-body text-neutral-500 font-medium">No products found.</p>
+            <p className="text-body text-neutral-500 font-medium">We’re currently sold out. Check our socials for more updates on when we’re back in stock.</p>
           </div>
         )}
 
