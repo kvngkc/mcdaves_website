@@ -21,6 +21,15 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@/lib/commerce/types": [
+        "./node_modules/@mcdaves/shared/src/commerce/types.ts"
+      ],
+      "@/lib/security/rate-limit": [
+        "./node_modules/@mcdaves/shared/src/security/rate-limit.ts"
+      ],
+      "@/lib/security/turnstile": [
+        "./node_modules/@mcdaves/shared/src/security/turnstile.ts"
       ]
     },
     "plugins": [
