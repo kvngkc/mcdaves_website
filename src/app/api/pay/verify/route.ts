@@ -83,14 +83,28 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       //    recordSale(), otherwise a payment that is both webhooked and
       //    callback-verified decrements stock twice.
 
-      // Send confirmation email
-
+      // 5. Send the confirmation email BEFORE returning.
+      //
+      //    This used to be a floating promise:
+      //        import('@/lib/email').then(({ sendOrderConfirmationEmail }) => { ... })
+      //    On serverless the instance can be frozen the moment the handler
+      //    settles, so the send was frequently killed mid-flight — the
+      //    customer paid and never got a confirmation, silently. Awaiting
+      //    guarantees the send completes while the instance is alive, and
+      //    the try/catch records a failure instead of losing it.
+      //
+      //    Deliberately NON-FATAL: the payment is already captured and the
+      //    order already persisted above, so a mail failure must not turn a
+      //    successful payment into an error response.
       if (createdOrder && createdOrder.customerId) {
-        const customer = await commerceRepository.getCustomerById(createdOrder.customerId);
-        if (customer && customer.email) {
-          import('@/lib/email').then(({ sendOrderConfirmationEmail }) => {
-            sendOrderConfirmationEmail(createdOrder, customer.email!, customer.name);
-          });
+        try {
+          const customer = await commerceRepository.getCustomerById(createdOrder.customerId);
+          if (customer && customer.email) {
+            const { sendOrderConfirmationEmail } = await import('@/lib/email');
+            await sendOrderConfirmationEmail(createdOrder, customer.email, customer.name);
+          }
+        } catch (emailErr) {
+          console.error('[/api/pay/verify] Confirmation email failed (non-fatal):', emailErr);
         }
       }
 
