@@ -42,3 +42,9 @@ Thumbs.db
 # Playwright
 playwright-report/
 test-results/
+
+# Build artifacts (must never be committed — removing the tracked copies is step 7.1)
+build/
+dist/
+coverage/
+next-env.d.ts.timestamp
