@@ -25,7 +25,7 @@ export default function TryOnComingSoon() {
             Virtual Try-On
           </h1>
           <p className="text-neutral-400 text-lg leading-relaxed">
-            Our 3D fitting experience is currently undergoing maintenance as we upgrade to a higher standard of precision. We'll be back soon with an even better experience.
+            Our 3D fitting experience is currently undergoing maintenance as we upgrade to a higher standard of precision. We&apos;ll be back soon with an even better experience.
           </p>
         </div>
 

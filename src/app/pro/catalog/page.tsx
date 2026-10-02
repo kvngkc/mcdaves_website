@@ -215,7 +215,7 @@ export default function CatalogPage() {
             <div className="space-y-8">
               <div className="flex items-center justify-between text-xs text-neutral-400 pb-2 border-b border-neutral-800">
                 <span>
-                  Found <strong className="text-white font-bold">{searchResults.total}</strong> products matching "{searchQuery}"
+                  Found <strong className="text-white font-bold">{searchResults.total}</strong> products matching &quot;{searchQuery}&quot;
                 </span>
                 <button
                   onClick={() => setSearchQuery('')}
@@ -230,7 +230,7 @@ export default function CatalogPage() {
                   <Boxes className="w-10 h-10 text-neutral-600 mx-auto" />
                   <h3 className="text-lg text-white font-bold">No products found</h3>
                   <p className="text-xs text-neutral-400 max-w-sm mx-auto">
-                    Try searching for terms like "Photo", "Blue Cut", "Single Vision", "Fused White", or "AR".
+                    Try searching for terms like &quot;Photo&quot;, &quot;Blue Cut&quot;, &quot;Single Vision&quot;, &quot;Fused White&quot;, or &quot;AR&quot;.
                   </p>
                   <button
                     onClick={() => setSearchQuery('')}

@@ -37,9 +37,10 @@ export function VTODebugOverlay({
 }: VTODebugOverlayProps) {
   const [fps, setFps] = useState<number>(0);
   const frameCountRef = useRef<number>(0);
-  const lastTimeRef = useRef<number>(performance.now());
+  const lastTimeRef = useRef<number>(0);
 
   useEffect(() => {
+    lastTimeRef.current = performance.now();
     let animId: number;
 
     const calcFps = () => {
