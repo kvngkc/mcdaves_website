@@ -1,5 +1,3 @@
-import * as dotenv from 'dotenv';
-dotenv.config({ path: '.env.local' });
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { configureRepositoryForTestDatabase, getTestSupabaseClient } from './supabase-test-client';
 
