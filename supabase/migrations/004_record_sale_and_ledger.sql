@@ -2,6 +2,17 @@
 -- Migration 004: Stock Ledger and Atomic Record Sale RPC
 -- Purpose: Ensures strict transactional integrity during inventory decrements
 -- and records all stock movements into an immutable ledger.
+--
+-- GRANT ORDERING (load-bearing — do not re-open):
+--   002_phase1_atomic_inventory.sql  revoked EXECUTE on the stock-decrement
+--                                    function from PUBLIC/anon/authenticated,
+--                                    leaving it callable by service_role only.
+--   003_process_confirmed_payment.sql is the fulfilment path that runs as the
+--                                    service role (server-to-server webhook).
+--   004 (this file)                  must NOT widen that surface. record_sale()
+--                                    is SECURITY DEFINER, so granting it to
+--                                    `authenticated` would let any logged-in
+--                                    user decrement arbitrary stock directly.
 -- =============================================================================
 
 -- 1. Create stock_ledgers table
@@ -93,6 +104,14 @@ BEGIN
 END;
 $$;
 
--- Grant execution permissions
+-- 3. Grant execution permissions.
+--
+-- record_sale() is SECURITY DEFINER and mutates stock, so it is an
+-- inventory-write surface reserved for the trusted backend. It must NOT be
+-- granted to `authenticated` (a logged-in customer could then decrement any
+-- variant's stock) — only service_role (the server-to-server fulfilment path
+-- from migration 003) may call it.
+REVOKE EXECUTE ON FUNCTION public.record_sale(TEXT, JSONB) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.record_sale(TEXT, JSONB) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.record_sale(TEXT, JSONB) FROM authenticated;
 GRANT EXECUTE ON FUNCTION public.record_sale(TEXT, JSONB) TO service_role;
-GRANT EXECUTE ON FUNCTION public.record_sale(TEXT, JSONB) TO authenticated;
