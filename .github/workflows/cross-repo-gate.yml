@@ -1,19 +1,8 @@
 name: Cross-Repo Regression Gate
 
-# Phase 0.1 — the CONSOLIDATED cross-repo gate (v4 plan, step 0.1).
-# One workflow that runs the FULL suite across BOTH repositories and exposes a
-# single stable status check: "Required Cross-Repo Gate".
-#
-# This is the check to mark Required on BOTH default branches (mcdaves_website
-# and mcdaves_admin) so no phase can merge around it.
-#
-# PREREQUISITE (one-time, repo admin):
-#   Create a fine-grained PAT with read access to BOTH private repos and store
-#   it as the secret CROSS_REPO_TOKEN in mcdaves_website. GitHub's default
-#   GITHUB_TOKEN is scoped to a single repository and cannot read the other
-#   private repo, so a cross-repo token is required for the admin checkout.
-#   If CROSS_REPO_TOKEN is absent, the admin-suite job fails closed (the gate
-#   does not silently pass).
+# Phase 0.1 — consolidated cross-repo gate.
+# Runs the full suite across both public repositories and exposes a single
+# stable status check: "Required Cross-Repo Gate".
 
 on:
   push:
@@ -32,9 +21,6 @@ env:
   TEST_SUPABASE_PUBLISHABLE_KEY: sb_publishable_dPt1vDkr0G60-L3XwqZVXQ_uFhCMyMW
 
 jobs:
-  # ---------------------------------------------------------------------------
-  # mcdaves_website — type-check, lint, Vitest (unit + integration), Playwright
-  # ---------------------------------------------------------------------------
   website-suite:
     name: Website Suite
     runs-on: ubuntu-latest
@@ -92,9 +78,6 @@ jobs:
           path: mcdaves_website/playwright-report/
           retention-days: 30
 
-  # ---------------------------------------------------------------------------
-  # mcdaves_admin — type-check, lint, build, Vitest
-  # ---------------------------------------------------------------------------
   admin-suite:
     name: Admin Suite
     runs-on: ubuntu-latest
@@ -104,7 +87,6 @@ jobs:
         with:
           repository: kvngkc/mcdaves_admin
           ref: main
-          token: ${{ secrets.CROSS_REPO_TOKEN }}
           path: mcdaves_admin
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -135,9 +117,6 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
-  # ---------------------------------------------------------------------------
-  # Single aggregator — the ONE stable check name to mark Required on both repos
-  # ---------------------------------------------------------------------------
   gate:
     name: Required Cross-Repo Gate
     runs-on: ubuntu-latest
