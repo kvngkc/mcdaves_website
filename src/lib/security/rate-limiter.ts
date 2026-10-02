@@ -1,65 +1,108 @@
 // src/lib/security/rate-limiter.ts
 /**
- * In-Memory Sliding-Window Rate Limiter for Serverless / Next.js Route Handlers.
- * Provides protection against brute-force and endpoint spam.
+ * Durable, serverless-safe rate limiting backed by Upstash Redis.
+ *
+ * The previous implementation used a module-level Map, which is ineffective on
+ * serverless: each instance has its own memory, so limits are not shared and
+ * the maps grow unbounded. This module uses @upstash/ratelimit (already a
+ * dependency) and instantiates the limiter PER REQUEST — never as a
+ * module-level singleton, which is incorrect on serverless.
+ *
+ * When Upstash is not configured (local dev), it falls back to a bounded
+ * in-memory limiter so development is not blocked.
  */
 
-interface RateLimitConfig {
+import { Ratelimit } from '@upstash/ratelimit';
+import { Redis } from '@upstash/redis';
+
+export interface RateLimitConfig {
   maxRequests: number;
   windowMs: number;
 }
 
-const buckets = new Map<string, number[]>();
+export interface RateLimitResult {
+  allowed: boolean;
+  remaining: number;
+  resetMs: number;
+}
 
-// Cleanup stale buckets periodically
-const CLEANUP_INTERVAL_MS = 60 * 1000;
-let lastCleanup = Date.now();
-
-function cleanup() {
-  const now = Date.now();
-  if (now - lastCleanup < CLEANUP_INTERVAL_MS) return;
-  lastCleanup = now;
-
-  for (const [key, timestamps] of buckets.entries()) {
-    const valid = timestamps.filter((t) => now - t < 10 * 60 * 1000);
-    if (valid.length === 0) {
-      buckets.delete(key);
-    } else {
-      buckets.set(key, valid);
-    }
+function getRedis(): Redis | null {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) return null;
+  try {
+    return new Redis({ url, token });
+  } catch (error) {
+    console.warn('Failed to initialize Upstash Redis:', error);
+    return null;
   }
 }
 
-/**
- * Checks if a request identified by `key` (e.g., `${prefix}:${clientIp}`) is within rate limits.
- * Returns `true` if allowed, `false` if rate limit exceeded.
- */
-export function checkRateLimit(
-  key: string,
-  config: RateLimitConfig = { maxRequests: 10, windowMs: 60 * 1000 },
-): { allowed: boolean; remaining: number; resetMs: number } {
-  cleanup();
+/** Bounded in-memory fallback for local development only. */
+const devBuckets = new Map<string, number[]>();
+const DEV_MAX_KEYS = 10_000;
 
+function devFallback(key: string, config: RateLimitConfig): RateLimitResult {
   const now = Date.now();
-  const timestamps = buckets.get(key) || [];
-  const windowStart = now - config.windowMs;
-
-  const active = timestamps.filter((t) => t > windowStart);
-
-  if (active.length >= config.maxRequests) {
-    const oldest = active[0];
-    const resetMs = oldest + config.windowMs - now;
-    return { allowed: false, remaining: 0, resetMs: Math.max(0, resetMs) };
+  if (devBuckets.size > DEV_MAX_KEYS) devBuckets.clear();
+  const timestamps = (devBuckets.get(key) || []).filter((t) => now - t < config.windowMs);
+  if (timestamps.length >= config.maxRequests) {
+    return {
+      allowed: false,
+      remaining: 0,
+      resetMs: Math.max(0, timestamps[0] + config.windowMs - now),
+    };
   }
-
-  active.push(now);
-  buckets.set(key, active);
-
+  timestamps.push(now);
+  devBuckets.set(key, timestamps);
   return {
     allowed: true,
-    remaining: config.maxRequests - active.length,
+    remaining: config.maxRequests - timestamps.length,
     resetMs: config.windowMs,
   };
+}
+
+/**
+ * Checks whether a request identified by `key` is within the limit.
+ * The limiter is created per call (per request) — never cached at module scope.
+ */
+export async function checkRateLimit(
+  key: string,
+  config: RateLimitConfig = { maxRequests: 10, windowMs: 60 * 1000 },
+): Promise<RateLimitResult> {
+  const redis = getRedis();
+  if (!redis) {
+    return devFallback(key, config);
+  }
+
+  const limiter = new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(
+      config.maxRequests,
+      `${Math.ceil(config.windowMs / 1000)} s`,
+    ),
+    analytics: false,
+    prefix: 'mcdaves:ratelimit',
+  });
+
+  const { success, remaining, reset } = await limiter.limit(key);
+  return {
+    allowed: success,
+    remaining,
+    resetMs: Math.max(0, reset - Date.now()),
+  };
+}
+
+/**
+ * Per-account lockout in addition to per-IP limiting. Call with a stable
+ * account identifier (e.g. `account:${userId}`) so a distributed attacker
+ * cannot bypass the per-IP limit by rotating IPs.
+ */
+export async function checkAccountLockout(
+  accountId: string,
+  config: RateLimitConfig = { maxRequests: 5, windowMs: 15 * 60 * 1000 },
+): Promise<RateLimitResult> {
+  return checkRateLimit(`account:${accountId}`, config);
 }
 
 /**
