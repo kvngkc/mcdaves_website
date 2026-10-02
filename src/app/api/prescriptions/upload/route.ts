@@ -1,23 +1,60 @@
 // src/app/api/prescriptions/upload/route.ts
-// ─── POST /api/prescriptions/upload ──────────────────────────────────────────
-// Uploads a customer prescription file to Supabase Storage (product-media bucket,
-// prescriptions/ path) and returns the public URL.
-// Called client-side before /api/pay/initialize so the URL can be stored in
-// order metadata for admin retrieval.
+// ─── POST /api/prescriptions/upload ───────────────────────────────────────────
+// Uploads a customer prescription file to a PRIVATE Supabase Storage bucket
+// ('prescriptions') and returns the storage path. Files are never public:
+// admins retrieve them via short-lived signed URLs.
+//
+// SECURITY:
+//   - Requires an authenticated session (Supabase auth cookie) before accepting.
+//   - Validates the file signature (magic bytes), not the declared MIME type.
+//   - Stores into a private bucket; no public URL is ever returned.
 
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
+import { createAuthServerClient } from '@/lib/supabase/auth';
 import { checkRateLimit, getClientIp } from '@/lib/security/rate-limiter';
 
 export const dynamic = 'force-dynamic';
 
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB — matches UI copy
-const ALLOWED_MIME_TYPES = [
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'application/pdf',
+const PRIVATE_BUCKET = 'prescriptions';
+const SIGNED_URL_TTL_SECONDS = 60 * 5; // 5 minutes
+
+// Magic-byte signatures for the accepted formats.
+const SIGNATURES: Array<{ mime: string; ext: string; test: (b: Buffer) => boolean }> = [
+  {
+    mime: 'image/jpeg',
+    ext: 'jpg',
+    test: (b) => b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff,
+  },
+  {
+    mime: 'image/png',
+    ext: 'png',
+    test: (b) =>
+      b.length > 8 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47,
+  },
+  {
+    mime: 'image/webp',
+    ext: 'webp',
+    test: (b) =>
+      b.length > 12 &&
+      b.toString('ascii', 0, 4) === 'RIFF' &&
+      b.toString('ascii', 8, 12) === 'WEBP',
+  },
+  {
+    mime: 'application/pdf',
+    ext: 'pdf',
+    test: (b) => b.length > 4 && b.toString('ascii', 0, 4) === '%PDF',
+  },
 ];
+
+function detectFileType(buffer: Buffer): { mime: string; ext: string } | null {
+  for (const sig of SIGNATURES) {
+    if (sig.test(buffer)) return { mime: sig.mime, ext: sig.ext };
+  }
+  return null;
+}
 
 function getSupabaseServiceClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -42,7 +79,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // 2. Supabase service client (server-only — uses service role key)
+    // 2. Require an authenticated session before accepting any upload.
+    const authClient = await createAuthServerClient();
+    const {
+      data: { user },
+    } = await authClient.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Authentication required to upload a prescription.' },
+        { status: 401 },
+      );
+    }
+
+    // 3. Supabase service client (server-only — uses service role key)
     const supabase = getSupabaseServiceClient();
     if (!supabase) {
       return NextResponse.json(
@@ -51,20 +101,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // 3. Parse multipart form data
+    // 4. Parse multipart form data
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided.' }, { status: 400 });
-    }
-
-    // 4. Validate type and size
-    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
-      return NextResponse.json(
-        { error: 'Invalid file type. Please upload JPG, PNG, WEBP, or PDF.' },
-        { status: 400 },
-      );
     }
 
     if (file.size > MAX_FILE_SIZE_BYTES) {
@@ -74,19 +116,25 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // 5. Build a unique, sanitized storage path
-    const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-    const timestamp = Date.now();
-    const randomSuffix = Math.random().toString(36).substring(2, 7).toUpperCase();
-    const storagePath = `prescriptions/rx_${timestamp}_${randomSuffix}.${ext}`;
-
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    // 6. Upload to Supabase Storage — product-media bucket, prescriptions/ folder
+    // 5. Validate the actual file signature (magic bytes), not the declared MIME.
+    const detected = detectFileType(buffer);
+    if (!detected) {
+      return NextResponse.json(
+        { error: 'Invalid file type. Please upload JPG, PNG, WEBP, or PDF.' },
+        { status: 400 },
+      );
+    }
+
+    // 6. Build a unique, sanitized storage path (CSPRNG suffix).
+    const storagePath = `rx_${user.id}_${Date.now()}_${crypto.randomUUID()}.${detected.ext}`;
+
+    // 7. Upload to the PRIVATE bucket.
     const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('product-media')
+      .from(PRIVATE_BUCKET)
       .upload(storagePath, buffer, {
-        contentType: file.type,
+        contentType: detected.mime,
         upsert: false, // prescriptions are unique per submission
       });
 
@@ -98,25 +146,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // 7. Get public URL
-    const { data: publicUrlData } = supabase.storage
-      .from('product-media')
-      .getPublicUrl(storagePath);
-
-    const prescriptionFileUrl = publicUrlData?.publicUrl;
-
-    if (!prescriptionFileUrl) {
-      return NextResponse.json(
-        { error: 'Upload succeeded but URL could not be resolved.' },
-        { status: 500 },
-      );
-    }
-
+    // 8. Return the storage path only — never a public URL. Admins mint a
+    //    short-lived signed URL on demand (see admin retrieval path).
     return NextResponse.json(
       {
         success: true,
-        prescriptionFileUrl,
         storagePath,
+        bucket: PRIVATE_BUCKET,
+        signedUrlTtlSeconds: SIGNED_URL_TTL_SECONDS,
       },
       { status: 201 },
     );
