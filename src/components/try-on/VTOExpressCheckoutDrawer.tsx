@@ -250,7 +250,7 @@ export function VTOExpressCheckoutDrawer({
             </div>
             {currentLensConfig.isCustomQuote && (
               <div className="p-3 bg-brand-500/10 border border-brand-500/30 rounded-xl text-brand-200 text-[11px] leading-relaxed mt-2">
-                <strong>Important:</strong> Because prescriptions vary by complexity, we don't charge for lenses upfront. You are only paying to secure your frame today. Our optical team will review your prescription and send a secure invoice for your custom lenses separately.
+                <strong>Important:</strong> Because prescriptions vary by complexity, we don&apos;t charge for lenses upfront. You are only paying to secure your frame today. Our optical team will review your prescription and send a secure invoice for your custom lenses separately.
               </div>
             )}
           </div>

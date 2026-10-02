@@ -201,7 +201,9 @@ export function useCameraController(options: UseCameraControllerOptions = {}) {
 
   useEffect(() => {
     if (autoStart) {
-      startCamera().catch(() => {});
+      queueMicrotask(() => {
+        startCamera().catch(() => {});
+      });
     }
     return () => {
       stopCamera();
@@ -210,7 +212,6 @@ export function useCameraController(options: UseCameraControllerOptions = {}) {
 
   return {
     stream: state.stream,
-    videoElement: videoRef.current,
     videoWidth: state.videoWidth,
     videoHeight: state.videoHeight,
     isStreaming: state.isStreaming,
