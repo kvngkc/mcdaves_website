@@ -1,5 +1,5 @@
 // src/app/payment/success/page.tsx
-// ─── Order Success Page ────────────────────────────────────────────────────────
+// ─── Order Success Page ──────────────────────────────────────────────────────
 // A clean, reassuring confirmation page shown after a successful payment.
 // Reference can be passed via ?reference= query param or read from sessionStorage.
 'use client';
@@ -20,7 +20,7 @@ import {
 import { Button } from '@/components/ui';
 import { siteConfig } from '@/data/site-config';
 
-// ─── Order Timeline ────────────────────────────────────────────────────────────
+// ─── Order Timeline ──────────────────────────────────────────────────────────
 const TIMELINE = [
   {
     icon: ClipboardCheck,
@@ -55,15 +55,14 @@ const TIMELINE = [
 // ─── Inner Component ─────────────────────────────────────────────────────────
 function OrderSuccessContent() {
   const searchParams = useSearchParams();
-  const [reference, setReference] = useState<string>('');
-
-  useEffect(() => {
-    const ref =
+  const [reference] = useState<string>(() => {
+    if (typeof window === 'undefined') return '';
+    return (
       searchParams.get('reference') ??
       sessionStorage.getItem('mcdaves_pending_ref') ??
-      '';
-    setReference(ref);
-  }, [searchParams]);
+      ''
+    );
+  });
 
   const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || siteConfig.whatsappNumber;
   const whatsappMsg = encodeURIComponent(
@@ -212,7 +211,7 @@ function OrderSuccessContent() {
   );
 }
 
-// ─── Exported Page Wrapped in Suspense ──────────────────────────────────────
+// ─── Exported Page Wrapped in Suspense ───────────────────────────────────────
 export default function OrderSuccessPage() {
   return (
     <Suspense
