@@ -60,7 +60,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
       // 3. Confirm Pending Order or Fallback
       let createdOrder = await commerceRepository.getOrderByPaymentReference(cleanRef);
-      
+
       if (createdOrder) {
         // Order exists (created in initialize phase) -> confirm it
         createdOrder.status = 'CONFIRMED';
@@ -77,17 +77,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         createdOrder = fallbackResult.order;
       }
 
-      // 4. Atomically Decrement Inventory & Write Ledger
-      if (createdOrder && createdOrder.items && createdOrder.items.length > 0) {
-        const inventoryItems = createdOrder.items.map(i => ({
-          variant_id: i.variantId,
-          quantity: i.quantity
-        }));
-        await commerceRepository.recordSale(createdOrder.id, inventoryItems);
-      }
+      // 4. Inventory is decremented in EXACTLY ONE place: the Paystack
+      //    webhook (server-to-server, reliable) via processConfirmedPayment().
+      //    This callback is a read/confirm path only — it must NOT call
+      //    recordSale(), otherwise a payment that is both webhooked and
+      //    callback-verified decrements stock twice.
 
       // Send confirmation email
-      
+
       if (createdOrder && createdOrder.customerId) {
         const customer = await commerceRepository.getCustomerById(createdOrder.customerId);
         if (customer && customer.email) {

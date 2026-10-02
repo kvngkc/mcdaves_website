@@ -51,7 +51,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     // 1. Check Rate Limit (max 10 submissions per minute per IP)
     const clientIp = getClientIp(request);
-    const rateLimit = checkRateLimit(`order-intent:${clientIp}`, {
+    const rateLimit = await checkRateLimit(`order-intent:${clientIp}`, {
       maxRequests: 10,
       windowMs: 60 * 1000,
     });
@@ -119,7 +119,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
-    const auth = requireAdminSession(request);
+    const auth = await requireAdminSession(request);
     if (!auth.authorized) {
       return NextResponse.json({ error: auth.error || 'Unauthorized' }, { status: 401 });
     }
