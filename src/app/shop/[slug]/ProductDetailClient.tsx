@@ -88,10 +88,7 @@ export default function ProductDetailClient({
   const currentImage = images[selectedImageIndex] || images[0];
 
   useEffect(() => {
-    if (images.length <= 1) {
-      setSwipeProgress(0);
-      return;
-    }
+    if (images.length <= 1) return;
 
     const DURATION = 4000;
     const UPDATE_INTERVAL = 50;
@@ -290,8 +287,7 @@ export default function ProductDetailClient({
 
             {/* PRIMARY CONVERSION CTAs */}
             <div id="product-primary-ctas" className="space-y-3 pt-2">
-              {/* 1. VIRTUAL TRY-ON CTA (Temporarily paused) */}
-              {/*
+              {/* 1. VIRTUAL TRY-ON CTA */}
               {product.tryOnAvailable && (
                 <button
                   type="button"
@@ -307,7 +303,6 @@ export default function ProductDetailClient({
                   <span>{!selectedVariant.glbPath ? 'Try On (Select a 3D color)' : 'Try This Frame On (3D AR)'}</span>
                 </button>
               )}
-              */}
 
               {/* 2. ORDER VIA WHATSAPP (Order Intent) */}
               <button
