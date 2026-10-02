@@ -1,13 +1,13 @@
 // src/app/api/prescriptions/upload/route.ts
 // ─── POST /api/prescriptions/upload ───────────────────────────────────────────
 // Uploads a customer prescription file to a PRIVATE Supabase Storage bucket
-// ('prescriptions') and returns the storage path. Files are never public:
-// admins retrieve them via short-lived signed URLs.
+// ('prescriptions') and returns a short-lived signed URL for the caller.
+// Files are never public: the object cannot be fetched without a signed URL.
 //
 // SECURITY:
 //   - Requires an authenticated session (Supabase auth cookie) before accepting.
 //   - Validates the file signature (magic bytes), not the declared MIME type.
-//   - Stores into a private bucket; no public URL is ever returned.
+//   - Stores into a private bucket; only a short-lived signed URL is returned.
 
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
@@ -146,13 +146,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // 8. Return the storage path only — never a public URL. Admins mint a
-    //    short-lived signed URL on demand (see admin retrieval path).
+    // 8. Mint a short-lived signed URL. The object itself is private and
+    //    cannot be fetched without a signed URL; the URL expires per config.
+    const { data: signed } = await supabase.storage
+      .from(PRIVATE_BUCKET)
+      .createSignedUrl(storagePath, SIGNED_URL_TTL_SECONDS);
+
     return NextResponse.json(
       {
         success: true,
         storagePath,
         bucket: PRIVATE_BUCKET,
+        prescriptionFileUrl: signed?.signedUrl ?? null,
         signedUrlTtlSeconds: SIGNED_URL_TTL_SECONDS,
       },
       { status: 201 },
