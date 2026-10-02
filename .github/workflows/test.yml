@@ -52,6 +52,13 @@ jobs:
   vitest:
     name: Run VTO + Forensic Integration Tests
     runs-on: ubuntu-latest
+    # Shares the "db-integration-tests" concurrency group with the Vitest job in
+    # regression-gate.yml. Both jobs seed/tear down fixtures in the same shared
+    # test database, so they must never run at the same time. cancel-in-progress
+    # is false so a queued run waits instead of being cancelled mid-fixture.
+    concurrency:
+      group: db-integration-tests
+      cancel-in-progress: false
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4

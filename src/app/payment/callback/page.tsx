@@ -1,5 +1,5 @@
 // src/app/payment/callback/page.tsx
-// ─── Payment Callback Page ─────────────────────────────────────────────────────
+// ─── Payment Callback Page ───────────────────────────────────────────────────
 // Paystack redirects here after a payment attempt.
 // Reads ?reference= from URL, verifies via /api/pay/verify, shows result & order reference.
 'use client';
@@ -32,7 +32,7 @@ interface ExtendedVerifyResult {
   customerId?: string;
 }
 
-// ─── Loading Skeleton ──────────────────────────────────────────────────────────
+// ─── Loading Skeleton ────────────────────────────────────────────────────────
 function LoadingSkeleton() {
   return (
     <div className="flex flex-col items-center text-center px-4 py-16 gap-6 animate-pulse">
@@ -48,7 +48,7 @@ function LoadingSkeleton() {
   );
 }
 
-// ─── Success View ──────────────────────────────────────────────────────────────
+// ─── Success View ────────────────────────────────────────────────────────────
 interface SuccessViewProps {
   result: ExtendedVerifyResult;
 }
@@ -181,7 +181,7 @@ function SuccessView({ result }: SuccessViewProps) {
   );
 }
 
-// ─── Failure View ──────────────────────────────────────────────────────────────
+// ─── Failure View ────────────────────────────────────────────────────────────
 function FailureView({ reference }: { reference?: string }) {
   const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || siteConfig.whatsappNumber;
   const whatsappMsg = encodeURIComponent(
@@ -237,7 +237,7 @@ function FailureView({ reference }: { reference?: string }) {
   );
 }
 
-// ─── Main Page Component ───────────────────────────────────────────────────────
+// ─── Main Page Component ─────────────────────────────────────────────────────
 type PageState = 'loading' | 'success' | 'failed' | 'error';
 
 function PaymentCallbackContent() {
@@ -250,14 +250,11 @@ function PaymentCallbackContent() {
     (typeof window !== 'undefined' ? sessionStorage.getItem('mcdaves_pending_ref') : null) ??
     undefined;
 
-  const [pageState, setPageState] = useState<PageState>('loading');
+  const [pageState, setPageState] = useState<PageState>(reference ? 'loading' : 'failed');
   const [result, setResult] = useState<ExtendedVerifyResult | null>(null);
 
   const verify = useCallback(async () => {
-    if (!reference) {
-      setPageState('failed');
-      return;
-    }
+    if (!reference) return;
 
     try {
       const res = await fetch(`/api/pay/verify?reference=${encodeURIComponent(reference)}`);
@@ -282,7 +279,9 @@ function PaymentCallbackContent() {
   }, [reference, clearCart]);
 
   useEffect(() => {
-    verify();
+    queueMicrotask(() => {
+      void verify();
+    });
   }, [verify]);
 
   return (

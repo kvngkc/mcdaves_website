@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface WhatsAppButtonProps {
   /** WhatsApp phone number — digits only, with country code, no '+' */
@@ -30,7 +30,7 @@ function WhatsAppIcon({ className }: { className?: string }) {
   );
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// ─── Constants ───────────────────────────────────────────────────────────────
 
 /** localStorage key to track whether the pulse has already been shown */
 const PULSE_SEEN_KEY = 'mcdaves_wa_pulse_seen';
@@ -40,7 +40,7 @@ const PULSE_DURATION = 3000;
 
 import { siteConfig } from '@/data/site-config';
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// ─── Component ───────────────────────────────────────────────────────────────
 
 export function WhatsAppButton({
   phoneNumber = siteConfig.whatsappNumber,
@@ -53,12 +53,15 @@ export function WhatsAppButton({
     // Only pulse on first visit
     try {
       if (typeof localStorage !== 'undefined' && !localStorage.getItem(PULSE_SEEN_KEY)) {
-        setPulsing(true);
+        const start = setTimeout(() => setPulsing(true), 0);
         const timer = setTimeout(() => {
           setPulsing(false);
           localStorage.setItem(PULSE_SEEN_KEY, '1');
         }, PULSE_DURATION);
-        return () => clearTimeout(timer);
+        return () => {
+          clearTimeout(start);
+          clearTimeout(timer);
+        };
       }
     } catch {
       // localStorage unavailable (SSR / private browsing) — just skip
