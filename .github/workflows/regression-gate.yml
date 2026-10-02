@@ -57,6 +57,15 @@ jobs:
   vitest:
     name: Vitest (unit + integration)
     runs-on: ubuntu-latest
+    # The integration tests seed and tear down fixtures in ONE shared test
+    # database. Serialize every DB-touching job across workflows (this job and
+    # the "Run VTO + Forensic Integration Tests" job in test.yml share the same
+    # group) so two runs can never collide on the same fixture rows or exhaust
+    # the project's connection pool. cancel-in-progress is false so a queued run
+    # waits its turn instead of being cancelled mid-fixture.
+    concurrency:
+      group: db-integration-tests
+      cancel-in-progress: false
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4

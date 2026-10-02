@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { siteConfig } from '@/data/site-config';
 import { ORDERING_SYSTEM_URL } from '@/data/b2b-products';
 
-// ─── Data ─────────────────────────────────────────────────────────────────────
+// ─── Data ────────────────────────────────────────────────────────────────────
 
 const LINK_COLUMNS = [
   {
@@ -105,7 +105,7 @@ const CONTACT_INFO: ContactItem[] = [
   },
 ];
 
-// ─── Newsletter form ──────────────────────────────────────────────────────────
+// ─── Newsletter form ─────────────────────────────────────────────────────────
 
 function NewsletterForm() {
   const [email, setEmail]       = useState('');
@@ -125,7 +125,7 @@ function NewsletterForm() {
     return (
       <p className="text-brand-300 text-caption mt-2 flex items-center gap-2">
         <span className="text-green-400 text-lg" aria-hidden="true">✓</span>
-        You're subscribed! We'll be in touch.
+        You&apos;re subscribed! We&apos;ll be in touch.
       </p>
     );
   }
@@ -164,14 +164,14 @@ function NewsletterForm() {
   );
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// ─── Component ───────────────────────────────────────────────────────────────
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
 
   return (
     <footer className="bg-brand-900 text-brand-100" aria-label="Site footer">
-      {/* ── Main grid ───────────────────────────────────────────────────── */}
+      {/* ── Main grid ─────────────────────────────────────────────────────── */}
       <div className="container-main pt-16 pb-10">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-8">
 
@@ -200,7 +200,7 @@ export function Footer() {
             </div>
           ))}
 
-          {/* ── Column 4: Company + Newsletter ──────────────────────────── */}
+          {/* ── Column 4: Company + Newsletter ─────────────────────────── */}
           <div>
             {/* Logo / brand */}
             <Link

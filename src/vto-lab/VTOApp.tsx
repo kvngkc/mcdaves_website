@@ -107,13 +107,15 @@ export function VTOApp() {
       videoWidth || 640,
       videoHeight || 480,
     );
-    setViewport(vp);
+    queueMicrotask(() => setViewport(vp));
   }, [containerSize, videoWidth, videoHeight]);
 
   // 4. Initialize MediaPipe Detector
   const loadDetector = useCallback(async () => {
-    setDetectorReady(false);
-    setDetectorError(null);
+    queueMicrotask(() => {
+      setDetectorReady(false);
+      setDetectorError(null);
+    });
 
     try {
       const landmarker = await initFaceLandmarker();
@@ -126,7 +128,9 @@ export function VTOApp() {
   }, []);
 
   useEffect(() => {
-    loadDetector();
+    queueMicrotask(() => {
+      void loadDetector();
+    });
   }, [loadDetector]);
 
   // 5. High-Speed Detection Frame Loop (Zero-Latency Mutable Ref)
