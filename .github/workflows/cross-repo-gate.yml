@@ -1,0 +1,156 @@
+name: Cross-Repo Regression Gate
+
+# Phase 0.1 — the CONSOLIDATED cross-repo gate (v4 plan, step 0.1).
+# One workflow that runs the FULL suite across BOTH repositories and exposes a
+# single stable status check: "Required Cross-Repo Gate".
+#
+# This is the check to mark Required on BOTH default branches (mcdaves_website
+# and mcdaves_admin) so no phase can merge around it.
+#
+# PREREQUISITE (one-time, repo admin):
+#   Create a fine-grained PAT with read access to BOTH private repos and store
+#   it as the secret CROSS_REPO_TOKEN in mcdaves_website. GitHub's default
+#   GITHUB_TOKEN is scoped to a single repository and cannot read the other
+#   private repo, so a cross-repo token is required for the admin checkout.
+#   If CROSS_REPO_TOKEN is absent, the admin-suite job fails closed (the gate
+#   does not silently pass).
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+concurrency:
+  group: cross-repo-gate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TEST_PROJECT_REF: lwhufocjhcvrbimerhjq
+  TEST_SUPABASE_URL: https://lwhufocjhcvrbimerhjq.supabase.co
+  TEST_SUPABASE_PUBLISHABLE_KEY: sb_publishable_dPt1vDkr0G60-L3XwqZVXQ_uFhCMyMW
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # mcdaves_website — type-check, lint, Vitest (unit + integration), Playwright
+  # ---------------------------------------------------------------------------
+  website-suite:
+    name: Website Suite
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout mcdaves_website
+        uses: actions/checkout@v4
+        with:
+          path: mcdaves_website
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: mcdaves_website/package-lock.json
+      - name: Install Dependencies
+        working-directory: mcdaves_website
+        run: npm ci
+      - name: Type Check
+        working-directory: mcdaves_website
+        run: npm run type-check
+      - name: Lint
+        working-directory: mcdaves_website
+        run: npm run lint
+      - name: Install Playwright Browsers
+        working-directory: mcdaves_website
+        run: npx playwright install --with-deps
+      - name: Validate E2E Database Configuration
+        working-directory: mcdaves_website
+        run: |
+          test "$TEST_SUPABASE_URL" = "https://$TEST_PROJECT_REF.supabase.co"
+          test -n "$TEST_SUPABASE_PUBLISHABLE_KEY"
+          test -n "$TEST_SUPABASE_SERVICE_ROLE_KEY"
+        env:
+          TEST_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TEST_SUPABASE_SERVICE_ROLE_KEY }}
+      - name: Run Playwright Tests
+        working-directory: mcdaves_website
+        run: npx playwright test ./e2e
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ env.TEST_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ env.TEST_SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TEST_SUPABASE_SERVICE_ROLE_KEY }}
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+      - name: Run Vitest Tests
+        working-directory: mcdaves_website
+        run: npx vitest run
+        env:
+          TEST_SUPABASE_URL: ${{ env.TEST_SUPABASE_URL }}
+          TEST_SUPABASE_PUBLISHABLE_KEY: ${{ env.TEST_SUPABASE_PUBLISHABLE_KEY }}
+          TEST_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TEST_SUPABASE_SERVICE_ROLE_KEY }}
+      - name: Upload Playwright Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: mcdaves_website/playwright-report/
+          retention-days: 30
+
+  # ---------------------------------------------------------------------------
+  # mcdaves_admin — type-check, lint, build, Vitest
+  # ---------------------------------------------------------------------------
+  admin-suite:
+    name: Admin Suite
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout mcdaves_admin
+        uses: actions/checkout@v4
+        with:
+          repository: kvngkc/mcdaves_admin
+          ref: main
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          path: mcdaves_admin
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: mcdaves_admin/package-lock.json
+      - name: Install Dependencies
+        working-directory: mcdaves_admin
+        run: npm ci
+      - name: Type Check
+        working-directory: mcdaves_admin
+        run: npm run type-check
+      - name: Lint
+        working-directory: mcdaves_admin
+        run: npm run lint
+      - name: Build
+        working-directory: mcdaves_admin
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      - name: Run Vitest Tests
+        working-directory: mcdaves_admin
+        run: npm run test
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+  # ---------------------------------------------------------------------------
+  # Single aggregator — the ONE stable check name to mark Required on both repos
+  # ---------------------------------------------------------------------------
+  gate:
+    name: Required Cross-Repo Gate
+    runs-on: ubuntu-latest
+    needs: [ website-suite, admin-suite ]
+    if: always()
+    steps:
+      - name: Assert both repository suites succeeded
+        run: |
+          echo "website-suite = ${{ needs.website-suite.result }}"
+          echo "admin-suite   = ${{ needs.admin-suite.result }}"
+          if [ "${{ needs.website-suite.result }}" != "success" ] || \
+             [ "${{ needs.admin-suite.result }}" != "success" ]; then
+            echo "::error::Cross-repo regression gate FAILED — one or both repository suites did not succeed."
+            exit 1
+          fi
+          echo "Cross-repo regression gate PASSED — both repository suites succeeded."
