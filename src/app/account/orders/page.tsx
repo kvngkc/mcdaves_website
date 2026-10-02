@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Package, ChevronRight, LogOut, Search } from 'lucide-react';
 import { createAuthServerClient } from '@/lib/supabase/auth';
-import { commerceRepository } from '@/lib/commerce/repository';
+import { getOrdersByCustomerAuthUserId } from '@/lib/commerce/customer-orders';
 import { Price, Badge } from '@/components/ui';
 
 export const dynamic = 'force-dynamic';
@@ -12,12 +12,14 @@ export default async function CustomerOrdersPage() {
   const supabase = await createAuthServerClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user || !user.email) {
+  if (!user) {
     redirect('/account/login');
   }
 
-  // Look up customer by email to get customerId and fetch orders via repository
-  const orders = await commerceRepository.getOrdersByCustomerEmail(user.email);
+  // Resolve orders through the customer's Supabase auth linkage
+  // (customers.auth_user_id) — never by matching the email, which is
+  // spoofable and breaks when a customer changes their email.
+  const orders = await getOrdersByCustomerAuthUserId(user.id);
 
   return (
     <div className="min-h-screen bg-neutral-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -41,7 +43,7 @@ export default async function CustomerOrdersPage() {
             <Package className="w-12 h-12 text-neutral-300 mx-auto mb-4" />
             <h3 className="text-lg font-bold text-neutral-900 mb-2">No orders found</h3>
             <p className="text-neutral-500 text-sm max-w-sm mx-auto mb-6">
-              You haven't placed any orders with this email address yet.
+              You haven't placed any orders with this account yet.
             </p>
             <Link
               href="/shop"
