@@ -106,12 +106,44 @@ export async function checkAccountLockout(
 }
 
 /**
- * Extracts a client IP from Next.js request headers.
+ * Number of reverse proxies we operate in front of the app.
+ *
+ * The app sits behind exactly ONE trusted proxy (the platform edge), which
+ * appends the real peer address as the LAST element of X-Forwarded-For.
+ * Override only if you add another proxy hop of your own.
+ */
+const TRUSTED_PROXY_HOPS = (() => {
+  const raw = Number.parseInt(process.env.TRUSTED_PROXY_HOPS ?? '1', 10);
+  return Number.isFinite(raw) && raw >= 1 ? raw : 1;
+})();
+
+/**
+ * Extracts the client IP from Next.js request headers.
+ *
+ * SECURITY: X-Forwarded-For is a comma-separated list that a client can
+ * pre-populate. The LEFTMOST entry is attacker-controlled, so using it as a
+ * rate-limit key lets an attacker mint a new identity per request and bypass
+ * the limit entirely. Only the address appended by our OWN trusted proxy is
+ * meaningful: counting back TRUSTED_PROXY_HOPS from the right, we take the
+ * entry at that position — the first hop we can actually vouch for.
  */
 export function getClientIp(req: Request): string {
   const xForwardedFor = req.headers.get('x-forwarded-for');
   if (xForwardedFor) {
-    return xForwardedFor.split(',')[0].trim();
+    const chain = xForwardedFor
+      .split(',')
+      .map((part) => part.trim())
+      .filter((part) => part.length > 0);
+
+    if (chain.length > 0) {
+      // Walk from the trusted edge back toward the client and clamp: with
+      // 1 trusted hop we take the rightmost proxy-appended entry, never the
+      // client-supplied leftmost one.
+      const index = Math.min(TRUSTED_PROXY_HOPS, chain.length) - 1;
+      const trustedIndex = Math.max(0, chain.length - 1 - index);
+      const ip = chain[trustedIndex];
+      if (ip) return ip;
+    }
   }
   const xRealIp = req.headers.get('x-real-ip');
   if (xRealIp) {
