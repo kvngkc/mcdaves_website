@@ -9,7 +9,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { commerceRepository } from '@/lib/commerce/repository';
-import { supabase } from '@/lib/supabase/service';
 
 export const dynamic = 'force-dynamic';
 
