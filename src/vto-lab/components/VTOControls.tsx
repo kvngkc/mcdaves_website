@@ -29,7 +29,7 @@ export function VTOControls({
   const [registeredAssets, setRegisteredAssets] = useState<AssetCalibrationMetadata[]>([]);
 
   useEffect(() => {
-    setRegisteredAssets(globalVTOAssetRegistry.listAssets());
+    queueMicrotask(() => setRegisteredAssets(globalVTOAssetRegistry.listAssets()));
     const unsub = globalVTOAssetRegistry.subscribe(() => {
       setRegisteredAssets(globalVTOAssetRegistry.listAssets());
     });
