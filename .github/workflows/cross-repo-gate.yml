@@ -84,6 +84,7 @@ jobs:
           TEST_SUPABASE_URL: ${{ env.TEST_SUPABASE_URL }}
           TEST_SUPABASE_PUBLISHABLE_KEY: ${{ env.TEST_SUPABASE_PUBLISHABLE_KEY }}
           TEST_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TEST_SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       - name: Upload Playwright Report
         if: always()
         uses: actions/upload-artifact@v4

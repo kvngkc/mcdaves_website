@@ -1,8 +1,15 @@
 // scripts/gate3_backfill_inventory.js
 import { createClient } from '@supabase/supabase-js';
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://uijncyzhguftcdonkcdg.supabase.co';
-const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVpam5jeXpoZ3VmdGNkb25rY2RnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4Njg5Mjk1MCwiZXhwIjoyMTAyNDY4OTUwfQ.bv5rsyaGjDY-9USdigtCP8NGeLrrp_iU9RhoFTkRB3E';
+// Supabase credentials are loaded from the environment ONLY.
+// Never hardcode project URLs or service-role keys here - see docs/SECRET_ROTATION.md.
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!url || !serviceKey) {
+  console.error('Missing Supabase credentials in process.env (NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY).');
+  process.exit(1);
+}
 
 const supabase = createClient(url, serviceKey);
 
