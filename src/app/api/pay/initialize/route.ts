@@ -1,8 +1,11 @@
 // src/app/api/pay/initialize/route.ts
-// ─── POST /api/pay/initialize ─────────────────────────────────────────────────
+// ─── POST /api/pay/initialize ────────────────────────────────────────────────
 // SERVER-ONLY Route Handler — PAYSTACK_SECRET_KEY never reaches the client.
-// Validates request, calculates authoritative price, checks stock, generates reference,
-// calls Paystack, and returns checkout URL.
+// Validates request, calculates authoritative price, checks stock, generates
+// reference, calls Paystack, and returns checkout URL.
+//
+// SECURITY: the total is ALWAYS recomputed server-side from the database.
+// A client-supplied `amount` is never trusted and is no longer accepted.
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -16,7 +19,7 @@ import { verifyTurnstileToken } from '@/lib/security/turnstile';
 
 export const dynamic = 'force-dynamic';
 
-// ─── Zod Request Schema ───────────────────────────────────────────────────────
+// ─── Zod Request Schema ──────────────────────────────────────────────────────
 
 const CartItemSchema = z.object({
   productId: z.string(),
@@ -31,10 +34,11 @@ const CartItemSchema = z.object({
 const InitializeSchema = z.object({
   /** Customer email address */
   email: z.string().email({ message: 'A valid email address is required.' }),
-  /** Optional client-supplied total in NGN for verification */
-  amount: z.number().positive().optional(),
-  /** Structured cart items for authoritative recalculation */
-  items: z.array(CartItemSchema).optional(),
+  /**
+   * Structured cart items — REQUIRED. The server recomputes the total from
+   * the database; a client-supplied amount is never trusted.
+   */
+  items: z.array(CartItemSchema).min(1, 'At least one cart item is required.'),
   /** Selected delivery method */
   deliveryMethod: z.enum(['door', 'pickup']).optional().default('door'),
   /** Optional structured metadata: customer name, address, prescription, etc. */
@@ -44,7 +48,7 @@ const InitializeSchema = z.object({
 
 type InitializeBody = z.infer<typeof InitializeSchema>;
 
-// ─── Cryptographically Secure Reference Generator ───────────────────────────
+// ─── Cryptographically Secure Reference Generator ────────────────────────────
 
 function generateReference(): string {
   const timestamp = Date.now();
@@ -52,7 +56,7 @@ function generateReference(): string {
   return `MCD_PAY_${timestamp}_${random}`;
 }
 
-// ─── Route Handler ────────────────────────────────────────────────────────────
+// ─── Route Handler ───────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   // 0. Check Rate Limit (max 15 payment initializations per minute per IP)
@@ -86,7 +90,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     body = parsed.data;
 
     // Validate CAPTCHA
-    const isValidToken = await verifyTurnstileToken(body.turnstileToken);
+    const isValidToken = await verifyTurnstileToken(body.turnstileToken ?? null);
     if (!isValidToken) {
       return NextResponse.json(
         { error: 'Security check failed. Please refresh and try again.' },
@@ -100,77 +104,68 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
   }
 
-  // 2. Authoritative Price & Inventory Calculation
+  // 2. Authoritative Price & Inventory Calculation (server-side only)
   let authoritativeSubtotal = 0;
   const validatedItems = [];
 
-  if (body.items && body.items.length > 0) {
-    for (const item of body.items) {
-      let unitPrice: number;
-      let variantName: string;
-      let sku: string;
+  for (const item of body.items) {
+    let unitPrice: number;
+    let variantName: string;
+    let sku: string;
 
-      // Look up variant if variantId provided
-      if (item.variantId) {
-        const variant = await commerceRepository.getVariantById(item.variantId);
-        if (variant) {
-          unitPrice = variant.effectivePrice; // effectivePrice is guaranteed to resolve from priceOverride or defaultPrice
-          variantName = variant.name;
-          sku = variant.sku;
+    // Look up variant if variantId provided
+    if (item.variantId) {
+      const variant = await commerceRepository.getVariantById(item.variantId);
+      if (variant) {
+        unitPrice = variant.effectivePrice; // effectivePrice is guaranteed to resolve from priceOverride or defaultPrice
+        variantName = variant.name;
+        sku = variant.sku;
 
-          // Check stock
-          const availableUnits = variant.unitsInStock ?? 10;
-          if (availableUnits < item.quantity) {
-            return NextResponse.json(
-              {
-                error: `Insufficient stock for "${variantName}". Available: ${availableUnits}, requested: ${item.quantity}.`,
-              },
-              { status: 400 },
-            );
-          }
-        } else {
-            return NextResponse.json(
-              { error: `Variant ID ${item.variantId} not found in database. Cannot authorize checkout.` },
-              { status: 400 }
-            );
+        // Check stock
+        const availableUnits = variant.unitsInStock ?? 10;
+        if (availableUnits < item.quantity) {
+          return NextResponse.json(
+            {
+              error: `Insufficient stock for "${variantName}". Available: ${availableUnits}, requested: ${item.quantity}.`,
+            },
+            { status: 400 },
+          );
         }
       } else {
-        // Fall back to product lookup
-        const product =
-          (await commerceRepository.getProductById(item.productId)) ||
-          (await commerceRepository.getProductBySlug(item.productId));
-        
-        if (product) {
-          unitPrice = product.defaultPrice;
-          variantName = product.name;
-          sku = 'MCD-FRAME';
-        } else {
-            return NextResponse.json(
-              { error: `Product ${item.productId} not found in database. Cannot authorize checkout.` },
-              { status: 400 }
-            );
-        }
+        return NextResponse.json(
+          { error: `Variant ID ${item.variantId} not found in database. Cannot authorize checkout.` },
+          { status: 400 },
+        );
       }
+    } else {
+      // Fall back to product lookup
+      const product =
+        (await commerceRepository.getProductById(item.productId)) ||
+        (await commerceRepository.getProductBySlug(item.productId));
 
-      authoritativeSubtotal += unitPrice * item.quantity;
-      validatedItems.push({
-        productId: item.productId,
-        variantId: item.variantId,
-        variantSku: sku,
-        name: variantName,
-        quantity: item.quantity,
-        unitPrice,
-        totalPrice: unitPrice * item.quantity,
-        color: item.color || null,
-      });
+      if (product) {
+        unitPrice = product.defaultPrice;
+        variantName = product.name;
+        sku = 'MCD-FRAME';
+      } else {
+        return NextResponse.json(
+          { error: `Product ${item.productId} not found in database. Cannot authorize checkout.` },
+          { status: 400 },
+        );
+      }
     }
-  } else if (body.amount) {
-    authoritativeSubtotal = body.amount;
-  } else {
-    return NextResponse.json(
-      { error: 'Either items array or valid amount is required to initialize payment.' },
-      { status: 400 },
-    );
+
+    authoritativeSubtotal += unitPrice * item.quantity;
+    validatedItems.push({
+      productId: item.productId,
+      variantId: item.variantId,
+      variantSku: sku,
+      name: variantName,
+      quantity: item.quantity,
+      unitPrice,
+      totalPrice: unitPrice * item.quantity,
+      color: item.color || null,
+    });
   }
 
   // Calculate authoritative delivery fee
@@ -205,7 +200,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       id: orderId,
       customerId: customer.id,
       paymentReference: reference,
-      items: validatedItems.length > 0 ? validatedItems : (body.metadata?.orderItems as any[]) || [],
+      // SECURITY: order items are derived from the validated cart only —
+      // never from client-supplied metadata.
+      items: validatedItems,
       subtotal: authoritativeSubtotal,
       shippingFee: deliveryFee,
       totalAmount: authoritativeTotal,
