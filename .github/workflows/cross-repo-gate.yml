@@ -7,13 +7,12 @@ name: Cross-Repo Regression Gate
 # This is the check to mark Required on BOTH default branches (mcdaves_website
 # and mcdaves_admin) so no phase can merge around it.
 #
-# PREREQUISITE (one-time, repo admin):
-#   Create a fine-grained PAT with read access to BOTH private repos and store
-#   it as the secret CROSS_REPO_TOKEN in mcdaves_website. GitHub's default
-#   GITHUB_TOKEN is scoped to a single repository and cannot read the other
-#   private repo, so a cross-repo token is required for the admin checkout.
-#   If CROSS_REPO_TOKEN is absent, the admin-suite job fails closed (the gate
-#   does not silently pass).
+# CROSS-REPO CHECKOUT: both kvngkc/mcdaves_website and kvngkc/mcdaves_admin are
+#   PUBLIC, so the admin checkout needs no PAT — actions/checkout falls back to
+#   the default GITHUB_TOKEN, which can read any public repository. (A PAT is
+#   only required to read a PRIVATE repo; if either repo is ever made private
+#   again, add a fine-grained read-only PAT as the secret CROSS_REPO_TOKEN and
+#   pass it via `token:` on the admin checkout.)
 
 on:
   push:
@@ -104,7 +103,6 @@ jobs:
         with:
           repository: kvngkc/mcdaves_admin
           ref: main
-          token: ${{ secrets.CROSS_REPO_TOKEN }}
           path: mcdaves_admin
       - name: Setup Node.js
         uses: actions/setup-node@v4
