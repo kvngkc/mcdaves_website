@@ -32,7 +32,7 @@ export async function GET(
   request: NextRequest,
   { params }: RouteProps,
 ): Promise<NextResponse> {
-  const auth = requireAdminSession(request);
+  const auth = await requireAdminSession(request);
   if (!auth.authorized) {
     return NextResponse.json({ error: auth.error || 'Unauthorized' }, { status: 401 });
   }
@@ -58,7 +58,7 @@ export async function PATCH(
   { params }: RouteProps,
 ): Promise<NextResponse> {
   try {
-    const auth = requireAdminSession(request);
+    const auth = await requireAdminSession(request);
     if (!auth.authorized) {
       return NextResponse.json({ error: auth.error || 'Unauthorized' }, { status: 401 });
     }
