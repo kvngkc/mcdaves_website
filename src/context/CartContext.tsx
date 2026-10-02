@@ -37,14 +37,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const savedCart = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (savedCart) {
         const parsed = JSON.parse(savedCart);
-        if (Array.isArray(parsed)) setItems(parsed);
+        if (Array.isArray(parsed)) queueMicrotask(() => setItems(parsed));
       }
     } catch (error) {
       console.error('Failed to load cart from localStorage:', error);
       localStorage.removeItem(LOCAL_STORAGE_KEY);
       throw new Error('Cart data was corrupted and has been cleared.');
     } finally {
-      setIsHydrated(true);
+      queueMicrotask(() => setIsHydrated(true));
     }
   }, []);
 

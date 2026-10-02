@@ -17,7 +17,7 @@ export function useVTOAssets() {
 
   useEffect(() => {
     if (isFetched) {
-      setLoading(false);
+      queueMicrotask(() => setLoading(false));
       return;
     }
 
