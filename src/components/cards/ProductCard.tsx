@@ -28,6 +28,15 @@ export function ProductCard({
   const [isHovered, setIsHovered] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [swipeProgress, setSwipeProgress] = useState(0);
+  const [prevProductId, setPrevProductId] = useState(product.id);
+
+  // Reset the carousel when the card is reused for a different product.
+  // This is the React-documented "adjust state when a prop changes" pattern.
+  if (prevProductId !== product.id) {
+    setPrevProductId(product.id);
+    setSelectedImageIndex(0);
+    setSwipeProgress(0);
+  }
 
   const rawImages = product.images || [];
   const validImages = rawImages.filter(url => typeof url === 'string' && url.trim() !== '');
@@ -36,15 +45,7 @@ export function ProductCard({
   const currentImage = images[selectedImageIndex] || images[0];
 
   useEffect(() => {
-    setSelectedImageIndex(0);
-    setSwipeProgress(0);
-  }, [product.id]);
-
-  useEffect(() => {
-    if (!isHovered || images.length <= 1) {
-      setSwipeProgress(0);
-      return;
-    }
+    if (!isHovered || images.length <= 1) return;
 
     const DURATION = 2500;
     const UPDATE_INTERVAL = 50;

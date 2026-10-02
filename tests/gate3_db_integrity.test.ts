@@ -9,7 +9,14 @@ describe('Gate 3 Database Integrity', () => {
   const testProductId = 'test-prod-gate3';
 
   beforeAll(async () => {
-    const { error: prodError } = await supabase.from('products').insert({
+    // Idempotent seeding: clear any fixture rows a previous (possibly
+    // interrupted) run may have left behind, then upsert. This keeps the suite
+    // re-runnable and safe against a stale row without weakening any assertion.
+    await supabase.from('product_variants').delete().eq('id', testVariantId);
+    await supabase.from('vto_asset_calibrations').delete().eq('asset_id', testAssetId);
+    await supabase.from('products').delete().eq('id', testProductId);
+
+    const { error: prodError } = await supabase.from('products').upsert({
       id: testProductId,
       name: 'Gate 3 Test Product',
       slug: 'test-product-gate3',
@@ -20,7 +27,7 @@ describe('Gate 3 Database Integrity', () => {
     });
     if (prodError) throw new Error(`Failed to insert test product: ${prodError.message}`);
 
-    const { error: assetError } = await supabase.from('vto_asset_calibrations').insert({
+    const { error: assetError } = await supabase.from('vto_asset_calibrations').upsert({
       id: '11111111-2222-3333-4444-555555555555',
       asset_id: testAssetId,
       name: 'Gate 3 Test Asset',

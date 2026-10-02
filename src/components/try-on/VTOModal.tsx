@@ -120,13 +120,13 @@ export function VTOModal({
       const timer = setTimeout(() => setEngineMounted(true), 50);
       return () => clearTimeout(timer);
     } else {
-      setEngineMounted(false);
+      queueMicrotask(() => setEngineMounted(false));
     }
   }, [open]);
 
   // Reset modelLoaded when changing glbPath
   useEffect(() => {
-    setModelLoaded(false);
+    queueMicrotask(() => setModelLoaded(false));
   }, [glbPath]);
 
   // Mutable ref for zero-latency 60 FPS 3D tracking
@@ -173,14 +173,16 @@ export function VTOModal({
       videoWidth || 640,
       videoHeight || 480,
     );
-    setViewport(vp);
+    queueMicrotask(() => setViewport(vp));
   }, [containerSize, videoWidth, videoHeight]);
 
   // 4. Initialize MediaPipe Detector
   const loadDetector = useCallback(async () => {
     if (!open || !engineMounted) return;
-    setDetectorReady(false);
-    setDetectorError(null);
+    queueMicrotask(() => {
+      setDetectorReady(false);
+      setDetectorError(null);
+    });
 
     try {
       const landmarker = await initFaceLandmarker();
@@ -194,7 +196,9 @@ export function VTOModal({
 
   useEffect(() => {
     if (open && engineMounted) {
-      loadDetector();
+      queueMicrotask(() => {
+        void loadDetector();
+      });
     }
   }, [open, engineMounted, loadDetector]);
 
