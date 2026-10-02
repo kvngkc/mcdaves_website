@@ -1,0 +1,147 @@
+name: Regression Gate
+
+# Phase 0.1 — consolidated regression/CI gate (v4 plan, step 0.1).
+# Produces ONE stable required status check: "Required Regression Gate".
+# Runs the full storefront suite: type-check, lint, Vitest (unit + integration)
+# and the Playwright E2E suite. This is the check to mark Required on `main`.
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+concurrency:
+  group: regression-gate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TEST_PROJECT_REF: lwhufocjhcvrbimerhjq
+  TEST_SUPABASE_URL: https://lwhufocjhcvrbimerhjq.supabase.co
+  TEST_SUPABASE_PUBLISHABLE_KEY: sb_publishable_dPt1vDkr0G60-L3XwqZVXQ_uFhCMyMW
+
+jobs:
+  type-check:
+    name: Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Install Dependencies
+        run: npm ci
+      - name: Type Check
+        run: npm run type-check
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Install Dependencies
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+
+  vitest:
+    name: Vitest (unit + integration)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Install Dependencies
+        run: npm ci
+      - name: Validate Test Database Configuration
+        run: |
+          test "$TEST_SUPABASE_URL" = "https://$TEST_PROJECT_REF.supabase.co"
+          test -n "$TEST_SUPABASE_PUBLISHABLE_KEY"
+          test -n "$TEST_SUPABASE_SERVICE_ROLE_KEY"
+        env:
+          TEST_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TEST_SUPABASE_SERVICE_ROLE_KEY }}
+      - name: Run Admin VTO Publication Regression
+        run: npx vitest run tests/gate4_vto_integration.test.ts
+        env:
+          TEST_SUPABASE_URL: ${{ env.TEST_SUPABASE_URL }}
+          TEST_SUPABASE_PUBLISHABLE_KEY: ${{ env.TEST_SUPABASE_PUBLISHABLE_KEY }}
+          TEST_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TEST_SUPABASE_SERVICE_ROLE_KEY }}
+      - name: Run Remaining Vitest Tests
+        run: npx vitest run --exclude tests/gate4_vto_integration.test.ts
+        env:
+          TEST_SUPABASE_URL: ${{ env.TEST_SUPABASE_URL }}
+          TEST_SUPABASE_PUBLISHABLE_KEY: ${{ env.TEST_SUPABASE_PUBLISHABLE_KEY }}
+          TEST_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TEST_SUPABASE_SERVICE_ROLE_KEY }}
+
+  playwright:
+    name: Playwright E2E
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Install Dependencies
+        run: npm ci
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+      - name: Validate E2E Database Configuration
+        run: |
+          test "$TEST_SUPABASE_URL" = "https://$TEST_PROJECT_REF.supabase.co"
+          test -n "$TEST_SUPABASE_PUBLISHABLE_KEY"
+          test -n "$TEST_SUPABASE_SERVICE_ROLE_KEY"
+        env:
+          TEST_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TEST_SUPABASE_SERVICE_ROLE_KEY }}
+      - name: Run Playwright Tests
+        run: npx playwright test ./e2e
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ env.TEST_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ env.TEST_SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TEST_SUPABASE_SERVICE_ROLE_KEY }}
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+      - name: Upload Playwright Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
+
+  # Single aggregator job — this is the ONE stable check name to mark Required.
+  gate:
+    name: Required Regression Gate
+    runs-on: ubuntu-latest
+    needs: [ type-check, lint, vitest, playwright ]
+    if: always()
+    steps:
+      - name: Assert every required job succeeded
+        run: |
+          echo "type-check = ${{ needs.type-check.result }}"
+          echo "lint       = ${{ needs.lint.result }}"
+          echo "vitest     = ${{ needs.vitest.result }}"
+          echo "playwright = ${{ needs.playwright.result }}"
+          if [ "${{ needs.type-check.result }}" != "success" ] || \
+             [ "${{ needs.lint.result }}" != "success" ] || \
+             [ "${{ needs.vitest.result }}" != "success" ] || \
+             [ "${{ needs.playwright.result }}" != "success" ]; then
+            echo "::error::Regression gate FAILED — one or more required jobs did not succeed."
+            exit 1
+          fi
+          echo "Regression gate PASSED — all required jobs succeeded."
