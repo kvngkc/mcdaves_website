@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
 import { z } from 'zod';
 import { commerceRepository } from '@/lib/commerce/repository';
 import { createPaymentService } from '@/services/payment';
@@ -98,7 +99,8 @@ export async function PATCH(
         `https://${request.headers.get('host') || 'localhost:3000'}`;
 
       const totalAmount = intent.priceAtIntent * intent.quantity;
-      const paymentRef = `MDV_${Date.now()}_${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+      // SECURITY: CSPRNG reference, never Math.random().
+      const paymentRef = `MDV_${Date.now()}_${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
       const customerEmail = intent.customerEmail || `${intent.customerId.toLowerCase()}@mcdaves.customer`;
 
       const paymentService = createPaymentService('paystack');
