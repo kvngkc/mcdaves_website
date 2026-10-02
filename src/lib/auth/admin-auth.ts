@@ -1,182 +1,91 @@
 // src/lib/auth/admin-auth.ts
 /**
- * Server-Side Cryptographic Admin Authentication & Authorization
- * 
- * Provides HMAC-signed session cookies, constant-time passkey verification,
- * rate limiting against brute-force attacks, and server-side route guards.
+ * Unified admin authorization (Step 3.4, v4 plan).
+ *
+ * Both apps authorise admin actions through the same Supabase session + role
+ * check. The legacy shared-passkey / HMAC path is removed — no passkey remains
+ * as a bypass. One audit trail records every admin mutation with the acting
+ * user.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import crypto from 'crypto';
+import { NextRequest } from 'next/server';
+import { supabase } from '@/lib/supabase/service';
 
-export const ADMIN_COOKIE_NAME = 'mcdaves_admin_session';
-const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24; // 24 hours
+export const ADMIN_COOKIE_NAME = 'mcdaves_sb_access_token';
+export const ADMIN_CSRF_COOKIE = 'mcdaves_admin_csrf';
 
-// SECURITY: No hardcoded fallbacks. These MUST be set in environment variables.
-const SERVER_AUTH_SECRET = process.env.ADMIN_SESSION_SECRET;
-if (!SERVER_AUTH_SECRET) {
-  console.error('[SECURITY] ADMIN_SESSION_SECRET environment variable is not set. Admin auth will fail.');
+export type AdminRole = 'admin' | 'manager' | 'staff';
+
+export interface AuthResult {
+  authorized: boolean;
+  role?: AdminRole;
+  error?: string;
+  user?: any;
 }
 
-// Server-configured admin passkey (never exposed via NEXT_PUBLIC_*)
-const ADMIN_PASSKEY = process.env.ADMIN_PASSKEY;
-if (!ADMIN_PASSKEY) {
-  console.error('[SECURITY] ADMIN_PASSKEY environment variable is not set. Admin login will fail.');
-}
-
-// In-memory rate limiting map for login attempts: IP/Identifier -> timestamps
-const loginAttempts = new Map<string, number[]>();
-const MAX_ATTEMPTS_PER_WINDOW = 5;
-const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
-
-/**
- * Check and record login attempt rate limit. Returns true if allowed, false if rate limited.
- */
-export function checkLoginRateLimit(identifier: string): boolean {
-  const now = Date.now();
-  const attempts = loginAttempts.get(identifier) || [];
-  const validAttempts = attempts.filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
-
-  if (validAttempts.length >= MAX_ATTEMPTS_PER_WINDOW) {
-    return false;
-  }
-
-  validAttempts.push(now);
-  loginAttempts.set(identifier, validAttempts);
-  return true;
+function readRole(user: any): AdminRole | undefined {
+  return (user?.app_metadata?.role ?? user?.user_metadata?.role) as AdminRole | undefined;
 }
 
 /**
- * Constant-time comparison of passkey to prevent timing attacks.
+ * Authorises a request against the Supabase session + role model.
+ * The session token is read from the httpOnly cookie (or a Bearer header for
+ * API tooling) and validated server-side with the service client.
  */
-export function verifyAdminPasskey(inputPasskey: string): boolean {
-  if (!inputPasskey || typeof inputPasskey !== 'string' || !ADMIN_PASSKEY) return false;
-
-  const target = ADMIN_PASSKEY.trim();
-  const input = inputPasskey.trim();
-
-  // Also verify against legacy passkey during migration if needed, but in constant time
-  const targetBuffer = Buffer.from(target, 'utf-8');
-  const inputBuffer = Buffer.from(input, 'utf-8');
-
-  if (targetBuffer.length !== inputBuffer.length) {
-    // Perform dummy comparison to keep constant timing
-    crypto.timingSafeEqual(targetBuffer, targetBuffer);
-    return false;
-  }
-
-  return crypto.timingSafeEqual(targetBuffer, inputBuffer);
-}
-
-/**
- * Generate a cryptographically signed HMAC token for the admin session.
- */
-export function createAdminSessionToken(): string {
-  if (!SERVER_AUTH_SECRET) {
-    throw new Error('[SECURITY] ADMIN_SESSION_SECRET is not configured on the server.');
-  }
-
-  const payload = {
-    role: 'admin',
-    iat: Math.floor(Date.now() / 1000),
-    exp: Math.floor(Date.now() / 1000) + SESSION_MAX_AGE_SECONDS,
-    jti: crypto.randomBytes(16).toString('hex'),
-  };
-
-  const payloadB64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
-  const signature = crypto
-    .createHmac('sha256', SERVER_AUTH_SECRET)
-    .update(payloadB64)
-    .digest('base64url');
-
-  return `${payloadB64}.${signature}`;
-}
-
-/**
- * Verify HMAC signature and expiration on a session token.
- */
-export function verifyAdminSessionToken(token: string | undefined): boolean {
-  if (!token || typeof token !== 'string' || !SERVER_AUTH_SECRET) return false;
-
-  const parts = token.split('.');
-  if (parts.length !== 2) return false;
-
-  const [payloadB64, signature] = parts;
-
-  const expectedSignature = crypto
-    .createHmac('sha256', SERVER_AUTH_SECRET)
-    .update(payloadB64)
-    .digest('base64url');
-
-  const sigBuffer = Buffer.from(signature, 'utf-8');
-  const expectedSigBuffer = Buffer.from(expectedSignature, 'utf-8');
-
-  if (sigBuffer.length !== expectedSigBuffer.length) {
-    return false;
-  }
-
-  if (!crypto.timingSafeEqual(sigBuffer, expectedSigBuffer)) {
-    return false;
-  }
-
-  try {
-    const payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf-8'));
-    const nowSec = Math.floor(Date.now() / 1000);
-
-    if (payload.role !== 'admin') return false;
-    if (payload.exp && payload.exp < nowSec) return false;
-
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Guard function for Next.js Route Handlers.
- */
-export function requireAdminSession(request: NextRequest): { authorized: boolean; error?: string } {
-  const sessionCookie = request.cookies.get(ADMIN_COOKIE_NAME)?.value;
-
-  // Also support Authorization: Bearer <token> for API tooling
-  const authHeader = request.headers.get('authorization');
+export async function requireRole(
+  req: NextRequest,
+  allowedRoles: AdminRole[],
+): Promise<AuthResult> {
+  const authHeader = req.headers.get('authorization');
   const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : undefined;
+  const token = req.cookies.get(ADMIN_COOKIE_NAME)?.value ?? bearerToken;
 
-  const token = sessionCookie || bearerToken;
+  if (!token) return { authorized: false, error: 'Unauthorized: No session token found.' };
+  if (!supabase) return { authorized: false, error: 'Internal Server Error: Database client missing' };
 
-  if (!verifyAdminSessionToken(token)) {
-    return { authorized: false, error: 'Unauthorized: Valid admin session required' };
+  const { data, error } = await supabase.auth.getUser(token);
+  if (error || !data.user) {
+    return { authorized: false, error: 'Unauthorized: Invalid or expired session.' };
   }
 
-  return { authorized: true };
+  const role = readRole(data.user);
+  if (!role || !allowedRoles.includes(role)) {
+    return { authorized: false, error: 'Forbidden: Insufficient permissions.' };
+  }
+
+  return { authorized: true, role, user: data.user };
+}
+
+export async function requireAdminSession(req: NextRequest): Promise<AuthResult> {
+  return requireRole(req, ['admin']);
+}
+export async function requireManagerOrHigher(req: NextRequest): Promise<AuthResult> {
+  return requireRole(req, ['admin', 'manager']);
+}
+export async function requireStaffOrHigher(req: NextRequest): Promise<AuthResult> {
+  return requireRole(req, ['admin', 'manager', 'staff']);
 }
 
 /**
- * Set HTTP-only secure cookie on response.
+ * One audit trail for both apps (Step 3.4). Records every admin mutation with
+ * the acting user. Best-effort: a logging failure never blocks the mutation.
  */
-export function setAdminSessionCookie(response: NextResponse, token: string): void {
-  response.cookies.set({
-    name: ADMIN_COOKIE_NAME,
-    value: token,
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/',
-    maxAge: SESSION_MAX_AGE_SECONDS,
+export async function recordAdminAudit(entry: {
+  actorId?: string;
+  actorEmail?: string;
+  action: string;
+  targetType: string;
+  targetId?: string;
+  metadata?: Record<string, unknown>;
+}): Promise<void> {
+  if (!supabase) return;
+  const { error } = await supabase.from('admin_audit_log').insert({
+    actor_id: entry.actorId ?? null,
+    actor_email: entry.actorEmail ?? null,
+    action: entry.action,
+    target_type: entry.targetType,
+    target_id: entry.targetId ?? null,
+    metadata: entry.metadata ?? {},
   });
-}
-
-/**
- * Clear admin session cookie.
- */
-export function clearAdminSessionCookie(response: NextResponse): void {
-  response.cookies.set({
-    name: ADMIN_COOKIE_NAME,
-    value: '',
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 0,
-  });
+  if (error) console.error('[admin-audit] failed to record entry:', error.message);
 }
