@@ -88,10 +88,7 @@ export default function ProductDetailClient({
   const currentImage = images[selectedImageIndex] || images[0];
 
   useEffect(() => {
-    if (images.length <= 1) {
-      setSwipeProgress(0);
-      return;
-    }
+    if (images.length <= 1) return;
 
     const DURATION = 4000;
     const UPDATE_INTERVAL = 50;
