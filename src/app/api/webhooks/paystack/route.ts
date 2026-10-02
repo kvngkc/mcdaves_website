@@ -85,6 +85,32 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         totalAmount: amount,
       });
 
+      // 2. Persist prescription metadata (Step 3.1).
+      // The storefront checkout carries prescriptionOption / prescriptionFileUrl
+      // in the Paystack charge metadata; the admin console reads them back from
+      // orders.metadata. Written here — the single fulfilment path — so the
+      // column and the storefront write land together.
+      const prescriptionOption = metadata.prescriptionOption as string | undefined;
+      const prescriptionFileUrl = metadata.prescriptionFileUrl as string | undefined;
+
+      if (processResult?.orderId && (prescriptionOption || prescriptionFileUrl)) {
+        const { error: metaError } = await supabase
+          .from('orders')
+          .update({
+            metadata: {
+              ...(prescriptionOption ? { prescriptionOption } : {}),
+              ...(prescriptionFileUrl ? { prescriptionFileUrl } : {}),
+            },
+          })
+          .eq('id', processResult.orderId);
+
+        if (metaError) {
+          console.error(
+            `[Paystack Webhook] Failed to persist prescription metadata for order ${processResult.orderId}: ${metaError.message}`,
+          );
+        }
+      }
+
       console.log(`[Paystack Webhook] Successfully processed confirmed order for reference ${reference}. Order ID: ${processResult.orderId}`);
     }
 
