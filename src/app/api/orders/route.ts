@@ -30,7 +30,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       orders = orders.filter(
         (o) =>
           o.id.toLowerCase().includes(search) ||
-          o.paymentReference.toLowerCase().includes(search) ||
+          (o.paymentReference ?? '').toLowerCase().includes(search) ||
           o.customerId.toLowerCase().includes(search) ||
           o.items.some(
             (item) =>
