@@ -67,7 +67,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     // 1. Rate limit — max 5 prescription uploads per minute per IP (prevents abuse)
     const clientIp = getClientIp(request);
-    const rateLimit = checkRateLimit(`prescription-upload:${clientIp}`, {
+    const rateLimit = await checkRateLimit(`prescription-upload:${clientIp}`, {
       maxRequests: 5,
       windowMs: 60 * 1000,
     });

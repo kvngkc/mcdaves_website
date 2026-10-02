@@ -5,7 +5,7 @@ import { requireAdminSession } from '@/lib/auth/admin-auth';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
-  const auth = requireAdminSession(request);
+  const auth = await requireAdminSession(request);
 
   if (!auth.authorized) {
     return NextResponse.json(
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   }
 
   return NextResponse.json(
-    { authenticated: true, role: 'admin' },
+    { authenticated: true, role: 'admin', userId: auth.userId },
     { status: 200 },
   );
 }

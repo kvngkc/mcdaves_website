@@ -10,11 +10,22 @@ export async function verifyTurnstileToken(token: string | null): Promise<boolea
 
   const secretKey = process.env.TURNSTILE_SECRET_KEY;
   if (!secretKey) {
-    // If not configured, fail open in development or securely warn.
-    // We fail open here to prevent locking admins out if they forget the key during setup,
-    // but in production, this should ideally fail closed.
-    console.warn('TURNSTILE_SECRET_KEY is not configured. Skipping verification.');
-    return true; 
+    // SECURITY: Fail closed in production. A missing secret must never
+    // silently disable bot protection on the endpoints that call this
+    // (/api/contact, /api/order-intents, /api/pay/initialize).
+    if (process.env.NODE_ENV === 'production') {
+      console.error(
+        '[SECURITY] TURNSTILE_SECRET_KEY is not configured in production. ' +
+          'Rejecting the request (fail closed).',
+      );
+      return false;
+    }
+
+    // Development-only escape hatch so local setup is not blocked.
+    console.warn(
+      'TURNSTILE_SECRET_KEY is not configured. Skipping verification (development only).',
+    );
+    return true;
   }
 
   try {
