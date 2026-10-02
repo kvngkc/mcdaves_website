@@ -27,7 +27,7 @@ describe('Gate 3 Repository Resolution (resolveVariant)', () => {
     repository = new (CommerceRepository as any)();
     
     // Mock product_media query to avoid crashing resolveVariant
-    (supabaseServer.from as any).mockReturnValue({
+    (supabaseServer!.from as any).mockReturnValue({
       select: vi.fn().mockReturnValue({
         eq: vi.fn().mockReturnValue({
           order: vi.fn().mockResolvedValue({ data: [], error: null })
