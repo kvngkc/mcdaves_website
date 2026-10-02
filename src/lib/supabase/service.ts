@@ -42,6 +42,18 @@ import {
 export const supabase: SupabaseClient | null = supabaseServer;
 
 /**
+ * A raw PostgREST row: a JSON object keyed by column name.
+ *
+ * STEP 4.2: the record-producing mappers below used to be declared `): any`,
+ * which leaked an untyped value into every caller (a `mapOrderToRow(...)`
+ * result was `any`). They now return this explicit boundary type, so callers
+ * must narrow or cast to the domain type instead of silently getting `any`.
+ * The row *inputs* stay untyped on purpose — they are dynamic PostgREST
+ * objects and narrowing them requires generated database types (follow-up).
+ */
+type DbRow = Record<string, unknown>;
+
+/**
  * Maps database row to Domain Product
  */
 export function mapRowToProduct(row: any): Product {
@@ -76,7 +88,7 @@ export function mapRowToProduct(row: any): Product {
 /**
  * Maps Domain Product to database row
  */
-export function mapProductToRow(product: Product): any {
+export function mapProductToRow(product: Product): DbRow {
   return {
     id: product.id,
     slug: product.slug,
@@ -136,7 +148,7 @@ export function mapRowToVariant(row: any): ProductVariant {
 /**
  * Maps Domain ProductVariant to database row
  */
-export function mapVariantToRow(variant: ProductVariant): any {
+export function mapVariantToRow(variant: ProductVariant): DbRow {
   return {
     id: variant.id,
     product_id: variant.productId,
@@ -182,7 +194,7 @@ export function mapRowToMedia(row: any): ProductMedia {
 /**
  * Maps Domain ProductMedia to database row
  */
-export function mapMediaToRow(media: ProductMedia): any {
+export function mapMediaToRow(media: ProductMedia): DbRow {
   return {
     id: media.id,
     product_id: media.productId,
@@ -212,7 +224,7 @@ export function mapRowToCustomer(row: any): Customer {
 /**
  * Maps Customer to database row
  */
-export function mapCustomerToRow(customer: Customer): any {
+export function mapCustomerToRow(customer: Customer): DbRow {
   return {
     id: customer.id,
     phone: customer.phone,
@@ -256,7 +268,7 @@ export function mapRowToOrderIntent(row: any): OrderIntent {
 /**
  * Maps OrderIntent to database row
  */
-export function mapOrderIntentToRow(intent: OrderIntent): any {
+export function mapOrderIntentToRow(intent: OrderIntent): DbRow {
   return {
     id: intent.id,
     customer_id: intent.customerId,
@@ -309,7 +321,7 @@ export function mapRowToOrder(row: any): Order {
 /**
  * Maps Order to database row
  */
-export function mapOrderToRow(order: Order): any {
+export function mapOrderToRow(order: Order): DbRow {
   return {
     id: order.id,
     order_intent_id: order.orderIntentId || null,
@@ -352,7 +364,7 @@ export function mapRowToPayment(row: any): Payment {
 /**
  * Maps Payment to database row
  */
-export function mapPaymentToRow(payment: Payment): any {
+export function mapPaymentToRow(payment: Payment): DbRow {
   return {
     id: payment.id,
     reference: payment.reference,
@@ -390,7 +402,7 @@ export function mapRowToLensRequest(row: any): LensRequest {
 /**
  * Maps LensRequest to database row
  */
-export function mapLensRequestToRow(lensReq: LensRequest): any {
+export function mapLensRequestToRow(lensReq: LensRequest): DbRow {
   return {
     id: lensReq.id,
     customer_id: lensReq.customerId,
@@ -438,7 +450,7 @@ export function mapRowToVtoCalibration(row: any): RawVTOAssetCalibration {
 /**
  * Maps RawVTOAssetCalibration to database row
  */
-export function mapVtoCalibrationToRow(calib: RawVTOAssetCalibration): any {
+export function mapVtoCalibrationToRow(calib: RawVTOAssetCalibration): DbRow {
   return {
     id: calib.id,
     asset_id: calib.assetId,
