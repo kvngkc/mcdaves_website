@@ -41,7 +41,7 @@ export default async function CustomerOrdersPage() {
             <Package className="w-12 h-12 text-neutral-300 mx-auto mb-4" />
             <h3 className="text-lg font-bold text-neutral-900 mb-2">No orders found</h3>
             <p className="text-neutral-500 text-sm max-w-sm mx-auto mb-6">
-              You haven't placed any orders with this email address yet.
+              You haven&apos;t placed any orders with this email address yet.
             </p>
             <Link
               href="/shop"

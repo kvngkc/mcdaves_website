@@ -76,7 +76,7 @@ function GlassesModelInner({
 
   useEffect(() => {
     if (!scene) {
-      setPrepared(null);
+      queueMicrotask(() => setPrepared(null));
       return;
     }
 
@@ -84,7 +84,7 @@ function GlassesModelInner({
     const cacheKey = `${glbPath}_${activeClipTemples}_${templeDepthCutoff}`;
 
     if (preparedModelCache.has(cacheKey)) {
-      setPrepared(preparedModelCache.get(cacheKey));
+      queueMicrotask(() => setPrepared(preparedModelCache.get(cacheKey)));
       return;
     }
 
