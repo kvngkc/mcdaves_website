@@ -4,6 +4,7 @@ import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getLiveResolvedProductBySlug, getLiveStorefrontProducts } from '@/lib/commerce/storefront-catalog';
 import ProductDetailClient from './ProductDetailClient';
+import { jsonLdHtml } from '@/lib/seo/json-ld';
 
 export const dynamic = 'force-dynamic';
 export const dynamicParams = true;
@@ -82,7 +83,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdHtml(jsonLd) }} />
       <ProductDetailClient product={product as any} relatedProducts={relatedProducts as any} />
     </>
   );

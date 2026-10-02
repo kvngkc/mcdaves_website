@@ -10,6 +10,7 @@ import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { commerceRepository } from '@/lib/commerce/repository';
 import ProductDetailClient from '@/app/shop/[slug]/ProductDetailClient';
+import { jsonLdHtml } from '@/lib/seo/json-ld';
 
 interface PageProps {
   params: Promise<{
@@ -119,7 +120,7 @@ export default async function ExactVariantPage({ params }: PageProps) {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }}
+        dangerouslySetInnerHTML={{ __html: jsonLdHtml(jsonLd) }}
       />
       <ProductDetailClient
         product={product as any}

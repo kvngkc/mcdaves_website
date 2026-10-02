@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { HelpCircle, ArrowRight, ShieldCheck, PhoneCall } from 'lucide-react';
 import { siteConfig } from '@/data/site-config';
 import { urlConfig } from '@/config';
+import { jsonLdHtml } from '@/lib/seo/json-ld';
 
 import type { Metadata } from 'next';
 
@@ -93,10 +94,10 @@ export default function FAQPage() {
     <div className="flex flex-col min-h-screen bg-brand-50/40 pb-16">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdHtml(faqSchema) }}
       />
 
-      {/* ── Header ──────────────────────────────────────────────────────────── */}
+      {/* ── Header ────────────────────────────────────────────────────────── */}
       <section className="pt-12 pb-16 bg-white border-b border-neutral-200">
         <div className="container-main text-center max-w-2xl">
           <span className="text-caption font-semibold uppercase tracking-wider text-brand-700 block mb-2">
@@ -111,7 +112,7 @@ export default function FAQPage() {
         </div>
       </section>
 
-      {/* ── FAQ Categories ─────────────────────────────────────────────────── */}
+      {/* ── FAQ Categories ────────────────────────────────────────────────── */}
       <section className="py-16">
         <div className="container-main max-w-4xl space-y-12">
 
