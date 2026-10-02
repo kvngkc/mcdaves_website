@@ -10,12 +10,18 @@
 --     - READ:  products (ACTIVE only), product_variants (ACTIVE only), product_media
 --     - WRITE: NONE
 --
---   Authenticated (Supabase Auth users, future):
+--   Authenticated (Supabase Auth users):
 --     - READ:  own customer profile, own orders, own order_intents
 --     - WRITE: own customer profile (upsert)
 --
 --   Service Role (server-only API routes via SUPABASE_SERVICE_ROLE_KEY):
 --     - ALL operations on ALL tables (bypasses RLS by design)
+--
+-- OWNERSHIP MODEL (Phase 1.11):
+--   Ownership is keyed off customers.auth_user_id (a Supabase auth UUID),
+--   NOT the custom MC-XXXXX customer id. The previous policies compared
+--   auth.uid() against the custom id, which can never match and silently
+--   returned nothing. See migrations 015 (add + backfill) and 016 (flip).
 --
 -- The service role key is NEVER exposed to the browser. All mutations
 -- (create order, update inventory, record payment) go through server-side
@@ -33,18 +39,16 @@ ALTER TABLE public.orders              ENABLE ROW LEVEL SECURITY;
 
 -- ─── Step 2: PRODUCTS — Public read of active products only ──────────────────
 
--- Drop existing policies if re-running
 DROP POLICY IF EXISTS "products_anon_read_active" ON public.products;
 DROP POLICY IF EXISTS "products_service_all" ON public.products;
 
--- Anonymous visitors can read ACTIVE products only
 CREATE POLICY "products_anon_read_active"
   ON public.products
   FOR SELECT
   TO anon
   USING (status = 'ACTIVE');
 
--- ─── Step 3: PRODUCT VARIANTS — Public read of active variants only ───────────
+-- ─── Step 3: PRODUCT VARIANTS — Public read of active variants only ──────────
 
 DROP POLICY IF EXISTS "variants_anon_read_active" ON public.product_variants;
 
@@ -64,11 +68,10 @@ CREATE POLICY "media_anon_read"
   TO anon
   USING (true);
 
--- ─── Step 5: CUSTOMERS — No public access; authenticated users own their row ──
+-- ─── Step 5: CUSTOMERS — No public access; authenticated users own their row ─
 
 DROP POLICY IF EXISTS "customers_no_anon_access" ON public.customers;
 
--- Explicitly deny all anon access to customer records
 CREATE POLICY "customers_no_anon_access"
   ON public.customers
   FOR ALL
@@ -76,22 +79,15 @@ CREATE POLICY "customers_no_anon_access"
   USING (false)
   WITH CHECK (false);
 
--- Authenticated users can read/update their own customer record
+-- Authenticated users can read/update their own customer record, keyed off
+-- the Supabase auth UUID (auth_user_id), not the custom MC-XXXXX id.
+DROP POLICY IF EXISTS "customers_auth_own_row" ON public.customers;
 CREATE POLICY "customers_auth_own_row"
   ON public.customers
   FOR ALL
   TO authenticated
-  USING (auth.uid()::text = id)
-  WITH CHECK (auth.uid()::text = id);
-
--- (Future) Authenticated users can read/update their own customer record
--- Uncomment when Supabase Auth is integrated:
--- CREATE POLICY "customers_auth_own_row"
---   ON public.customers
---   FOR ALL
---   TO authenticated
---   USING (auth.uid()::text = id)
---   WITH CHECK (auth.uid()::text = id);
+  USING (auth.uid() = auth_user_id)
+  WITH CHECK (auth.uid() = auth_user_id);
 
 -- ─── Step 6: ORDER INTENTS — No public access ────────────────────────────────
 
@@ -104,14 +100,23 @@ CREATE POLICY "order_intents_no_anon_access"
   USING (false)
   WITH CHECK (false);
 
+DROP POLICY IF EXISTS "order_intents_auth_own_row" ON public.order_intents;
 CREATE POLICY "order_intents_auth_own_row"
   ON public.order_intents
   FOR ALL
   TO authenticated
-  USING (auth.uid()::text = customer_id)
-  WITH CHECK (auth.uid()::text = customer_id);
+  USING (
+    auth.uid() = (
+      SELECT c.auth_user_id FROM public.customers c WHERE c.id = order_intents.customer_id
+    )
+  )
+  WITH CHECK (
+    auth.uid() = (
+      SELECT c.auth_user_id FROM public.customers c WHERE c.id = order_intents.customer_id
+    )
+  );
 
--- ─── Step 7: ORDERS — No public access ──────────────────────────────────────
+-- ─── Step 7: ORDERS — No public access ───────────────────────────────────────
 
 DROP POLICY IF EXISTS "orders_no_anon_access" ON public.orders;
 
@@ -122,14 +127,23 @@ CREATE POLICY "orders_no_anon_access"
   USING (false)
   WITH CHECK (false);
 
+DROP POLICY IF EXISTS "orders_auth_own_row" ON public.orders;
 CREATE POLICY "orders_auth_own_row"
   ON public.orders
   FOR ALL
   TO authenticated
-  USING (auth.uid()::text = customer_id)
-  WITH CHECK (auth.uid()::text = customer_id);
+  USING (
+    auth.uid() = (
+      SELECT c.auth_user_id FROM public.customers c WHERE c.id = orders.customer_id
+    )
+  )
+  WITH CHECK (
+    auth.uid() = (
+      SELECT c.auth_user_id FROM public.customers c WHERE c.id = orders.customer_id
+    )
+  );
 
--- ─── Step 8: Verify RLS is enabled ──────────────────────────────────────────
+-- ─── Step 8: Verify RLS is enabled ───────────────────────────────────────────
 -- Run this query to verify each table has RLS enabled and expected policies:
 --
 -- SELECT
@@ -158,12 +172,21 @@ CREATE POLICY "payments_no_anon_access"
   USING (false)
   WITH CHECK (false);
 
+DROP POLICY IF EXISTS "payments_auth_own_row" ON public.payments;
 CREATE POLICY "payments_auth_own_row"
   ON public.payments
   FOR ALL
   TO authenticated
-  USING (auth.uid()::text = customer_id)
-  WITH CHECK (auth.uid()::text = customer_id);
+  USING (
+    auth.uid() = (
+      SELECT c.auth_user_id FROM public.customers c WHERE c.id = payments.customer_id
+    )
+  )
+  WITH CHECK (
+    auth.uid() = (
+      SELECT c.auth_user_id FROM public.customers c WHERE c.id = payments.customer_id
+    )
+  );
 
 -- ─── Step 10: LENS REQUESTS — No public access ───────────────────────────────
 
@@ -176,12 +199,21 @@ CREATE POLICY "lens_requests_no_anon_access"
   USING (false)
   WITH CHECK (false);
 
+DROP POLICY IF EXISTS "lens_requests_auth_own_row" ON public.lens_requests;
 CREATE POLICY "lens_requests_auth_own_row"
   ON public.lens_requests
   FOR ALL
   TO authenticated
-  USING (auth.uid()::text = customer_id)
-  WITH CHECK (auth.uid()::text = customer_id);
+  USING (
+    auth.uid() = (
+      SELECT c.auth_user_id FROM public.customers c WHERE c.id = lens_requests.customer_id
+    )
+  )
+  WITH CHECK (
+    auth.uid() = (
+      SELECT c.auth_user_id FROM public.customers c WHERE c.id = lens_requests.customer_id
+    )
+  );
 
 -- ─── Step 11: VTO ASSET CALIBRATIONS — Public read for active assets ─────────
 

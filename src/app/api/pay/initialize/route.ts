@@ -61,7 +61,7 @@ function generateReference(): string {
 export async function POST(request: NextRequest): Promise<NextResponse> {
   // 0. Check Rate Limit (max 15 payment initializations per minute per IP)
   const clientIp = getClientIp(request);
-  const rateLimit = checkRateLimit(`pay-init:${clientIp}`, {
+  const rateLimit = await checkRateLimit(`pay-init:${clientIp}`, {
     maxRequests: 15,
     windowMs: 60 * 1000,
   });
