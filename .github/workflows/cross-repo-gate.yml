@@ -57,7 +57,7 @@ jobs:
         working-directory: mcdaves_website
         run: |
           test "$TEST_SUPABASE_URL" = "https://$TEST_PROJECT_REF.supabase.co"
-          test -n "${{ secrets.TEST_SUPABASE_PUBLISHABLE_KEY }}"
+          test -n "$TEST_SUPABASE_PUBLISHABLE_KEY"
           test -n "$TEST_SUPABASE_SERVICE_ROLE_KEY"
         env:
           TEST_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TEST_SUPABASE_SERVICE_ROLE_KEY }}
@@ -67,7 +67,7 @@ jobs:
         run: npx playwright test ./e2e
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ env.TEST_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.TEST_SUPABASE_PUBLISHABLE_KEY }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ env.TEST_SUPABASE_PUBLISHABLE_KEY }}
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
 
       - name: Run Vitest Tests
@@ -75,7 +75,7 @@ jobs:
         run: npx vitest run
         env:
           TEST_SUPABASE_URL: ${{ env.TEST_SUPABASE_URL }}
-          TEST_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.TEST_SUPABASE_PUBLISHABLE_KEY }}
+          TEST_SUPABASE_PUBLISHABLE_KEY: ${{ env.TEST_SUPABASE_PUBLISHABLE_KEY }}
           TEST_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TEST_SUPABASE_SERVICE_ROLE_KEY }}
 
       - name: Upload Playwright Report
