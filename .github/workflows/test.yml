@@ -9,7 +9,6 @@ on:
 env:
   TEST_PROJECT_REF: lwhufocjhcvrbimerhjq
   TEST_SUPABASE_URL: https://lwhufocjhcvrbimerhjq.supabase.co
-  TEST_SUPABASE_PUBLISHABLE_KEY: sb_publishable_dPt1vDkr0G60-L3XwqZVXQ_uFhCMyMW
 
 jobs:
   test:
@@ -30,7 +29,7 @@ jobs:
       - name: Validate E2E Database Configuration
         run: |
           test "$TEST_SUPABASE_URL" = "https://$TEST_PROJECT_REF.supabase.co"
-          test -n "$TEST_SUPABASE_PUBLISHABLE_KEY"
+          test -n "${{ secrets.TEST_SUPABASE_PUBLISHABLE_KEY }}"
           test -n "$TEST_SUPABASE_SERVICE_ROLE_KEY"
         env:
           TEST_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TEST_SUPABASE_SERVICE_ROLE_KEY }}
@@ -38,8 +37,7 @@ jobs:
         run: npx playwright test ./e2e
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ env.TEST_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ env.TEST_SUPABASE_PUBLISHABLE_KEY }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TEST_SUPABASE_SERVICE_ROLE_KEY }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.TEST_SUPABASE_PUBLISHABLE_KEY }}
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
       - name: Upload Playwright Report
         if: always()
@@ -72,7 +70,7 @@ jobs:
       - name: Validate Test Database Configuration
         run: |
           test "$TEST_SUPABASE_URL" = "https://$TEST_PROJECT_REF.supabase.co"
-          test -n "$TEST_SUPABASE_PUBLISHABLE_KEY"
+          test -n "${{ secrets.TEST_SUPABASE_PUBLISHABLE_KEY }}"
           test -n "$TEST_SUPABASE_SERVICE_ROLE_KEY"
         env:
           TEST_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TEST_SUPABASE_SERVICE_ROLE_KEY }}
@@ -80,11 +78,11 @@ jobs:
         run: npx vitest run tests/gate4_vto_integration.test.ts
         env:
           TEST_SUPABASE_URL: ${{ env.TEST_SUPABASE_URL }}
-          TEST_SUPABASE_PUBLISHABLE_KEY: ${{ env.TEST_SUPABASE_PUBLISHABLE_KEY }}
+          TEST_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.TEST_SUPABASE_PUBLISHABLE_KEY }}
           TEST_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TEST_SUPABASE_SERVICE_ROLE_KEY }}
       - name: Run Remaining Vitest Tests
         run: npx vitest run --exclude tests/gate4_vto_integration.test.ts
         env:
           TEST_SUPABASE_URL: ${{ env.TEST_SUPABASE_URL }}
-          TEST_SUPABASE_PUBLISHABLE_KEY: ${{ env.TEST_SUPABASE_PUBLISHABLE_KEY }}
+          TEST_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.TEST_SUPABASE_PUBLISHABLE_KEY }}
           TEST_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TEST_SUPABASE_SERVICE_ROLE_KEY }}
