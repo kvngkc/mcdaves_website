@@ -18,6 +18,7 @@ concurrency:
 env:
   TEST_PROJECT_REF: lwhufocjhcvrbimerhjq
   TEST_SUPABASE_URL: https://lwhufocjhcvrbimerhjq.supabase.co
+  TEST_SUPABASE_PUBLISHABLE_KEY: sb_publishable_dPt1vDkr0G60-L3XwqZVXQ_uFhCMyMW
 
 jobs:
   website-suite:
