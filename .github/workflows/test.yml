@@ -9,6 +9,7 @@ on:
 env:
   TEST_PROJECT_REF: lwhufocjhcvrbimerhjq
   TEST_SUPABASE_URL: https://lwhufocjhcvrbimerhjq.supabase.co
+  TEST_SUPABASE_PUBLISHABLE_KEY: sb_publishable_dPt1vDkr0G60-L3XwqZVXQ_uFhCMyMW
 
 jobs:
   test:
@@ -30,9 +31,6 @@ jobs:
         run: |
           test "$TEST_SUPABASE_URL" = "https://$TEST_PROJECT_REF.supabase.co"
           test -n "${{ secrets.TEST_SUPABASE_PUBLISHABLE_KEY }}"
-          test -n "$TEST_SUPABASE_SERVICE_ROLE_KEY"
-        env:
-          TEST_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TEST_SUPABASE_SERVICE_ROLE_KEY }}
       - name: Run Playwright Tests
         run: npx playwright test ./e2e
         env:
