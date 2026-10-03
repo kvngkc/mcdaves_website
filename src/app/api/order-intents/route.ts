@@ -10,6 +10,7 @@ import { commerceRepository } from '@/lib/commerce/repository';
 import { requireAdminSession } from '@/lib/auth/admin-auth';
 import { checkRateLimit, getClientIp } from '@/lib/security/rate-limiter';
 import { verifyTurnstileToken } from '@/lib/security/turnstile';
+import { ORDER_INTENT_STATUSES, isOrderIntentStatus } from '@/lib/commerce/order-status';
 
 export const dynamic = 'force-dynamic';
 
@@ -127,6 +128,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const search = searchParams.get('search')?.toLowerCase();
+
+    // Step 3.3: validate the status filter against the canonical vocabulary.
+    if (status && status !== 'ALL' && !isOrderIntentStatus(status)) {
+      return NextResponse.json(
+        { error: 'Unknown status value', allowed: ORDER_INTENT_STATUSES },
+        { status: 400 },
+      );
+    }
 
     let intents = await commerceRepository.getAllOrderIntents();
 
