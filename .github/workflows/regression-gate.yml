@@ -115,15 +115,11 @@ jobs:
         run: |
           test "$TEST_SUPABASE_URL" = "https://$TEST_PROJECT_REF.supabase.co"
           test -n "$TEST_SUPABASE_PUBLISHABLE_KEY"
-          test -n "$TEST_SUPABASE_SERVICE_ROLE_KEY"
-        env:
-          TEST_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TEST_SUPABASE_SERVICE_ROLE_KEY }}
       - name: Run Playwright Tests
         run: npx playwright test ./e2e
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ env.TEST_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ env.TEST_SUPABASE_PUBLISHABLE_KEY }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TEST_SUPABASE_SERVICE_ROLE_KEY }}
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
       - name: Upload Playwright Report
         if: always()
