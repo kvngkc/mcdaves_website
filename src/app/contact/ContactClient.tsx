@@ -85,7 +85,7 @@ export default function ContactPage() {
         </div>
       </section>
 
-      {/* ── 2. Contact Details & Form Grid ──────────────────────────────────── */}
+      {/* ── 2. Contact Details & Form Grid ───────────────────────────────────── */}
       <section className="py-16">
         <div className="container-main max-w-5xl">
           
@@ -262,7 +262,7 @@ export default function ContactPage() {
                     <div className="flex justify-start">
                       <Turnstile 
                         siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY} 
-                        onSuccess={(token) => setTurnstileToken(token)}
+                        onSuccess={(token: string) => setTurnstileToken(token)}
                         onError={() => setErrorMsg('Security check failed. Please refresh.')}
                       />
                     </div>
