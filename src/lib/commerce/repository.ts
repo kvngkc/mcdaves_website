@@ -620,9 +620,25 @@ export class CommerceRepository {
     return true;
   }
 
+  /**
+   * Selects a variant's slice of ALREADY-LOADED product media. Pure and
+   * synchronous — issues no query — so it is safe to call once per variant
+   * inside resolveProduct() after a single batched media fetch.
+   */
+  private matchVariantMedia(
+    allParentMedia: ProductMedia[],
+    variant: ProductVariant,
+  ): ProductMedia[] {
+    const variantMedia = allParentMedia.filter(
+      (m) => m.variantId === variant.id || !m.variantId
+    );
+    return variantMedia.length > 0 ? variantMedia : allParentMedia;
+  }
+
   private async resolveVariant(
     parent: Product,
     variant: ProductVariant,
+    preloadedMedia?: ProductMedia[],
   ): Promise<ResolvedProductVariant> {
     const hasPriceOverride = variant.priceOverride !== undefined;
     const hasSpecOverride = variant.specificationsOverride !== undefined;
@@ -633,21 +649,29 @@ export class CommerceRepository {
     };
     effectiveSpecifications.frameSize = `${effectiveSpecifications.lensWidthMm}□${effectiveSpecifications.bridgeWidthMm}-${effectiveSpecifications.templeLengthMm}`;
 
-    if (!supabase) throw new Error("Supabase client missing");
+    // Media is normally preloaded for the whole product in ONE batched query
+    // by resolveProduct()/getAllProducts() and passed in here; the fallback
+    // below only runs when a single variant is resolved in isolation.
+    let media: ProductMedia[];
+    if (preloadedMedia) {
+      media = preloadedMedia;
+    } else {
+      if (!supabase) throw new Error("Supabase client missing");
 
-    const { data: mediaRows } = await supabase
-      .from('product_media')
-      .select('*')
-      .eq('product_id', parent.id)
-      .order('sort_order', { ascending: true });
+      const { data: mediaRows } = await supabase
+        .from('product_media')
+        .select('*')
+        .eq('product_id', parent.id)
+        .order('sort_order', { ascending: true });
 
-    const allParentMedia = (mediaRows || []).map(mapRowToMedia);
+      const allParentMedia = (mediaRows || []).map(mapRowToMedia);
 
-    const variantMedia = allParentMedia.filter(
-      (m) => m.variantId === variant.id || !m.variantId
-    );
+      const variantMedia = allParentMedia.filter(
+        (m) => m.variantId === variant.id || !m.variantId
+      );
 
-    const media = variantMedia.length > 0 ? variantMedia : allParentMedia;
+      media = variantMedia.length > 0 ? variantMedia : allParentMedia;
+    }
 
     const inStock = variant.unitsInStock !== undefined ? variant.unitsInStock > 0 : variant.inStock;
     const stockLevel = variant.unitsInStock !== undefined
@@ -703,8 +727,17 @@ export class CommerceRepository {
       return true;
     });
 
+
+    const { data: mediaRows } = await supabase
+      .from('product_media')
+      .select('*')
+      .eq('product_id', product.id)
+      .order('sort_order', { ascending: true });
+
+    const productMedia = (mediaRows || []).map(mapRowToMedia);
+
     const resolvedVariants = await Promise.all(
-      productVariants.map((v) => this.resolveVariant(product, v))
+      productVariants.map((v) => this.resolveVariant(product, v, this.matchVariantMedia(productMedia, v)))
     );
 
     const defaultVariant = resolvedVariants.find(v => v.glbPath && v.inStock) || resolvedVariants.find(v => v.glbPath) || resolvedVariants[0] || (await this.resolveVariant(product, {
@@ -721,15 +754,8 @@ export class CommerceRepository {
       status: 'ACTIVE',
       createdAt: product.createdAt,
       updatedAt: product.updatedAt,
-    }));
+    }, productMedia));
 
-    const { data: mediaRows } = await supabase
-      .from('product_media')
-      .select('*')
-      .eq('product_id', product.id)
-      .order('sort_order', { ascending: true });
-
-    const productMedia = (mediaRows || []).map(mapRowToMedia);
 
     return {
       ...product,
@@ -739,7 +765,7 @@ export class CommerceRepository {
     };
   }
 
-  // ─── Customer Identity & Deduplication ─────────────────────────────────────
+  // ─── Customer Identity & Deduplication ────────────────────────────────────
 
   public async findOrCreateCustomer(params: {
     phone: string;
@@ -804,7 +830,7 @@ export class CommerceRepository {
     return data.map(mapRowToCustomer);
   }
 
-  // ─── Order Intents ──────────────────────────────────────────────────────────
+  // ─── Order Intents ───────────────────────────────────────────────────────
 
   public async createOrderIntent(params: {
     customer: { name: string; phone: string; email?: string };
@@ -953,7 +979,7 @@ export class CommerceRepository {
     return updated;
   }
 
-  // ─── Lens Requests ──────────────────────────────────────────────────────────
+  // ─── Lens Requests ───────────────────────────────────────────────────────
 
   public async createLensRequest(
     params: Omit<LensRequest, 'id' | 'createdAt' | 'updatedAt'>,
@@ -985,7 +1011,7 @@ export class CommerceRepository {
     return mapRowToLensRequest(data);
   }
 
-  // ─── Payments & Confirmed Orders ───────────────────────────────────────────
+  // ─── Payments & Confirmed Orders ──────────────────────────────────────────
 
   public async recordPayment(params: {
     reference: string;
