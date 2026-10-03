@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createPaymentService } from '@/services/payment';
 import { commerceRepository } from '@/lib/commerce/repository';
-import { supabase } from '@/lib/supabase/service';
 
 export const dynamic = 'force-dynamic';
 
