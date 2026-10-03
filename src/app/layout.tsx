@@ -4,6 +4,7 @@ import NextTopLoader from 'nextjs-toploader';
 import { SiteShell } from '@/components/layout/SiteShell';
 import { CartProvider } from '@/context/CartContext';
 import { businessIdentity, urlConfig } from '@/config';
+import { jsonLdHtml } from '@/lib/seo/json-ld';
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -159,7 +160,7 @@ export default function RootLayout({
         {/* Global JSON-LD Schema */}
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(globalSchemaJsonLd) }}
+          dangerouslySetInnerHTML={{ __html: jsonLdHtml(globalSchemaJsonLd) }}
         />
       </head>
       <body suppressHydrationWarning className="min-h-full w-full antialiased bg-white text-neutral-900 selection:bg-brand-100 selection:text-brand-900 overflow-x-hidden">

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ShieldCheck, Award, Layers, Users, ArrowRight } from 'lucide-react';
 import { siteConfig } from '@/data/site-config';
 import { businessIdentity, urlConfig } from '@/config';
+import { jsonLdHtml } from '@/lib/seo/json-ld';
 
 import type { Metadata } from 'next';
 
@@ -71,10 +72,10 @@ export default function OurStoryPage() {
     <div className="flex flex-col min-h-screen bg-white text-neutral-900 pb-16">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(aboutSchemaJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdHtml(aboutSchemaJsonLd) }}
       />
       
-      {/* ── 1. Hero Section ─────────────────────────────────────────────────── */}
+      {/* ── 1. Hero Section ───────────────────────────────────────────────── */}
       <section className="relative pt-20 pb-24 bg-gradient-to-b from-neutral-950 via-brand-950 to-neutral-900 text-white overflow-hidden border-b border-neutral-800">
         <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_50%_20%,rgba(201,162,39,0.15),transparent_60%)]" />
         <div className="container-main relative z-10 text-center max-w-3xl">
@@ -93,7 +94,7 @@ export default function OurStoryPage() {
         </div>
       </section>
 
-      {/* ── 2. Timeline Milestones ───────────────────────────────────────────── */}
+      {/* ── 2. Timeline Milestones ────────────────────────────────────────── */}
       <section className="py-20 border-b border-neutral-100 bg-brand-50/40">
         <div className="container-main max-w-4xl">
           
@@ -124,7 +125,7 @@ export default function OurStoryPage() {
         </div>
       </section>
 
-      {/* ── 3. Dual Track Core Pillars ─────────────────────────────────────── */}
+      {/* ── 3. Dual Track Core Pillars ────────────────────────────────────── */}
       <section className="py-20 bg-white">
         <div className="container-main">
           

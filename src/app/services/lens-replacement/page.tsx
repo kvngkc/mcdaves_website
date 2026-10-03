@@ -16,6 +16,7 @@ import {
 import { siteConfig } from '@/data/site-config';
 import { ORDERING_SYSTEM_URL } from '@/data/b2b-products';
 import { businessIdentity, urlConfig, serviceConfig } from '@/config';
+import { jsonLdHtml } from '@/lib/seo/json-ld';
 
 import type { Metadata } from 'next';
 
@@ -111,9 +112,9 @@ export default function LensReplacementB2CPage() {
     <div className="flex flex-col min-h-screen bg-white text-neutral-900 pb-16">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceSchemaJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdHtml(serviceSchemaJsonLd) }}
       />
-      {/* ── 1. Hero Section ─────────────────────────────────────────────────── */}
+      {/* ── 1. Hero Section ───────────────────────────────────────────────── */}
       <section className="relative pt-16 pb-20 bg-gradient-to-b from-brand-50 via-white to-brand-50/30 border-b border-neutral-200">
         <div className="container-main max-w-4xl text-center">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand-100 text-brand-800 text-xs font-bold uppercase tracking-wider mb-6">
@@ -167,7 +168,7 @@ export default function LensReplacementB2CPage() {
         </div>
       </section>
 
-      {/* ── 2. How It Works (4 Simple Steps) ─────────────────────────────────── */}
+      {/* ── 2. How It Works (4 Simple Steps) ─────────────────────────────── */}
       <section className="py-16 bg-neutral-50 border-b border-neutral-200">
         <div className="container-main max-w-5xl">
           <div className="text-center max-w-2xl mx-auto mb-12">
@@ -196,7 +197,7 @@ export default function LensReplacementB2CPage() {
         </div>
       </section>
 
-      {/* ── 3. Lens Options & Pricing ───────────────────────────────────────── */}
+      {/* ── 3. Lens Options & Pricing ────────────────────────────────────── */}
       <section className="py-16 bg-white border-b border-neutral-200">
         <div className="container-main max-w-4xl">
           <div className="text-center max-w-2xl mx-auto mb-12">
@@ -236,7 +237,7 @@ export default function LensReplacementB2CPage() {
         </div>
       </section>
 
-      {/* ── 4. Professional Lens Fitting Section ────────────────────────────── */}
+      {/* ── 4. Professional Lens Fitting Section ─────────────────────────── */}
       <section id="fitting" className="py-16 bg-brand-50/40 border-b border-neutral-200">
         <div className="container-main max-w-3xl text-center space-y-6">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-100 text-brand-800 text-xs font-semibold uppercase tracking-wider">
@@ -254,7 +255,7 @@ export default function LensReplacementB2CPage() {
         </div>
       </section>
 
-      {/* ── 5. Bottom Call to Action ────────────────────────────────────────── */}
+      {/* ── 5. Bottom Call to Action ─────────────────────────────────────── */}
       <section className="py-16 bg-white text-center">
         <div className="container-main max-w-xl space-y-6">
           <h2 className="text-h3 font-bold text-neutral-900">Ready to Reglaze Your Glasses?</h2>
