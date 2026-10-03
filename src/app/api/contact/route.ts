@@ -19,13 +19,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const formspreeId = inquiryType === 'b2b' 
-      ? process.env.NEXT_PUBLIC_FORMSPREE_B2B_ID 
+    const formspreeId = inquiryType === 'b2b'
+      ? process.env.NEXT_PUBLIC_FORMSPREE_B2B_ID
       : process.env.NEXT_PUBLIC_FORMSPREE_CONTACT_ID;
 
+    // No Formspree endpoint configured -> the message has NOWHERE to go.
+    //
+    // Previously this branch returned `{ success: true }` after logging
+    // "Formspree ID missing, pretending success." — every inquiry submitted
+    // in that state was silently discarded while the customer was told their
+    // message had been received. We now report the misconfiguration
+    // truthfully and redirect the customer to a channel that works.
     if (!formspreeId) {
-      console.warn('Formspree ID missing, pretending success.');
-      return NextResponse.json({ success: true });
+      console.error(
+        '[Contact] Formspree is not configured (NEXT_PUBLIC_FORMSPREE_CONTACT_ID / NEXT_PUBLIC_FORMSPREE_B2B_ID missing). Refusing to fake success.',
+      );
+      return NextResponse.json(
+        {
+          error:
+            'Contact form is temporarily unavailable. Please reach us on WhatsApp or by phone.',
+        },
+        { status: 503 }
+      );
     }
 
     const formspreeRes = await fetch(`https://formspree.io/f/${formspreeId}`, {
